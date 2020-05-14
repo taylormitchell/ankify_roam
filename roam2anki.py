@@ -1,6 +1,7 @@
 import re
 import os
 import json
+import sys
 import urllib.request
 import logging
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
@@ -13,8 +14,10 @@ RE_CLOZE = r"{c?\d*:?[^:{}]*}"
 RE_ANKI_TYPE = r"#?\[\[\[\[anki_type\]\]:(\w+)]\]"
 RE_IMAGE = r"!\[\]\(([^()]*)\)"
 RE_ANKI_DECK = r"#?\[\[\[\[anki_deck\]\]:(\w+)]\]"
-RE_PAGE_REF = "^\[\[(.*)\]\]$"
+RE_PAGE_REF_ONLY = "^\s*\[\[([^\[\]]*)\]\]\s*$"
+RE_PAGE_REF = "\[\[([^\[\]]*)\]\]"
 RE_BLOCK_REF = "\(\(([-_\w]+)\)\)"
+RE_CODE_INLINE = r"`([^`]*)`"
 
 # Roam Stuff
 # ----------
@@ -200,10 +203,16 @@ class Roam2Anki:
             NoteType.CLOZE: anki_connect.get_field_names(anki_cloze)
         }
 
-    def upload(self):
+    def upload_all(self):
         roam_notes, roam_fields = self.get_notes_and_fields_from_roam()
         anki_notes = self.ankify_all(roam_notes, roam_fields)
-        self.anki_connect.add_all_notes(anki_notes) 
+        self.upload(anki_notes)
+
+    def upload(self, anki_notes):
+        responses = []
+        for anki_note in anki_notes:
+            responses.append(self.anki_connect.add_or_update_note(anki_note))
+        return responses
 
     def get_notes_and_fields_from_roam(self):
         note_blocks = self.roam.get_all_by_criteria(lambda b: re.findall(RE_NOTE, b["string"]))
@@ -247,20 +256,32 @@ class Roam2Anki:
         
     def _process_field(self, field, note_type):
         field = self._process_images(field)
+        field = self._process_code(field)
         field = self._remove_tags(field)
         field = self._expand_block_refs(field)
         if note_type==NoteType.CLOZE:
             field = self._process_clozes(field)
+        field = self._process_page_refs(field)
         return field
 
     def _process_images(self, field):
         return re.sub(RE_IMAGE, '<img src="\g<1>">', field)
+
+    def _process_page_refs(self, field):
+        sub = \
+            '<span class="rm-page-ref-brackets">[[</span>'\
+            '<span class="rm-page-ref-link-color">\g<1></span>'\
+            '<span class="rm-page-ref-brackets">]]</span>'
+        return re.sub(RE_PAGE_REF, sub, field) 
     
     def _remove_tags(self, field):
         for anki_tag in [RE_FIELD, RE_NOTE, RE_ANKI_TYPE, RE_UID, RE_ANKI_DECK]:
             field = re.sub(anki_tag,"",field)
         field = re.sub(r"\s+$","",field)
         return field
+
+    def _process_code(self, field):
+        return re.sub(RE_CODE_INLINE, "<code>\g<1></code>", field)
     
     def _expand_block_refs(self, field):
         return self.roam.expand_block_refs(field)
@@ -272,8 +293,8 @@ class Roam2Anki:
         new_clozes = []
         for cloze in clozes:
             cloze_key, cloze_text = cloze[1:-1].split(":")
-            if re.match(RE_PAGE_REF, cloze_text) and ("/" in cloze_text):
-                page_name = re.findall(RE_PAGE_REF, cloze_text)[0]
+            if re.match(RE_PAGE_REF_ONLY, cloze_text) and ("/" in cloze_text):
+                page_name = re.findall(RE_PAGE_REF_ONLY, cloze_text)[0]
                 namespace_split = page_name.split("/")
                 clozed_name = "{%s:%s}" % (cloze_key, namespace_split[-1])
                 new_cloze = "[[%s]]" % '/'.join(namespace_split[:-1] + [clozed_name])
@@ -317,9 +338,12 @@ class AnkiConnect:
     def __init__(self):
         pass
     
-    def add_all_notes(self, anki_notes):
-        logging.info(f"Adding anki notes")
-        return self._invoke("addNotes", notes=[n.to_dict() for n in anki_notes])
+    def add_or_update_note(self, anki_note):
+        note_id = self.get_note_id(anki_note)
+        if note_id:
+            return self.update_note(note_id, anki_note)
+        else:
+            return self.add_note(anki_note)
                 
     def add_note(self, anki_note):
         return self._invoke("addNote", note=anki_note.to_dict())
@@ -329,11 +353,10 @@ class AnkiConnect:
         return self._invoke("updateNoteFields", note=note)
     
     def get_field_names(self, note_type):
-        logging.info(f"Getting {note_type} field names")
         return self._invoke('modelFieldNames', modelName=note_type)
     
-    def get_note_id(self, uid):
-        res = self._invoke('findNotes', query=f"uid:{uid}")
+    def get_note_id(self, anki_note):
+        res = self._invoke('findNotes', query=f"uid:{anki_note.fields['uid']}")
         if res:
             return res[0]
         return None
@@ -345,7 +368,8 @@ class AnkiConnect:
     def _invoke(self, action, **params):
         requestDict = self._create_request_dict(action, **params)
         requestJson = json.dumps(requestDict).encode('utf-8')
-        response = json.load(urllib.request.urlopen(urllib.request.Request('http://localhost:8765', requestJson)))
+        request = urllib.request.Request('http://localhost:8765', requestJson)
+        response = json.load(urllib.request.urlopen(request))
         if len(response) != 2:
             raise Exception('response has an unexpected number of fields')
         if 'error' not in response:
@@ -353,7 +377,6 @@ class AnkiConnect:
         if 'result' not in response:
             raise Exception('response is missing required result field')
         if response['error'] is not None:
-            import pdb; pdb.set_trace()
             raise Exception(response['error'])
         return response['result']
 
@@ -363,11 +386,12 @@ if __name__=="__main__":
     anki_basic = "Roam Basic"
     anki_cloze = "Roam Cloze"
     default_deck = "Default"
-    path_to_json = os.path.expanduser("~/Downloads/roam_to_anki_test_page.json")
+    path_to_json = os.path.expanduser(sys.argv[1])
+    #path_to_json = os.path.expanduser("~/Downloads/roam_to_anki_test_page.json")
 
     logging.info("Starting")
     my_roam = Roam.from_json(path_to_json)
     anki_connect = AnkiConnect()
     roam2anki = Roam2Anki(my_roam, anki_connect, anki_basic=anki_basic, anki_cloze=anki_cloze, default_deck=default_deck)
-    roam2anki.upload()
+    roam2anki.upload_all()
     logging.info("Finished")
