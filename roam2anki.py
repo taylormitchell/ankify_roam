@@ -130,10 +130,34 @@ class RoamNote:
             return [block["string"]]
         elif note_type==NoteType.BASIC:
             front = block["string"]
-            back = block["children"][0]["string"] if block.get("children") else ""
+            back = self.blocks_to_field(block.get("children",[]))
             return [front, back]
         else:
             raise ValueError("Unknown note type")
+
+    def blocks_to_field(self, blocks):
+        if len(blocks)==0:
+            return ""
+        elif len(blocks)==1:
+            return self._block_string_to_field(blocks[0]["string"])
+        else:
+            field = self._block_list_to_field(blocks)
+            return '<div class="centered-block">' + field + '</div>'
+
+    def _block_string_to_field(self, block_string):
+        return block_string
+
+    def _block_list_to_field(self, roam_list):
+        html = ""
+        if roam_list is None:
+            return html
+        for block in roam_list:
+            content = self._block_string_to_field(block["string"]) + \
+                      self._block_list_to_field(block.get("children"))
+            html += "<li>" + content + "</li>"
+        html = "<ul>" + html + "</ul>"
+        return html
+
         
     def __repr__(self):
         return f"<RoamNote(uid={self.uid}, type={self.type}, field[0]='{self.fields[0][:20]}...')>"
@@ -313,26 +337,15 @@ class Roam2Anki:
                         self.anki_field_names[note_type])
     
     def _roam_type_to_anki(self, note_type):
-        if note_type==NoteType.BASIC:
+        if note_type.value==NoteType.BASIC.value:
             return self.anki_basic
-        elif note_type==NoteType.CLOZE:
+        elif note_type.value==NoteType.CLOZE.value:
             return self.anki_cloze
         else:
             raise ValueError(f"Note type '{note_type}' not supported")
 
 # AnkiConnect
 # -----------            
-
-#class AnkiConnect:
-#    def add_all_notes(self, anki_notes):
-#        for anki_note in anki_notes:
-#            print(anki_note)
-#
-#    def get_field_names(self, note_type):
-#        if note_type=='Roam Basic':
-#            return ['Front','Back','Extra','uid']
-#        else:
-#            return ['Text','Extra','uid']
 
 class AnkiConnect:
     def __init__(self):
@@ -360,6 +373,23 @@ class AnkiConnect:
         if res:
             return res[0]
         return None
+
+    def create_model(self, model):
+        return self._invoke("createModel", **model) 
+
+    def update_model(self, model):
+        model_template_update = {
+            "name": model["modelName"],
+            "templates": {t["Name"]: {"Front":t["Front"], "Back":t["Back"]} 
+                          for t in model["cardTemplates"]}
+        }
+        res_template = self._invoke("updateModelTemplates", model=model_template_update)
+        model_styling_update = {
+            "name": model["modelName"],
+            "css": model["css"]
+        }
+        res_styling = self._invoke("updateModelStyling", model=model_styling_update)
+        return [res_template, res_styling]
 
     # https://github.com/FooSoft/anki-connect#python
     def _create_request_dict(self, action, **params):
