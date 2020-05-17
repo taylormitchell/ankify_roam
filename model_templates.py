@@ -1,4 +1,14 @@
-_css = """
+_css_basic = """
+.card {
+ font-family: arial;
+ font-size: 20px;
+ text-align: center;
+ color: black;
+ background-color: white;
+}
+"""
+
+_css_cloze = """
 .card {
  font-family: arial;
  font-size: 20px;
@@ -7,6 +17,16 @@ _css = """
  background-color: white;
 }
 
+.cloze {
+ font-weight: bold;
+ color: blue;
+}
+.nightMode .cloze {
+ color: lightblue;
+}
+"""
+
+_css_roam = """
 code {
     border-radius: 5px; 
     -moz-border-radius: 5px; 
@@ -30,12 +50,16 @@ code {
 .rm-page-ref-link-color {
     color: #106ba3;
 }
-"""[1:]
+
+.rm-page-ref-tag {
+    color: #a7b6c2;
+}
+"""
 
 roam_basic = {
     "modelName": "Roam Basic",
     "inOrderFields": ["Front", "Back", "Extra", "uid"],
-    "css": _css,
+    "css": _css_basic+_css_roam,
     "cardTemplates": [
         {
             "Name": "Card 1",
@@ -48,7 +72,7 @@ roam_basic = {
 roam_cloze = {
     "modelName": "Roam Cloze",
     "inOrderFields": ["Text", "Extra", "uid"],
-    "css": _css,
+    "css": _css_cloze+_css_roam,
     "cardTemplates": [
         {
             "Name": "Card 1",

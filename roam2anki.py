@@ -12,7 +12,6 @@ RE_UID = r"#?\[\[\[\[uid\]\]:\({0,2}(\w+)\){0,2}\]\]"
 RE_CLOZE_GROUPS = r"{(c?\d*):?([^:{}]*)}"
 RE_CLOZE = r"{c?\d*:?[^:{}]*}"
 RE_ANKI_TYPE = r"#?\[\[\[\[anki_type\]\]:(\w+)]\]"
-RE_IMAGE = r"!\[\]\(([^()]*)\)"
 RE_ANKI_DECK = r"#?\[\[\[\[anki_deck\]\]:(\w+)]\]"
 RE_PAGE_REF_ONLY = "^\s*\[\[([^\[\]]*)\]\]\s*$"
 RE_PAGE_REF = "\[\[([^\[\]]*)\]\]"
@@ -36,6 +35,11 @@ class Roam:
     
     def expand_block_refs(self, string):
         block_refs = re.findall(RE_BLOCK_REF, string)
+        # Remove block references which are in a link element
+        RE_BLOCK_REF_LINKED = r"\[[^\[\]]+\]\(%s\)" % RE_BLOCK_REF
+        block_refs_linked = re.findall(RE_BLOCK_REF_LINKED, string)
+        block_refs = [br for br in block_refs if br not in block_refs_linked]
+
         expanded_block_ref = []
         for ref in block_refs:
             if self.block_strings.get(ref):
@@ -279,17 +283,34 @@ class Roam2Anki:
         anki_note.fields["uid"] = roam_note.uid
         
     def _process_field(self, field, note_type):
+        field = self._process_links(field)
         field = self._process_images(field)
         field = self._process_code(field)
         field = self._remove_tags(field)
+        field = self._process_tags(field)
         field = self._expand_block_refs(field)
         if note_type==NoteType.CLOZE:
             field = self._process_clozes(field)
         field = self._process_page_refs(field)
         return field
 
-    def _process_images(self, field):
-        return re.sub(RE_IMAGE, '<img src="\g<1>">', field)
+    def _process_links(self, field):
+        # TODO: lots of edge cases this doesn't cover
+        # Process block reference links
+        RE_LINK = r"\[([^\[\]]*)\]\(\(\(([-_\w]+)\)\)\)"
+        field = re.sub(RE_LINK, '<a title="block: \g<2>">\g<1></a>', field)
+        # Process page references links
+        RE_LINK = r"\[([^\[\]]*)\]\(\[\[([^\[\]]+)\]\]\)"
+        field = re.sub(RE_LINK, '<a title="page: \g<2>">\g<1></a>', field)
+        # Process url links
+        RE_LINK = r"\[([^\[\]]*)\]\(([^\(\)]+)\)"
+        field = re.sub(RE_LINK, '<a title="url: \g<2>" href="\g<2>">\g<1></a>', field)
+
+        return field
+
+    def _process_images(self, field, download=False):
+        RE_IMAGE_URL = r"!\[\]\(([^()]*)\)"
+        return re.sub(RE_IMAGE_URL, '<img src="\g<1>">', field)
 
     def _process_page_refs(self, field):
         sub = \
@@ -331,6 +352,13 @@ class Roam2Anki:
         field = re.sub(RE_CLOZE_GROUPS, "{{\g<1>::\g<2>}}", field)
         
         return field
+
+    def _process_tags(self, field):
+        RE_TAG_BRACKET = r"#\[\[([^\[\]]+)\]\]" 
+        RE_TAG_NOBRACKET = r"#([\w\-@]+)"    
+        field = re.sub(RE_TAG_NOBRACKET, '#[[\g<1>]]', field)
+        field = re.sub(RE_TAG_BRACKET, '<span class="rm-page-ref-tag">#\g<1></span>', field)
+        return field
             
     def _create_empty_note(self, note_type):
         return AnkiNote(self._roam_type_to_anki(note_type), 
@@ -359,7 +387,11 @@ class AnkiConnect:
             return self.add_note(anki_note)
                 
     def add_note(self, anki_note):
-        return self._invoke("addNote", note=anki_note.to_dict())
+        try:
+            return self._invoke("addNote", note=anki_note.to_dict())
+        except:
+            import pdb; pdb.set_trace
+            return None
 
     def update_note(self, note_id, anki_note):
         note = {"id":note_id, "fields": anki_note.to_dict()["fields"]}
