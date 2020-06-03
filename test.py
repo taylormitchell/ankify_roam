@@ -1,6 +1,25 @@
 import unittest 
-from roam import Cloze 
+import anki_connect
+from roam import Cloze, Image, RoamObjectList 
 import roam
+
+class TestRoamObjectList(unittest.TestCase):
+    def test_to_html(self):
+        string = "Something with a {cloze}"
+        roam_objects = RoamObjectList.from_string(string)
+        self.assertEqual(roam_objects.to_html(), "Something with a {{c1::cloze}}")
+
+class TestImage(unittest.TestCase):
+    def test_parse_url(self):
+        image_md = "![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840)"
+        url = "https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840"
+        self.assertEqual(Image(image_md).url, url)
+
+    def test_to_html(self):
+        image_md = "![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840)"
+        image_html = '<img src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840">'
+        self.assertEqual(Image(image_md).to_html(), image_html)
+
 
 class TestCloze(unittest.TestCase):
     def test_get_content(self):
@@ -46,10 +65,34 @@ class TestCloze(unittest.TestCase):
         output = "{{c4::something}} herp {{c6::derp}}"
         self.assertEqual(Cloze.ankify_clozes(input), output)
 
+    def test_doesnt_match_double_bracket(self):
+        input = "don't match {{this}}"
+        self.assertEqual(Cloze.find_and_replace(input).to_string(), input)
+
+    def test_encloze(self):
+        self.assertEqual(Cloze.encloze(1,"string"), "{{c1::string}}")
+
     # TODO: this didn't cloze for some reason:
     # [[LMF]] stands for {Ladle Metallurgy Furnace} #anki_note
+    # [[Steel]] is {an alloy} mainly of {[[Iron]] and [[Carbon]]} #anki_note
+    # [[Steel]] is {an [alloy]([[Alloy]])} mainly of {[[Iron]] and [[Carbon]]} #anki_note"
         
 
 if __name__=="__main__":
+    #string = "{[[something/which]]} and [some](www.google.com) other stuff"
+    #roam_objects = RoamObjectList.from_string(string)
+    #print(roam_objects.to_html())
+    #string = "{something} {which} totally {{c3:has}} a {c5:lot} of {1:clozes} {2|brah}"
+    #objects = Cloze.find_and_replace(string)
+    #print(objects)
 
-    unittest.main()
+    #unittest.main()
+
+    res = anki_connect._invoke('findNotes', query="GUI applications")
+    print(res)
+
+    res = anki_connect._invoke('notesInfo', notes=[1591157331124])
+    print(res[0]["fields"]["uid"]["value"] == "FyCU34PqG")
+
+    res = anki_connect._invoke('findNotes', query=f'uid:{res[0]["fields"]["uid"]["value"]}')
+    print(res)

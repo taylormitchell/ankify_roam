@@ -1,5 +1,6 @@
 import json 
 import urllib.request 
+import logging
 
 class AnkiConnectException(Exception):
     """Base class for exceptions in this module."""
@@ -18,6 +19,9 @@ class ModelNotFoundError(AnkiConnectException):
     def __init__(self, response_error):
         self.response_error = response_error
 
+class DuplicateError(AnkiConnectException):
+    def __init__(self, response_error):
+        self.response_error = response_error
 
 
 # https://github.com/FooSoft/anki-connect#python
@@ -38,6 +42,8 @@ def _invoke(action, **params):
     if response['error'] is not None:
         if response['error'].startswith('model was not found'):
             raise ModelNotFoundError(response['error'])
+        elif "cannot create note because it is a duplicate" in response['error']:
+            raise DuplicateError(response['error'])
         else:
             raise GenericResponseError(response['error'])
     return response['result']
@@ -49,10 +55,13 @@ def upload_all(anki_notes):
 
 def upload(anki_note):
     note_id = _get_note_id(anki_note)
-    if note_id:
-        return _update_note(note_id, anki_note)
-    else:
-        return _add_note(anki_note)
+    try:
+        if note_id:
+            return _update_note(note_id, anki_note)
+        else:
+            return _add_note(anki_note)
+    except DuplicateError:
+        logging.warning(f"Didn't upload the card with uid={anki_note['fields']['uid']} because there was a duplicate error")
             
 def _add_note(anki_note):
     return _invoke("addNote", note=anki_note)

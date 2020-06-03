@@ -1,6 +1,6 @@
 import re
 import logging
-from roam import RoamDb
+from roam import RoamDb, Cloze
 import anki_connect
 
 class AnkiNote:
@@ -40,10 +40,9 @@ class AnkiNote:
             match = re.search(RE_TYPE, tag)
             if match: break
         if match:
-            return match.group()
+            return match.group(1)
         else:
-            RE_CLOZE = r"{[^{}]+}"
-            if re.findall(RE_CLOZE, block.get("string")):
+            if any([type(obj)==Cloze for obj in block.content]):
                 return default_cloze
             else:
                 return default_basic

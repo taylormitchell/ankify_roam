@@ -45,6 +45,7 @@ code {
 
 .rm-page-ref-brackets {
     color: #a7b6c2;
+    display: none;
 }
 
 .rm-page-ref-link-color {
@@ -84,7 +85,7 @@ ROAM_BASIC = {
         {
             "Name": "Card 1",
             "Front": "{{Front}}",
-            "Back": "{{FrontSide}}<hr id=answer>{{Back}}<br>{{Extra}}"
+            "Back": "{{FrontSide}}<hr id=answer>{{Back}}<br><br>{{Extra}}"
         }
     ]   
 }
@@ -97,7 +98,7 @@ ROAM_CLOZE = {
         {
             "Name": "Card 1",
             "Front": "{{cloze:Text}}",
-            "Back": "{{cloze:Text}}<br>{{Extra}}"
+            "Back": "{{cloze:Text}}<br><br>{{Extra}}"
         }
     ]   
 }

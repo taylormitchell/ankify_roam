@@ -62,8 +62,8 @@ if __name__=="__main__":
                 raise anki_connect.ModelNotFoundError(f"'{model_name}' not in Anki. Running `create_default_models.py` should fix the problem")
             else:
                 raise e
-    anki_dicts = [an.to_dict(field_names[an.type], uncloze_namespace=args.uncloze_namespace) 
-                  for an in anki_notes]
+
+    anki_dicts = [an.to_dict(field_names[an.type]) for an in anki_notes]
 
     anki_connect.upload_all(anki_dicts)
 
