@@ -54,9 +54,29 @@ code {
 .rm-page-ref-tag {
     color: #a7b6c2;
 }
+
+.rm-block-ref {
+    padding: 2px 2px;
+    margin: -2px 0px;
+    display: inline;
+    border-bottom: 0.5px solid #d8e1e8;
+    cursor: alias;
+}
+
+.roam-highlight {
+    background-color: #fef09f;
+    margin: -2px;
+    padding: 2px;
+}
+
+.bp3-button.bp3-small, .bp3-small .bp3-button {
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0 7px;
+}
 """
 
-roam_basic = {
+ROAM_BASIC = {
     "modelName": "Roam Basic",
     "inOrderFields": ["Front", "Back", "Extra", "uid"],
     "css": _css_basic+_css_roam,
@@ -69,7 +89,7 @@ roam_basic = {
     ]   
 }
 
-roam_cloze = {
+ROAM_CLOZE = {
     "modelName": "Roam Cloze",
     "inOrderFields": ["Text", "Extra", "uid"],
     "css": _css_cloze+_css_roam,
