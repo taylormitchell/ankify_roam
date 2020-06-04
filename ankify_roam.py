@@ -3,7 +3,7 @@ import os
 import sys
 import logging
 import anki_connect
-import loaders 
+import roam_loaders 
 from roam import RoamDb
 from ankifier import AnkiNote
 from model_templates import ROAM_BASIC, ROAM_CLOZE
@@ -16,10 +16,6 @@ if __name__=="__main__":
                         metavar='path',
                         type=str,
                         help='the path to list')
-    #parser.add_argument('--input', 
-    #                    action='store', default="json", 
-    #                    choices=['json','zip','zip_latest'],
-    #                    help='input type')
     parser.add_argument('--default_deck', default="Default",
                         type=str, action='store', 
                         help='default deck')
@@ -29,18 +25,15 @@ if __name__=="__main__":
     parser.add_argument('--default_cloze', default=ROAM_CLOZE['modelName'],
                         type=str, action='store', 
                         help='default deck')
-    parser.add_argument('--images', default="download",
+    parser.add_argument('--pageref-cloze', default="outside",
                         type=str, action='store', 
-                        choices=["download","link"],
-                        help='default deck')
-    parser.add_argument('--uncloze-namespace', 
-                        action='store_true',
-                        help='move clozes surrounding namespaced pages to the base name') 
+                        choices=["inside", "outside", "base_only"],
+                        help='where to place clozes around page references')
 
     args = parser.parse_args()
 
     logging.info("Starting")
-    pages = loaders.loader(args.Path)
+    pages = roam_loaders.loader(args.Path)
     logging.info("Loaded pages")
 
     roam_db = RoamDb.from_json(pages)
@@ -63,7 +56,10 @@ if __name__=="__main__":
             else:
                 raise e
 
-    anki_dicts = [an.to_dict(field_names[an.type]) for an in anki_notes]
+    options = {
+        "pageref_cloze": args.pageref_cloze, 
+    }
+    anki_dicts = [an.to_dict(field_names[an.type], **options) for an in anki_notes]
 
     anki_connect.upload_all(anki_dicts)
 

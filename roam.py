@@ -1,6 +1,5 @@
 import os
 import re
-import loaders 
 from itertools import zip_longest
 import logging
 
@@ -64,7 +63,7 @@ class RoamInterface:
     def to_string(self):
         raise NotImplementedError
 
-    def to_html(self):
+    def to_html(self, *arg, **kwargs):
         raise NotImplementedError
 
     def get_tags(self):
@@ -90,9 +89,9 @@ class RoamObjectList(RoamInterface, list):
     def to_string(self):
         return "".join([o.to_string() for o in self])
 
-    def to_html(self):
+    def to_html(self, *args, **kwargs):
         # TODO: implement filters
-        html = "".join([o.to_html() for o in self])
+        html = "".join([o.to_html(*args, **kwargs) for o in self])
         html = self._markdown_to_html(html)
         return html 
 
@@ -111,9 +110,7 @@ class RoamObjectList(RoamInterface, list):
     def from_string(cls, string, *args, **kwargs):
         roam_objects = [String(string)]
         for rmobj_cls in [Cloze, Alias, Image, Curly, PageRef, PageTag, BlockRef]:
-            if rmobj_cls == BlockRef:
-                roam_objects = rmobj_cls.find_and_replace(roam_objects, roam_db=kwargs.get("roam_db"))
-            roam_objects = rmobj_cls.find_and_replace(roam_objects)
+            roam_objects = rmobj_cls.find_and_replace(roam_objects, *args, **kwargs)
         return cls(roam_objects)
 
     def __repr__(self):
@@ -125,24 +122,24 @@ class BlockList(list):
         for b in blocks:
             self.append(b)
 
-    def _listify(self, blocks, **kwargs):
+    def _listify(self, blocks, *args, **kwargs):
         if blocks is None:
             return ""
         html = ""
         for block in blocks:
-            content = block.to_html(**kwargs) + \
+            content = block.to_html(*args, **kwargs) + \
                       self._listify(block.get("children"))
             html += "<li>" + content + "</li>"
         html = "<ul>" + html + "</ul>"
         return html
 
-    def to_html(self, **kwargs):
+    def to_html(self, *args, **kwargs):
         if len(self)==0:
             return ""
         elif len(self)==1:
-            return self[0].to_html(**kwargs)
+            return self[0].to_html(*args, **kwargs)
         else:
-            html = self._listify(self, **kwargs)
+            html = self._listify(self, *args, **kwargs)
             #TODO: should this be a config?
             return '<div class="centered-block">' + html + '</div>'
 
@@ -174,8 +171,8 @@ class Block:
     def to_string(self):
         return self.content.to_string()
 
-    def to_html(self, **kwargs):
-        return self.content.to_html()
+    def to_html(self, *args, **kwargs):
+        return self.content.to_html(*args, **kwargs)
 
     @classmethod
     def from_json(cls, block, roam_db):
@@ -222,7 +219,7 @@ class RoamObject(RoamInterface):
     def to_string(self):
         return self.string
 
-    def to_html(self):
+    def to_html(self, *args, **kwargs):
         return self.string
 
     def get_tags(self):
@@ -268,7 +265,7 @@ class Cloze(RoamObject):
     ROAM_TEMPLATE = "{c%s:%s}"
     ANKI_TEMPLATE = "{{c%s::%s}}"
 
-    def __init__(self, string):
+    def __init__(self, string, **kwargs):
         assert self.is_cloze(string)
         super().__init__(string)
         self.id = self._get_id(string)
@@ -294,7 +291,7 @@ class Cloze(RoamObject):
         return [self.RE] 
 
     @classmethod
-    def find_and_replace(cls, string):
+    def find_and_replace(cls, string, *args, **kwargs):
         roam_objects = super().find_and_replace(string)
         cls._assign_cloze_ids([o for o in roam_objects if type(o)==Cloze])
         return RoamObjectList(roam_objects)
@@ -317,28 +314,6 @@ class Cloze(RoamObject):
     @classmethod
     def encloze(cls, id, string):
         return cls.ANKI_TEMPLATE % (id, string)
-
-    def to_string(self, pageref_cloze="base_only"):
-        """
-        Args:
-            pageref_cloze (str): {'outside', 'inside', 'base_only'}
-        """
-        if not self.only_enclozes_pageref():
-            return self.encloze(self.id, self.roam_objects.to_string())
-        pageref = self.roam_objects[0]
-
-        if pageref_cloze=="outside":
-            return self.encloze(self.id, pageref.to_string())
-        elif pageref_cloze=="inside":
-            return "[[" + self.encloze(self.id, pageref.get_name()) + "]]"
-        elif pageref_cloze=="base_only":
-            clozed_basename = self.encloze(self.id, pageref.get_basename())
-            namespace = pageref.get_namespace()
-            if namespace:
-                page_clozed_based = namespace + "/" + clozed_basename
-            else:
-                page_clozed_based = clozed_basename
-            return "[[" + page_clozed_based + "]]"
 
     def to_html(self, pageref_cloze="base_only"):
         """
@@ -370,7 +345,7 @@ class Cloze(RoamObject):
 
 
 class Alias(RoamObject):
-    def __init__(self, string):
+    def __init__(self, string, **kwargs):
         super().__init__(string)
         pat = "\[(.*)\]\((.*)\)"
         self.alias, ref = re.findall(pat, string.replace("\n"," "))[0]
@@ -386,7 +361,7 @@ class Alias(RoamObject):
             return [self.ref.string[2:-2]]
         return []
     
-    def to_html(self):
+    def to_html(self, *arg, **kwargs):
         # TODO: different for block/page/url
         if type(self.ref)==PageRef:
             return '<a title="page: %s">%s</a>' % (self.ref.string, self.alias)
@@ -409,10 +384,10 @@ class Alias(RoamObject):
 
 
 class String(RoamObject):
-    def __init__(self, string):
+    def __init__(self, string, **kwargs):
         super().__init__(string)
 
-    def to_html(self):
+    def to_html(self, *arg, **kwargs):
         return self.string
 
     def get_tags(self):
@@ -423,10 +398,10 @@ class String(RoamObject):
 
 
 class Curly(RoamObject):
-    def __init__(self, string):
+    def __init__(self, string, **kwargs):
         super().__init__(string)
 
-    def to_html(self):
+    def to_html(self, *arg, **kwargs):
         return '<button class="bp3-button bp3-small dont-focus-block">%s</button>' % self.string[2:-2]
 
     def get_tags(self):
@@ -467,7 +442,7 @@ def _get_page_ref_strings(string):
 
 
 class PageRef(RoamObject):
-    def __init__(self, string):
+    def __init__(self, string, **kwargs):
         super().__init__(string)
         try:
             cloze = Cloze(string[2:-2])
@@ -500,11 +475,12 @@ class PageRef(RoamObject):
             f'<span class="rm-page-ref-link-color">{name}</span>'\
             f'<span class="rm-page-ref-brackets">]]</span>'
 
-    def to_html(self, pageref_cloze="outside"):
+    def to_html(self, **kwargs):
         """
         Args:
             pageref_cloze (str): {'outside', 'inside', 'base_only'}
         """
+        pageref_cloze = kwargs.get("pageref_cloze")
         if not self.clozed:
             return self.page_name_to_html(self.get_name())
         if pageref_cloze=="outside":
@@ -533,7 +509,7 @@ class PageRef(RoamObject):
 
 
 class PageTag(RoamObject):
-    def __init__(self, string):
+    def __init__(self, string, **kwargs):
         super().__init__(string)
 
     def _get_name(self):
@@ -544,7 +520,7 @@ class PageTag(RoamObject):
     def get_tags(self):
         return [self._get_name()]
 
-    def to_html(self):
+    def to_html(self, *arg, **kwargs):
         return '<span class="rm-page-ref-tag">#%s</span>' % self._get_name()
 
     def _create_patterns(self, roam_objects):
@@ -560,11 +536,11 @@ class PageTag(RoamObject):
 
 
 class BlockRef(RoamObject):
-    def __init__(self, string, roam_db=None):
+    def __init__(self, string, **kwargs):
         super().__init__(string)
-        self.roam_db = roam_db
+        self.roam_db = kwargs.get("roam_db", None)
 
-    def to_html(self):
+    def to_html(self, *arg, **kwargs):
         uid = self.string[2:-2]
         block = self.roam_db.get_block_by_uid(uid)
         return '<span class="rm-block-ref">%s</span>' % block.to_html()
@@ -577,115 +553,33 @@ class BlockRef(RoamObject):
 
 
 class URL(RoamObject):
-    def __init__(self, string):
+    def __init__(self, string, **kwargs):
         super().__init__(string)
         self.url = string
 
-    def to_html(self):
+    def to_html(self, *arg, **kwargs):
         return f'<a href="{self.url}">'
 
 
 class Image(RoamObject):
     RE = r"!\[[^\[\]]*\]\([^()]*\)"
-    def __init__(self, string):
+    def __init__(self, string, **kwargs):
         super().__init__(string)
         self.url = re.search("\(([^()]*)\)", string).group(1)
 
     def _create_patterns(self, roam_objects):
         return [self.RE]
 
-    def to_html(self):
+    def to_html(self, *arg, **kwargs):
         return f'<img src="{self.url}">'
 
 
 class CodeBlock(RoamObject):
-    def __init__(self, string):
+    def __init__(self, string, **kwargs):
         super().__init__(string)
 
-if __name__=="__main__":
-
-    # namespace/base code
-
-    # The cloze surrounds a page and the uncloze_namespace flag is on.
-    # If the page has a namespace, take it outsself.ide the cloze
-    namespace, basename = os.path.split(matches[0])
-    clozed_basename = self.ROAM_TEMPLATE % (self.id, basename)
-    if namespace: 
-        page_name = namespace + "/" + clozed_basename  
-    else:
-        page_name = clozed_basename
 
 
-    #string = "something with a {cloze/is/dumb} and {c1:[[this/shoud/work]]} and {2:[[and/this]]} and {3|cloze}"
-    #string2 = Block._ankify_clozes(string)
-    #print(string2)
-    #string2 = Block._ankify_clozes(string, uncloze_namespace=True)
-    #print(string2)
-
-    logging.info("Starting")
-    pages = loaders.loader("~/Downloads")
-    logging.info("Loaded pages")
-
-    roam_db = RoamDb.from_json(pages)
-    logging.info("Placed into roam classes")
-
-    #anki_blocks = roam_db.get_blocks_by_tag("anki_note")
-    #logging.info("Fetched anki_note blocks")
-
-    block = roam_db.get_block_by_uid("gWD89ydZn")
-
-
-
-    ## All
-    #string = "^^this [string](string)^^ {{has}} a [[bit of]] `[[[[every]]thing]] ((wPM3Ha58z)), "\
-    #    "[does]` it work? **How about [this]([[THIS]])** or [this]([[[[this]] in this]]) or "\
-    #    "[this](((lkjd78-_0))). #[[tags]] #[[at [[the end]]]] #tag_@12"
-    #print(string)
-    #block = Block(string)
-    #print("")
-    #print(block.to_objects())
-    #print("")
-    #print(block.to_html())
-
-    
-    # Aliases
-
-    #string = "Some string with a [couple](text) of [aliases]([[page]]) and [blocks](((9485hfgj-))) but not [invalid blocks](((awefaw3)))"
-    #print(string)
-    #block = Block(string)
-    #print(block.extract_aliases([string]))
-
-
-    # Curly 
-
-    #string = "Some string with {{curly}} brackeys around {{[[different]]}} {{((stuff))}} {{ with { curly inside}}"
-    #print(string)
-    #block = Block(string)
-    #print(block.extract_curlys([string]))
-
-
-    # Page Referce
-
-    # https://stackoverflow.com/questions/524548/regular-expression-to-detect-semi-colon-terminated-c-for-while-loops/524624#524624
-    #string = "this is a string with [[some page [[with this]] inside]] and another [[another page]] derp derp"
-    #print(string)
-    #block = Block(string)
-    #print(block.extract_page_refs([string]))
-    #string = "[[some page [[with this]] inside]] [[[[this]][[and this]]]] [[another page]] [[something]"
-    #block = Block(string)
-    #print(block.extract_page_refs([string]))
-     
-    
-    # Block ref
-    #string = "this is a string with ((lkjd78-_0)) but some are invalid ((jalkwef))"
-    #print(string)
-    #block = Block(string)
-    #print(block.extract_block_refs([string]))
-
-    
-    #string = "something **with bold**"
-    #block = Block(string)
-    #print(block.markdown_to_html(string))
 
 
     
