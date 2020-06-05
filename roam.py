@@ -5,8 +5,6 @@ import logging
 
 # TODO: I think the extract_*  methods should be in the RoamObject class
 
-RE_ALIAS_TEMPLATE = r"\[[^\[]+\]\(%s\)"
-RE_CURLY = "{{.(?:(?<!{{).)*}}" 
 RE_TAG = r"#[\w\-_@]+"
 RE_PAGE_REF = "\[\[[^\[\]]*\]\]"
 RE_BLOCK_REF = "\(\([\w\d\-_]{9}\)\)"
@@ -208,11 +206,22 @@ class Page:
 # Roam Objects
 # -------------
 
+
 class RoamObject(RoamInterface):
-    def __init__(self, string):
+    def __init__(self, string, validate=True):
+        if validate and not self.validate_string(string):
+            raise ValueError(f"Invalid string '{string}' for {cls.__name__}")
         self.string = string
 
-    def _create_patterns(self, roam_objects):
+    @classmethod
+    def validate_string(cls, string):
+        for pat in cls._create_patterns(string):
+            if re.search("^"+pat+"$", string):
+                return True
+        return False
+
+    @classmethod
+    def _create_patterns(cls, roam_objects):
         "Return list of regex patterns for this type"
         raise NotImplementedError
 
@@ -265,15 +274,10 @@ class Cloze(RoamObject):
     ROAM_TEMPLATE = "{c%s:%s}"
     ANKI_TEMPLATE = "{{c%s::%s}}"
 
-    def __init__(self, string, **kwargs):
-        assert self.is_cloze(string)
-        super().__init__(string)
+    def __init__(self, string, validate=True, **kwargs):
+        super().__init__(string, validate)
         self.id = self._get_id(string)
         self.roam_objects = self._get_content(string)
-
-    @classmethod
-    def is_cloze(cls, string):
-        return re.search("^"+cls.RE+"$", string) is not None
 
     @staticmethod
     def _get_id(string):
@@ -287,7 +291,8 @@ class Cloze(RoamObject):
         content_string = re.sub("{c?\d+[:|]","{", string)[1:-1]
         return RoamObjectList.from_string(content_string)
 
-    def _create_patterns(self, string):
+    @classmethod
+    def _create_patterns(cls, string):
         return [self.RE] 
 
     @classmethod
@@ -345,10 +350,11 @@ class Cloze(RoamObject):
 
 
 class Alias(RoamObject):
-    def __init__(self, string, **kwargs):
-        super().__init__(string)
-        pat = "\[(.*)\]\((.*)\)"
-        self.alias, ref = re.findall(pat, string.replace("\n"," "))[0]
+    RE_TEMPLATE = r"\[[^\[]+\]\(%s\)"
+
+    def __init__(self, string, validate=True, **kwargs):
+        super().__init__(string, validate)
+        self.alias, ref = re.search(self.RE, string).groups()
         if re.match("^\[\[.*\]\]$", ref):
             self.ref = PageRef(ref)
         elif re.match("^%s$" % RE_BLOCK_REF, ref):
@@ -371,21 +377,27 @@ class Alias(RoamObject):
         else:
             return '<a title="url: %s" hself.ref="%s">%s</a>' % (self.ref.string, self.ref.string, self.alias)
 
-    def _create_patterns(self, roam_objects):
+    @classmethod
+    def _create_patterns(cls, roam_objects):
+        if type(roam_objects)==str: roam_objects = [String(roam_objects)]
         pats = []
         page_refs = [p for o in roam_objects if type(o)==String 
                        for p in _get_page_ref_strings(o.string)]
         if page_refs:
-            pats.append("|".join([RE_ALIAS_TEMPLATE % re.escape(p) for p in page_refs]))
-        pats.append(RE_ALIAS_TEMPLATE % RE_BLOCK_REF)
-        pats.append(RE_ALIAS_TEMPLATE % "[^\[\]\(\)]+")
+            pats.append("|".join([cls.RE_TEMPLATE % re.escape(p) for p in page_refs]))
+        pats.append(cls.RE_TEMPLATE % RE_BLOCK_REF)
+        pats.append(cls.RE_TEMPLATE % "[^\[\]\(\)]+")
 
         return pats
 
 
 class String(RoamObject):
-    def __init__(self, string, **kwargs):
-        super().__init__(string)
+    def __init__(self, string, validate=True, **kwargs):
+        super().__init__(string, validate=True)
+
+    @classmethod
+    def validate_string(cls, string):
+        return True
 
     def to_html(self, *arg, **kwargs):
         return self.string
@@ -393,13 +405,15 @@ class String(RoamObject):
     def get_tags(self):
         return []
 
-    def _create_patterns(self, roam_objects):
+    @classmethod
+    def _create_patterns(cls, roam_objects):
         return [r".*","\n"]
 
 
 class Curly(RoamObject):
-    def __init__(self, string, **kwargs):
-        super().__init__(string)
+    RE = "{{.(?:(?<!{{).)*}}" 
+    def __init__(self, string, validate=True, **kwargs):
+        super().__init__(string, validate)
 
     def to_html(self, *arg, **kwargs):
         return '<button class="bp3-button bp3-small dont-focus-block">%s</button>' % self.string[2:-2]
@@ -408,8 +422,9 @@ class Curly(RoamObject):
         #TODO: these curly can actually have tags in them
         return []
 
-    def _create_patterns(self, roam_objects):
-        return [RE_CURLY]
+    @classmethod
+    def _create_patterns(cls, roam_objects=None):
+        return [cls.RE]
 
 
 def _get_page_ref_strings(string):
@@ -442,18 +457,8 @@ def _get_page_ref_strings(string):
 
 
 class PageRef(RoamObject):
-    def __init__(self, string, **kwargs):
-        super().__init__(string)
-        try:
-            cloze = Cloze(string[2:-2])
-        except:
-            self.clozed = False
-            self.cloze_id = None
-            self.content = string[2:-2]
-        else:
-            self.clozed = True
-            self.cloze_id = cloze.id
-            self.content = cloze.content
+    def __init__(self, string, validate=True, **kwargs):
+        super().__init__(string, validate=True)
 
     def get_tags(self):
         # TODO handle case of pages in pages
@@ -498,7 +503,9 @@ class PageRef(RoamObject):
                 page_clozed_based = clozed_basename
             return self.page_name_to_html(page_clozed_based)
 
-    def _create_patterns(self, roam_objects):
+    @classmethod
+    def _create_patterns(cls, roam_objects):
+        if type(roam_objects)==str: roam_objects = [String(roam_objects)]
         page_names = [p for o in roam_objects if type(o)==String 
                         for p in _get_page_ref_strings(o.string)]
         if page_names:
