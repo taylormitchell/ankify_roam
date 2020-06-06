@@ -7,7 +7,6 @@ import logging
 
 RE_TAG = r"#[\w\-_@]+"
 RE_PAGE_REF = "\[\[[^\[\]]*\]\]"
-RE_BLOCK_REF = "\(\([\w\d\-_]{9}\)\)"
 
 class RoamDb:
     def __init__(self):
@@ -75,6 +74,10 @@ class RoamInterface:
 
 class RoamObjectList(RoamInterface, list):
     def __init__(self, roam_objects):
+        """
+        Args:
+            roam_objects (List of RoamObject)
+        """
         for obj in roam_objects:
             self.append(obj)
 
@@ -83,6 +86,9 @@ class RoamObjectList(RoamInterface, list):
         for obj in self:
             tags += obj.get_tags()
         return list(set(tags))
+
+    def get_strings(self):
+        return [o for o in self if type(o)==String]
 
     def to_string(self):
         return "".join([o.to_string() for o in self])
@@ -208,8 +214,9 @@ class Page:
 
 
 class RoamObject(RoamInterface):
-    def __init__(self, string, validate=True):
-        if validate and not self.validate_string(string):
+    @classmethod
+    def from_string(cls, string, validate=True):
+        if validate and not cls.validate_string(string):
             raise ValueError(f"Invalid string '{string}' for {cls.__name__}")
         self.string = string
 
@@ -226,7 +233,7 @@ class RoamObject(RoamInterface):
         raise NotImplementedError
 
     def to_string(self):
-        return self.string
+        raise NotImplementedError
 
     def to_html(self, *args, **kwargs):
         return self.string
@@ -237,11 +244,11 @@ class RoamObject(RoamInterface):
     @classmethod
     def _find_and_replace(cls, string, pat, *args, **kwargs):
         "See the find_and_replace method"
-        roam_objects = [cls(s, *args, **kwargs) for s in re.findall(pat, string)]
+        roam_objects = [cls.from_string(s, *args, **kwargs) for s in re.findall(pat, string)]
         string_split = [String(s) for s in re.split(pat, string)]
         # Weave strings and roam objects together 
         roam_objects = [a for b in zip_longest(string_split, roam_objects) for a in b if a]
-        roam_objects = [o for o in roam_objects if o.string]
+        roam_objects = [o for o in roam_objects if o.to_string()]
         return roam_objects
 
     @classmethod
@@ -249,20 +256,20 @@ class RoamObject(RoamInterface):
         """Replace all strings representing this object with this object
 
         Args:
-            roam_objects: List of RoamObjects and strings or just a string
+            roam_objects: RoamObjectList or string
         """
-        if type(roam_objects)==str: roam_objects = [String(roam_objects)]
-        pats = cls._create_patterns(cls, roam_objects)
+        if type(roam_objects)==str: roam_objects = RoamObjectList([String(roam_objects)])
+        pats = cls._create_patterns(roam_objects)
         for pat in pats:
             new_roam_objects = []
             for obj in roam_objects:
                 if type(obj)==String:
-                    new_roam_objects += cls._find_and_replace(obj.string, pat, *args, **kwargs)
+                    new_roam_objects += cls._find_and_replace(obj.to_string(), pat, *args, **kwargs)
                 else:
                     new_roam_objects += [obj]
             roam_objects = new_roam_objects
 
-        return roam_objects
+        return RoamObjectList(roam_objects)
 
     def __repr__(self):
         return "<%s(string='%s')>" % (
@@ -274,10 +281,17 @@ class Cloze(RoamObject):
     ROAM_TEMPLATE = "{c%s:%s}"
     ANKI_TEMPLATE = "{{c%s::%s}}"
 
-    def __init__(self, string, validate=True, **kwargs):
-        super().__init__(string, validate)
-        self.id = self._get_id(string)
-        self.roam_objects = self._get_content(string)
+    def __init__(self, id, text):
+        self.id = id
+        self.text = text
+        self.roam_object_list = RoamObjectList(text)
+
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
+        super().from_string(string)
+        id = cls._get_id(string)
+        text = cls._get_text(string)
+        return cls(id, text)
 
     @staticmethod
     def _get_id(string):
@@ -287,17 +301,20 @@ class Cloze(RoamObject):
         return None
 
     @staticmethod
-    def _get_content(string):
-        content_string = re.sub("{c?\d+[:|]","{", string)[1:-1]
-        return RoamObjectList.from_string(content_string)
+    def _get_text(string):
+        return re.sub("{c?\d+[:|]","{", string)[1:-1]
 
     @classmethod
     def _create_patterns(cls, string):
-        return [self.RE] 
+        return [cls.RE] 
 
     @classmethod
-    def find_and_replace(cls, string, *args, **kwargs):
-        roam_objects = super().find_and_replace(string)
+    def find_and_replace(cls, roam_objects, *args, **kwargs):
+        """
+        Args:
+            roam_objects (List[RoamObjects] or string)
+        """
+        roam_objects = super().find_and_replace(roam_objects)
         cls._assign_cloze_ids([o for o in roam_objects if type(o)==Cloze])
         return RoamObjectList(roam_objects)
 
@@ -312,38 +329,50 @@ class Cloze(RoamObject):
             assigned_ids += [next_id]
             cloze.id = next_id
 
-    def only_enclozes_pageref(self):
-        return len(self.roam_objects)==1 and \
-               type(self.roam_objects[0])==PageRef
+    def to_string(self, style="anki"):
+        """
+        Args:
+            style (string): {'anki','roam'}
+        """
+        if style=="anki":
+            return self.ANKI_TEMPLATE % (self.id, self.text)
+        elif style=="roam":
+            return self.ROAM_TEMPLATE % (self.id, self.text)
+        else:
+            raise ValueError(f"style='{style}' is an invalid. "\
+                              "Must be 'anki' or 'roam'")
 
-    @classmethod
-    def encloze(cls, id, string):
-        return cls.ANKI_TEMPLATE % (id, string)
+    @staticmethod
+    def _only_enclozes_pageref(roam_objects):
+        return len(roam_objects)==1 and type(roam_objects[0])==PageRef
 
     def to_html(self, pageref_cloze="base_only"):
         """
         Args:
             pageref_cloze (str): {'outside', 'inside', 'base_only'}
         """
-        if not self.only_enclozes_pageref():
-            return self.encloze(self.id, self.roam_objects.to_html())
-        pageref = self.roam_objects[0]
+        roam_objects = RoamObjectList.from_string(self.text)
+        if not self._only_enclozes_pageref(roam_objects):
+            return Cloze(self.id, roam_objects.to_html()).to_string()
 
+        # Fancy options to move around the cloze when it's only around a PageRef
+        pageref = roam_objects[0]
         if pageref_cloze=="outside":
-            return self.encloze(self.id, pageref.to_html())
+            return Cloze(self.id, pageref.to_html()).to_string()
         elif pageref_cloze=="inside":
-            clozed_pagename = self.encloze(self.id, pageref.get_name())
-            return pageref.page_name_to_html(clozed_pagename)
+            clozed_pagename = Cloze(self.id, pageref.title).to_string()
+            return PageRef(clozed_pagename).to_html()
         elif pageref_cloze=="base_only":
-            clozed_basename = self.encloze(self.id, pageref.get_basename())
+            clozed_basename = Cloze(self.id, pageref.get_basename()).to_string()
             namespace = pageref.get_namespace()
             if namespace:
                 page_clozed_base = namespace + "/" + clozed_basename
             else:
                 page_clozed_base = clozed_basename
-            return pageref.page_name_to_html(page_clozed_base)
+            return PageRef(page_clozed_base).to_html()
+        else:
+            raise ValueError(f"{pageref_cloze} is an invalid option for `pageref_cloze`")
         
-
     def __repr__(self):
         return "<%s(id=%s, string='%s')>" % (
             self.__class__.__name__, self.id, self.string)
@@ -357,7 +386,7 @@ class Alias(RoamObject):
         self.alias, ref = re.search(self.RE, string).groups()
         if re.match("^\[\[.*\]\]$", ref):
             self.ref = PageRef(ref)
-        elif re.match("^%s$" % RE_BLOCK_REF, ref):
+        elif re.match("^%s$" % BlockRef.RE, ref):
             self.ref = BlockRef(ref)
         else:
             self.ref = URL(ref)
@@ -379,28 +408,33 @@ class Alias(RoamObject):
 
     @classmethod
     def _create_patterns(cls, roam_objects):
-        if type(roam_objects)==str: roam_objects = [String(roam_objects)]
+        #if type(roam_objects)==str: roam_objects = [String(roam_objects)]
         pats = []
-        page_refs = [p for o in roam_objects if type(o)==String 
-                       for p in _get_page_ref_strings(o.string)]
+        page_refs = [p for o in roam_objects.get_strings() 
+                       for p in PageRef.extract_page_ref_strings(o.to_string())]
         if page_refs:
             pats.append("|".join([cls.RE_TEMPLATE % re.escape(p) for p in page_refs]))
-        pats.append(cls.RE_TEMPLATE % RE_BLOCK_REF)
+        pats.append(cls.RE_TEMPLATE % BlockRef.RE)
         pats.append(cls.RE_TEMPLATE % "[^\[\]\(\)]+")
 
         return pats
 
 
 class String(RoamObject):
-    def __init__(self, string, validate=True, **kwargs):
+    def __init__(self, text):
+        self.text = text
+
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
         super().__init__(string, validate=True)
+        return cls(string)
 
     @classmethod
     def validate_string(cls, string):
         return True
 
     def to_html(self, *arg, **kwargs):
-        return self.string
+        return self.text
 
     def get_tags(self):
         return []
@@ -408,6 +442,9 @@ class String(RoamObject):
     @classmethod
     def _create_patterns(cls, roam_objects):
         return [r".*","\n"]
+
+    def to_string(self):
+        return self.text
 
 
 class Curly(RoamObject):
@@ -457,65 +494,75 @@ def _get_page_ref_strings(string):
 
 
 class PageRef(RoamObject):
-    def __init__(self, string, validate=True, **kwargs):
-        super().__init__(string, validate=True)
+    def __init__(self, title):
+        self.title = title
 
-    def get_tags(self):
-        # TODO handle case of pages in pages
-        return [self.content]
-
-    def get_name(self):
-        return self.content
-
-    def get_namespace(self):
-        return os.path.split(self.get_name())[0]
-
-    def get_basename(self):
-        return os.path.split(self.get_name())[1]
-
-    @staticmethod
-    def page_name_to_html(name):
-        return \
-            f'<span class="rm-page-ref-brackets">[[</span>'\
-            f'<span class="rm-page-ref-link-color">{name}</span>'\
-            f'<span class="rm-page-ref-brackets">]]</span>'
-
-    def to_html(self, **kwargs):
-        """
-        Args:
-            pageref_cloze (str): {'outside', 'inside', 'base_only'}
-        """
-        pageref_cloze = kwargs.get("pageref_cloze")
-        if not self.clozed:
-            return self.page_name_to_html(self.get_name())
-        if pageref_cloze=="outside":
-            page_html = self.page_name_to_html(self.get_name())
-            return Cloze.roam_encloze(self.cloze_id, page_html)
-        elif pageref_cloze=="inside":
-            page_cloze = Cloze.roam_encloze(self.cloze_id, self.get_name())
-            return self.page_name_to_html(page_cloze)
-        elif pageref_cloze=="base_only":
-            clozed_basename = Cloze.roam_encloze(self.cloze_id, self.get_basenamename())
-            namespace = self.get_namespace()
-            if namespace:
-                page_clozed_based = namespace + "/" + clozed_basename
-            else:
-                page_clozed_based = clozed_basename
-            return self.page_name_to_html(page_clozed_based)
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
+        super().__init__(string, validate)
+        return cls(string[2:-2])
 
     @classmethod
     def _create_patterns(cls, roam_objects):
         if type(roam_objects)==str: roam_objects = [String(roam_objects)]
-        page_names = [p for o in roam_objects if type(o)==String 
-                        for p in _get_page_ref_strings(o.string)]
-        if page_names:
-            pat = "|".join([re.escape(p) for p in page_names])
+        page_refs = [p for o in roam_objects.get_strings() 
+                       for p in PageRef.extract_page_ref_strings(o.to_string())]
+        if page_refs:
+            pat = "|".join([re.escape(p) for p in page_refs])
             return [pat]
         else:
             return []
 
+    def get_tags(self):
+        # TODO handle case of pages in pages
+        return [self.title]
+
+    def get_namespace(self):
+        return os.path.split(self.title)[0]
+
+    def get_basename(self):
+        return os.path.split(self.title)[1]
+
+    def to_string(self):
+        return f"[[{self.title}]]"
+
+    def to_html(self):
+        return \
+            f'<span class="rm-page-ref-brackets">[[</span>'\
+            f'<span class="rm-page-ref-link-color">{self.title}</span>'\
+            f'<span class="rm-page-ref-brackets">]]</span>'
+
+    @staticmethod
+    def extract_page_ref_strings(string):
+        # https://stackoverflow.com/questions/524548/regular-expression-to-detect-semi-colon-terminated-c-for-while-loops/524624#524624
+        bracket_count = 0
+        pages = []
+        page = ""
+        prev_char = ""
+        for j,c in enumerate(string):
+            # Track page opening and closing
+            if prev_char+c == "[[":
+                if not page:
+                    page = string[j-1]
+                bracket_count += 1
+                prev_char = ""
+            elif prev_char+c == "]]":
+                bracket_count -= 1
+                prev_char = ""
+            else:
+                prev_char = c
+            if page:
+                page += c
+            # End of page
+            if bracket_count == 0 and page:
+                pages.append(page)
+                page = ""
+
+        return pages
+
 
 class PageTag(RoamObject):
+    RE = r"#[\w\-_@]+"
     def __init__(self, string, **kwargs):
         super().__init__(string)
 
@@ -530,19 +577,20 @@ class PageTag(RoamObject):
     def to_html(self, *arg, **kwargs):
         return '<span class="rm-page-ref-tag">#%s</span>' % self._get_name()
 
-    def _create_patterns(self, roam_objects):
-        pats = []
-        page_names = [p for o in roam_objects if type(o)==String 
-                        for p in _get_page_ref_strings(o.string)]
-        if page_names:
-            pats.append("|".join([re.escape(p) for p in page_names]))
-        # The other type of tags
-        pats.append(RE_TAG)
+    @classmethod
+    def _create_patterns(cls, roam_objects):
+        pats = [cls.RE]
+        # Create pattern for page refs which look like tags
+        page_ref_pats = PageRef._create_patterns(roam_objects)
+        if page_ref_pats:
+            page_refs = page_ref_pats[0].split("|")
+            pats.append("|".join(["#"+p for p in page_refs]))
 
         return pats
 
 
 class BlockRef(RoamObject):
+    RE = "\(\([\w\d\-_]{9}\)\)"
     def __init__(self, string, **kwargs):
         super().__init__(string)
         self.roam_db = kwargs.get("roam_db", None)
@@ -555,8 +603,9 @@ class BlockRef(RoamObject):
     def get_tags(self):
         return []
 
-    def _create_patterns(self, roam_objects):
-        return [RE_BLOCK_REF]
+    @classmethod
+    def _create_patterns(cls, roam_objects):
+        return [cls.RE]
 
 
 class URL(RoamObject):
@@ -574,8 +623,9 @@ class Image(RoamObject):
         super().__init__(string)
         self.url = re.search("\(([^()]*)\)", string).group(1)
 
-    def _create_patterns(self, roam_objects):
-        return [self.RE]
+    @classmethod
+    def _create_patterns(cls, roam_objects):
+        return [cls.RE]
 
     def to_html(self, *arg, **kwargs):
         return f'<img src="{self.url}">'
@@ -588,5 +638,34 @@ class CodeBlock(RoamObject):
 
 
 
+#    @staticmethod
+#    def page_title_to_html(title):
+#        return \
+#            f'<span class="rm-page-ref-brackets">[[</span>'\
+#            f'<span class="rm-page-ref-link-color">{title}</span>'\
+#            f'<span class="rm-page-ref-brackets">]]</span>'
+#
+#    def to_html(self, **kwargs):
+#        """
+#        Args:
+#            pageref_cloze (str): {'outside', 'inside', 'base_only'}
+#        """
+#        pageref_cloze = kwargs.get("pageref_cloze")
+#        if not self.clozed:
+#            return self.page_title_to_html(self.get_name())
+#        if pageref_cloze=="outside":
+#            page_html = self.page_title_to_html(self.get_name())
+#            return Cloze.roam_encloze(self.cloze_id, page_html)
+#        elif pageref_cloze=="inside":
+#            page_cloze = Cloze.roam_encloze(self.cloze_id, self.get_name())
+#            return self.page_title_to_html(page_cloze)
+#        elif pageref_cloze=="base_only":
+#            clozed_basename = Cloze.roam_encloze(self.cloze_id, self.get_basenamename())
+#            namespace = self.get_namespace()
+#            if namespace:
+#                page_clozed_based = namespace + "/" + clozed_basename
+#            else:
+#                page_clozed_based = clozed_basename
+#            return self.page_title_to_html(page_clozed_based)
 
     
