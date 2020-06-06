@@ -1,10 +1,27 @@
 import unittest 
 import anki_connect
-from roam import Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, URL, Image, String, RoamObjectList 
+from roam import Block, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, URL, Image, String, RoamObjectList 
 import roam
 
 # TODO: all RoamObject types should implement the interface
 
+#class TestExample(unittest.TestCase):
+#    def test_to_string(self):
+#        self.assertEqual()
+#
+#    def test_to_html(self):
+#        self.assertEqual()
+#        
+#    def test_get_tags(self):
+#        self.assertEqual()
+#
+#    def test_validate_string(self):
+#        self.assertTrue()
+#        self.assertFalse()
+#
+#    def test_find_and_replace(self):
+#        self.assertEqual()
+    
 
 class TestRoamObjectList(unittest.TestCase):
     def test_get_tags(self):
@@ -13,6 +30,9 @@ class TestRoamObjectList(unittest.TestCase):
         self.assertListEqual(tags, ["page refs","some","tags"])
 
 class TestCloze(unittest.TestCase):
+    def setUp(self):
+        self.maxDiff = 1000
+
     def test_get_content(self):
         self.assertEqual(Cloze._get_text("{something}"), "something")
         self.assertEqual(Cloze._get_text("{c1:something}"), "something")
@@ -45,22 +65,25 @@ class TestCloze(unittest.TestCase):
         a = Cloze(1,"[[page]]").to_html(pageref_cloze="outside")
         b = \
             '{{c1::'\
+            '<span data-link-title="page">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
-            '<span class="rm-page-ref-link-color">page</span>'\
-            '<span class="rm-page-ref-brackets">]]</span>'\
+            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">page</span>'\
+            '<span class="rm-page-ref-brackets">]]</span></span>'\
             '}}'
         self.assertEqual(a, b)
         a = Cloze(1,"[[page]]").to_html(pageref_cloze="inside")
         b = \
+            '<span data-link-title="page">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
-            '<span class="rm-page-ref-link-color">{{c1::page}}</span>'\
-            '<span class="rm-page-ref-brackets">]]</span>'
+            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">{{c1::page}}</span>'\
+            '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
         a = Cloze(1,"[[namespace/base]]").to_html(pageref_cloze="base_only")
         b = \
+            '<span data-link-title="namespace/base">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
-            '<span class="rm-page-ref-link-color">namespace/{{c1::base}}</span>'\
-            '<span class="rm-page-ref-brackets">]]</span>'
+            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">namespace/{{c1::base}}</span>'\
+            '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
 
     def test_get_tags(self):
@@ -89,6 +112,7 @@ class TestCloze(unittest.TestCase):
         b = [String("Something with a "), Cloze(1, "cloze")]
         self.assertListEqual(a, b)
 
+
 class TestCheckbox(unittest.TestCase):
     def test_to_string(self):
         self.assertEqual(Checkbox(True).to_string(), "{{[[DONE]]}}")
@@ -97,11 +121,11 @@ class TestCheckbox(unittest.TestCase):
     def test_to_html(self):
         checkbox = Checkbox.from_string("{{[[TODO]]}}")
         a = checkbox.to_html()
-        b = '<label class="check-container"><input type="checkbox"><span class="checkmark"></span></label>'
+        b = '<span><label class="check-container"><input type="checkbox"><span class="checkmark"></span></label></span>'
         self.assertEqual(a, b)
         checkbox = Checkbox.from_string("{{[[DONE]]}}")
         a = checkbox.to_html()
-        b = '<label class="check-container"><input type="checkbox" checked=""><span class="checkmark"></span></label>'
+        b = '<span><label class="check-container"><input type="checkbox" checked=""><span class="checkmark"></span></label></span>'
         self.assertEqual(a, b)
 
     def test_get_tags(self):
@@ -127,7 +151,95 @@ class TestCheckbox(unittest.TestCase):
         self.assertListEqual(a, b)
 
 
+class TestPageRef(unittest.TestCase):
+    def test_to_html(self):
+        a = PageRef("page", "PMXeggRpU").to_html()
+        b = '<span data-link-title="page" data-link-uid="PMXeggRpU">'\
+            '<span class="rm-page-ref-brackets">[[</span>'\
+            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">page</span>'\
+            '<span class="rm-page-ref-brackets">]]</span></span>'
+        self.assertEqual(a, b)
+        a = PageRef("page").to_html()
+        b = '<span data-link-title="page">'\
+            '<span class="rm-page-ref-brackets">[[</span>'\
+            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">page</span>'\
+            '<span class="rm-page-ref-brackets">]]</span></span>'
+        self.assertEqual(a, b)
+
+class TestPageTag(unittest.TestCase):
+    def test_to_html(self):
+        a = PageTag("#tag").to_html()
+        b = '<span tabindex="-1" data-tag="tag" class="rm-page-ref rm-page-ref-tag">#tag</span>'
+        self.assertEqual(a, b)
+        a = PageTag("#[[tag]]").to_html()
+        b = '<span tabindex="-1" data-tag="tag" class="rm-page-ref rm-page-ref-tag">#tag</span>'
+        self.assertEqual(a, b)
+
+class TestBlockRef(unittest.TestCase):
+    def setUp(self):
+        class RoamDbProxy:
+            def get_block_by_uid(self, uid):
+                blocks = {
+                    "mZPhN5wFj": Block.from_string("some block"),
+                    "LWGXbhfz_": Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag") 
+                }
+                return blocks[uid]
+        self.roam_db = RoamDbProxy()
+
+    def test_to_html(self):
+        a = BlockRef("mZPhN5wFj", self.roam_db).to_html()
+        b = '<div class="rm-block-ref"><span>some block</span></div>'
+        self.assertEqual(a, b)
+        a = BlockRef("LWGXbhfz_", self.roam_db).to_html()
+        b = '<div class="rm-block-ref"><span><span><label class="check-container">'\
+            '<input type="checkbox"><span class="checkmark"></span></label></span>'\
+            ' some block with a <span data-link-title="page">'\
+            '<span class="rm-page-ref-brackets">[[</span><span tabindex="-1" '\
+            'class="rm-page-ref rm-page-ref-link-color">page</span><span '\
+            'class="rm-page-ref-brackets">]]</span></span> ref and a <span '\
+            'tabindex="-1" data-tag="tag" class="rm-page-ref rm-page-ref-tag">'\
+            '#tag</span></span></div>'
+        self.assertEqual(a, b)
+
+
+class TestURL(unittest.TestCase):
+    def test_to_html(self):
+        a = URL("http://www.google.com").to_html()
+        b = '<span><a href="http://www.google.com">http://www.google.com</a></span>'
+        self.assertEqual(a, b)
+
+
 class TestAlias(unittest.TestCase):
+    def test_to_string(self):
+        link = Alias("text", URL("www.google.com"))
+        self.assertEqual(link.to_string(), "[text](www.google.com)")
+        link = Alias("text", PageRef("some page"))
+        self.assertEqual(link.to_string(), "[text]([[some page]])")
+        link = Alias("text", BlockRef("y3LFc4rFK"))
+        self.assertEqual(link.to_string(), "[text](((y3LFc4rFK)))")
+
+    def test_to_html(self):
+        # Alias to roam page
+        a = Alias("text", PageRef("page")).to_html()
+        b = '<a title="page: page" class="rm-alias rm-alias-page">text</a>'
+        self.assertEqual(a, b)
+
+        # Alias to roam block
+        class RoamDbProxy:
+            def get_block_by_uid(self, uid):
+                return Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag")
+        a = Alias("text", BlockRef("y3LFc4rFK", roam_db=RoamDbProxy())).to_html()
+        b = '<a title="block: {{[[TODO]]}} some block with a [[page]] ref and a #tag" class="rm-alias rm-alias-block">text</a>'
+        self.assertEqual(a, b)
+
+        # Alias to web page
+        a = Alias("text", URL("www.google.com")).to_html()
+        b = '<a title="url: www.google.com" class="rm-alias rm-alias-external" href="www.google.com">text</a>'
+        self.assertEqual(a, b)
+
+#    def test_get_tags(self):
+#        self.assertEqual()
+
     def test_validate_string(self):
         string = "[something](www.google.com)"
         self.assertTrue(Alias.validate_string(string))
@@ -137,6 +249,9 @@ class TestAlias(unittest.TestCase):
 
         string = "[something](((LtKPM-UZe)))"
         self.assertTrue(Alias.validate_string(string))
+
+        string = "[something](((LtKPM- UZe)))"
+        self.assertFalse(Alias.validate_string(string))
 
         string = "[](www.google.com)"
         self.assertFalse(Alias.validate_string(string))
@@ -153,26 +268,90 @@ class TestAlias(unittest.TestCase):
         string = "[something](www.google.com) and something)"
         self.assertFalse(Alias.validate_string(string))
 
+#    def test_find_and_replace(self):
+#        self.assertEqual()
+
 
 class TestButton(unittest.TestCase):
     def test_validate_string(self):
         string = "{{text}}"
         self.assertTrue(Button.validate_string(string))
+        string = "{{text: with more text}}"
+        self.assertTrue(Button.validate_string(string))
+
+    def to_html(self):
+        a = Button("name")
+        b = '<button class="bp3-button bp3-small dont-focus-block">name</button>'
+        self.assertEqual(a, b)
+        a = Button("name", "with some other name")
+        b = '<button class="bp3-button bp3-small dont-focus-block">name</button>'
+        self.assertEqual(a, b)
 
 
 class TestImage(unittest.TestCase):
     def test_parse_url(self):
-        image_md = "![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840)"
-        url = "https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840"
-        self.assertEqual(Image(image_md).url, url)
+        string = "![alt](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840)"
+        image = Image.from_string(string)
+        src = "https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840"
+        alt = "alt"
+        self.assertEqual(image.src, src)
+        self.assertEqual(image.alt, alt)
 
     def test_to_html(self):
-        image_md = "![](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840)"
-        image_html = '<img src="https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840">'
-        self.assertEqual(Image(image_md).to_html(), image_html)
+        a = Image("https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png", "alt").to_html()
+        b = '<img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" alt="alt" draggable="false" class="rm-inline-img">'
+        self.assertEqual(a, b)
 
+class TestView(unittest.TestCase):
+    def test_from_string(self):
+        embed = View.from_string("{{[[embed]]:((hh2wTNsMz))}}")
+        self.assertEqual(embed.type, "embed")
+        self.assertEqual(embed.text, "((hh2wTNsMz))")
 
+        youtube = View.from_string("{{[[youtube]]:www.youtube.com}}")
+        self.assertEqual(youtube.type, "youtube")
+        self.assertEqual(youtube.text, "www.youtube.com")
 
+        query = View.from_string("{{[[query]]:{and:[[page]][[tag]]}}}")
+        self.assertEqual(query.type, "query")
+        self.assertEqual(query.text, "{and:[[page]][[tag]]}")
+
+        mentions = View.from_string("{{[[mentions]]:[[page]]}}")
+        self.assertEqual(mentions.type, "mentions")
+        self.assertEqual(mentions.text, "[[page]]")
+
+        embed = View.from_string("{{embed:((hh2wTNsMz))}}")
+        self.assertEqual(embed.type, "embed")
+        self.assertEqual(embed.text, "((hh2wTNsMz))")
+
+        youtube = View.from_string("{{youtube:www.youtube.com}}")
+        self.assertEqual(youtube.type, "youtube")
+        self.assertEqual(youtube.text, "www.youtube.com")
+
+        query = View.from_string("{{query:{and:[[page]][[tag]]}}}")
+        self.assertEqual(query.type, "query")
+        self.assertEqual(query.text, "{and:[[page]][[tag]]}")
+
+        mentions = View.from_string("{{mentions:[[page]]}}")
+        self.assertEqual(mentions.type, "mentions")
+        self.assertEqual(mentions.text, "[[page]]")
+
+    def test_to_html(self):
+        string = "{{[[embed]]: ((hh2wTNsMz))}}"
+        view = View.from_string(string)
+        self.assertEqual(view.to_string(), string)
+
+        string = "{{[[query]]: {and: [[ex-A]] [[ex-B]]}}}"
+        view = View.from_string(string)
+        self.assertEqual(view.to_string(), string)
+
+        string = "{{[[mentions]]: [[page]]}}"
+        view = View.from_string(string)
+        self.assertEqual(view.to_string(), string)
+
+        string = "{{[[youtube]]: www.youtube.com}}"
+        view = View.from_string(string)
+        self.assertEqual(view.to_string(), string)
 
 if __name__=="__main__":
     #string = "{[[something/which]]} and [some](www.google.com) other stuff"
