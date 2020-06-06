@@ -1,34 +1,18 @@
 import unittest 
 import anki_connect
-from roam import Cloze, Alias, Curly, PageRef, PageTag, BlockRef, URL, Image, RoamObjectList 
+from roam import Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, URL, Image, String, RoamObjectList 
 import roam
 
 # TODO: all RoamObject types should implement the interface
 
 
 class TestRoamObjectList(unittest.TestCase):
-    def test_to_html(self):
-        string = "Something with a {cloze}"
-        roam_objects = RoamObjectList.from_string(string)
-        self.assertEqual(roam_objects.to_html(), "Something with a {{c1::cloze}}")
+    def test_get_tags(self):
+        string = "Something with [[page refs]] and #some #[[tags]]"
+        tags = sorted(RoamObjectList.from_string(string).get_tags())
+        self.assertListEqual(tags, ["page refs","some","tags"])
 
 class TestCloze(unittest.TestCase):
-    def test_validate_string(self):
-        string = "{text}"
-        self.assertTrue(Cloze.validate_string(string))
-        string = "{1:text}"
-        self.assertTrue(Cloze.validate_string(string))
-        string = "{c1:text}"
-        self.assertTrue(Cloze.validate_string(string))
-        string = "{c1|text}"
-        self.assertTrue(Cloze.validate_string(string))
-        string = "text"
-        self.assertFalse(Cloze.validate_string(string))
-        string = "{text} and {more text}"
-        self.assertFalse(Cloze.validate_string(string))
-        string = "{{button}}"
-        self.assertFalse(Cloze.validate_string(string))
-
     def test_get_content(self):
         self.assertEqual(Cloze._get_text("{something}"), "something")
         self.assertEqual(Cloze._get_text("{c1:something}"), "something")
@@ -49,10 +33,6 @@ class TestCloze(unittest.TestCase):
         Cloze._assign_cloze_ids(clozes)
         cloze_ids = [c.id for c in clozes]
         self.assertListEqual(cloze_ids, [2,6,1,4,3])
-
-    def test_only_enclozes_pageref(self):
-        roam_objects = RoamObjectList([PageRef("text")])
-        self.assertTrue(Cloze._only_enclozes_pageref(roam_objects))
 
     def test_to_string(self):
         self.assertTrue(Cloze(1, "text").to_string(), "{{c1::text}}")
@@ -83,6 +63,68 @@ class TestCloze(unittest.TestCase):
             '<span class="rm-page-ref-brackets">]]</span>'
         self.assertEqual(a, b)
 
+    def test_get_tags(self):
+        cloze = Cloze(1, "Something with [[page refs]] and #some #[[tags]]")
+        self.assertListEqual(sorted(cloze.get_tags()), ["page refs","some","tags"])
+
+    def test_validate_string(self):
+        string = "{text}"
+        self.assertTrue(Cloze.validate_string(string))
+        string = "{1:text}"
+        self.assertTrue(Cloze.validate_string(string))
+        string = "{c1:text}"
+        self.assertTrue(Cloze.validate_string(string))
+        string = "{c1|text}"
+        self.assertTrue(Cloze.validate_string(string))
+        string = "text"
+        self.assertFalse(Cloze.validate_string(string))
+        string = "{text} and {more text}"
+        self.assertFalse(Cloze.validate_string(string))
+        string = "{{button}}"
+        self.assertFalse(Cloze.validate_string(string))
+
+    def test_find_and_replace(self):
+        roam_objects = RoamObjectList.from_string("Something with a {cloze}")
+        a = Cloze.find_and_replace(roam_objects)
+        b = [String("Something with a "), Cloze(1, "cloze")]
+        self.assertListEqual(a, b)
+
+class TestCheckbox(unittest.TestCase):
+    def test_to_string(self):
+        self.assertEqual(Checkbox(True).to_string(), "{{[[DONE]]}}")
+        self.assertEqual(Checkbox(False).to_string(), "{{[[TODO]]}}")
+
+    def test_to_html(self):
+        checkbox = Checkbox.from_string("{{[[TODO]]}}")
+        a = checkbox.to_html()
+        b = '<label class="check-container"><input type="checkbox"><span class="checkmark"></span></label>'
+        self.assertEqual(a, b)
+        checkbox = Checkbox.from_string("{{[[DONE]]}}")
+        a = checkbox.to_html()
+        b = '<label class="check-container"><input type="checkbox" checked=""><span class="checkmark"></span></label>'
+        self.assertEqual(a, b)
+
+    def test_get_tags(self):
+        checkbox = Checkbox.from_string("{{[[TODO]]}}")
+        self.assertListEqual(checkbox.get_tags(), ["TODO"])
+        checkbox = Checkbox.from_string("{{[[DONE]]}}")
+        self.assertListEqual(checkbox.get_tags(), ["DONE"])
+
+    def test_validate_string(self):
+        string = "{{[[TODO]]}}"
+        self.assertTrue(Checkbox.validate_string(string))
+        string = "{{[[DONE]]}}"
+        self.assertTrue(Checkbox.validate_string(string))
+        string = "{{[[TODO]]}} some text"
+        self.assertFalse(Checkbox.validate_string(string))
+        string = "{{TODO}}"
+        self.assertFalse(Checkbox.validate_string(string))
+
+    def test_find_and_replace(self):
+        roam_objects = RoamObjectList.from_string("{{[[TODO]]}} thing to do")
+        a = Checkbox.find_and_replace(roam_objects)
+        b = [Checkbox(checked=False), String(" thing to do")]
+        self.assertListEqual(a, b)
 
 
 class TestAlias(unittest.TestCase):
@@ -112,10 +154,10 @@ class TestAlias(unittest.TestCase):
         self.assertFalse(Alias.validate_string(string))
 
 
-class TestCurly(unittest.TestCase):
+class TestButton(unittest.TestCase):
     def test_validate_string(self):
         string = "{{text}}"
-        self.assertTrue(Curly.validate_string(string))
+        self.assertTrue(Button.validate_string(string))
 
 
 class TestImage(unittest.TestCase):

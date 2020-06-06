@@ -57,16 +57,13 @@ class RoamDb:
 # --------------
 
 class RoamInterface:
+    def get_tags(self):
+        raise NotImplementedError
+
     def to_string(self):
         raise NotImplementedError
 
     def to_html(self, *arg, **kwargs):
-        raise NotImplementedError
-
-    def get_tags(self):
-        raise NotImplementedError
-
-    def objectify(self):
         raise NotImplementedError
 
 # Roam Container
@@ -81,14 +78,18 @@ class RoamObjectList(RoamInterface, list):
         for obj in roam_objects:
             self.append(obj)
 
+    @classmethod
+    def from_string(cls, string, *args, **kwargs):
+        roam_objects = [String(string)]
+        for rmobj_cls in [Cloze, Alias, Image, Button, PageRef, PageTag, BlockRef]:
+            roam_objects = rmobj_cls.find_and_replace(roam_objects, *args, **kwargs)
+        return cls(roam_objects)
+
     def get_tags(self):
         tags = []
         for obj in self:
             tags += obj.get_tags()
         return list(set(tags))
-
-    def get_strings(self):
-        return [o for o in self if type(o)==String]
 
     def to_string(self):
         return "".join([o.to_string() for o in self])
@@ -98,6 +99,12 @@ class RoamObjectList(RoamInterface, list):
         html = "".join([o.to_html(*args, **kwargs) for o in self])
         html = self._markdown_to_html(html)
         return html 
+
+    def is_single_pageref(self):
+        return len(self)==1 and type(self[0])==PageRef
+
+    def get_strings(self):
+        return [o for o in self if type(o)==String]
 
     @staticmethod
     def _markdown_to_html(string):
@@ -109,13 +116,6 @@ class RoamObjectList(RoamInterface, list):
             '<span class="roam-highlight">\g<1></span>', string)
 
         return string
-
-    @classmethod
-    def from_string(cls, string, *args, **kwargs):
-        roam_objects = [String(string)]
-        for rmobj_cls in [Cloze, Alias, Image, Curly, PageRef, PageTag, BlockRef]:
-            roam_objects = rmobj_cls.find_and_replace(roam_objects, *args, **kwargs)
-        return cls(roam_objects)
 
     def __repr__(self):
         return "<%s(%s)>" % (
@@ -218,7 +218,6 @@ class RoamObject(RoamInterface):
     def from_string(cls, string, validate=True):
         if validate and not cls.validate_string(string):
             raise ValueError(f"Invalid string '{string}' for {cls.__name__}")
-        self.string = string
 
     @classmethod
     def validate_string(cls, string):
@@ -273,7 +272,10 @@ class RoamObject(RoamInterface):
 
     def __repr__(self):
         return "<%s(string='%s')>" % (
-            self.__class__.__name__, self.string)
+            self.__class__.__name__, self.to_string())
+
+    def __eq__(self, b):
+        return self.to_string()==b.to_string()
 
 
 class Cloze(RoamObject):
@@ -284,7 +286,6 @@ class Cloze(RoamObject):
     def __init__(self, id, text):
         self.id = id
         self.text = text
-        self.roam_object_list = RoamObjectList(text)
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
@@ -292,21 +293,6 @@ class Cloze(RoamObject):
         id = cls._get_id(string)
         text = cls._get_text(string)
         return cls(id, text)
-
-    @staticmethod
-    def _get_id(string):
-        match = re.search("{c?(\d+)[:|]", string)
-        if match: 
-            return int(match.group(1))
-        return None
-
-    @staticmethod
-    def _get_text(string):
-        return re.sub("{c?\d+[:|]","{", string)[1:-1]
-
-    @classmethod
-    def _create_patterns(cls, string):
-        return [cls.RE] 
 
     @classmethod
     def find_and_replace(cls, roam_objects, *args, **kwargs):
@@ -318,16 +304,12 @@ class Cloze(RoamObject):
         cls._assign_cloze_ids([o for o in roam_objects if type(o)==Cloze])
         return RoamObjectList(roam_objects)
 
-    @staticmethod
-    def _assign_cloze_ids(clozes):
-        assigned_ids = [c.id for c in clozes if c.id]
-        next_id = 1
-        for cloze in clozes:
-            if cloze.id: continue
-            while next_id in assigned_ids:
-                next_id += 1
-            assigned_ids += [next_id]
-            cloze.id = next_id
+    @classmethod
+    def _create_patterns(cls, string):
+        return [cls.RE] 
+
+    def get_tags(self):
+        return RoamObjectList.from_string(self.text).get_tags()
 
     def to_string(self, style="anki"):
         """
@@ -342,17 +324,13 @@ class Cloze(RoamObject):
             raise ValueError(f"style='{style}' is an invalid. "\
                               "Must be 'anki' or 'roam'")
 
-    @staticmethod
-    def _only_enclozes_pageref(roam_objects):
-        return len(roam_objects)==1 and type(roam_objects[0])==PageRef
-
     def to_html(self, pageref_cloze="base_only"):
         """
         Args:
             pageref_cloze (str): {'outside', 'inside', 'base_only'}
         """
         roam_objects = RoamObjectList.from_string(self.text)
-        if not self._only_enclozes_pageref(roam_objects):
+        if not roam_objects.is_single_pageref():
             return Cloze(self.id, roam_objects.to_html()).to_string()
 
         # Fancy options to move around the cloze when it's only around a PageRef
@@ -373,6 +351,31 @@ class Cloze(RoamObject):
         else:
             raise ValueError(f"{pageref_cloze} is an invalid option for `pageref_cloze`")
         
+    @staticmethod
+    def _get_id(string):
+        match = re.search("{c?(\d+)[:|]", string)
+        if match: 
+            return int(match.group(1))
+        return None
+
+    @staticmethod
+    def _get_text(string):
+        return re.sub("{c?\d+[:|]","{", string)[1:-1]
+
+    @staticmethod
+    def _assign_cloze_ids(clozes):
+        assigned_ids = [c.id for c in clozes if c.id]
+        next_id = 1
+        for cloze in clozes:
+            if cloze.id: continue
+            while next_id in assigned_ids:
+                next_id += 1
+            assigned_ids += [next_id]
+            cloze.id = next_id
+    @staticmethod
+    def _only_enclozes_pageref(roam_objects):
+        return len(roam_objects)==1 and type(roam_objects[0])==PageRef
+
     def __repr__(self):
         return "<%s(id=%s, string='%s')>" % (
             self.__class__.__name__, self.id, self.string)
@@ -447,17 +450,51 @@ class String(RoamObject):
         return self.text
 
 
-class Curly(RoamObject):
-    RE = "{{.(?:(?<!{{).)*}}" 
-    def __init__(self, string, validate=True, **kwargs):
-        super().__init__(string, validate)
+class Checkbox(RoamObject):
+    RE = "{{(\[\[TODO\]\]|\[\[DONE\]\])}}" 
+    def __init__(self, checked=False):
+        self.checked = checked
 
-    def to_html(self, *arg, **kwargs):
-        return '<button class="bp3-button bp3-small dont-focus-block">%s</button>' % self.string[2:-2]
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
+        super().from_string(string, validate)
+        return cls(checked="DONE" in string)
+
+    @classmethod
+    def _create_patterns(cls, roam_objects=None):
+        return [cls.RE]
 
     def get_tags(self):
-        #TODO: these curly can actually have tags in them
-        return []
+        return ["DONE"] if self.checked else ["TODO"]
+
+    def to_string(self):
+        return "{{[[DONE]]}}" if self.checked else "{{[[TODO]]}}"
+
+    def to_html(self, *arg, **kwargs):
+        if self.checked:
+            return '<label class="check-container"><input type="checkbox" checked=""><span class="checkmark"></span></label>'
+        else:
+            return '<label class="check-container"><input type="checkbox"><span class="checkmark"></span></label>'
+
+
+class Button(RoamObject):
+    RE = "{{.(?:(?<!{{).)*}}" 
+    def __init__(self, text):
+        self.text = text
+
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
+        super().from_string(string, validate)
+        return cls(string[2:-2])
+
+    def get_tags(self):
+        return RoamObjectList(self.text).get_tags()
+
+    def to_string(self):
+        return "{{%s}}" % self.text
+
+    def to_html(self, *arg, **kwargs):
+        return '<button class="bp3-button bp3-small dont-focus-block">%s</button>' % self.text
 
     @classmethod
     def _create_patterns(cls, roam_objects=None):
@@ -563,16 +600,24 @@ class PageRef(RoamObject):
 
 class PageTag(RoamObject):
     RE = r"#[\w\-_@]+"
-    def __init__(self, string, **kwargs):
-        super().__init__(string)
+    def __init__(self, text):
+        self.text = text
+
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
+        super().__init__(string, validate)
+        return cls(string)
 
     def _get_name(self):
         # Remove brackets, if any
-        string = re.sub("#\[\[(.+)\]\]", '#\g<1>', self.string)
-        return string[1:]
+        text = re.sub("#\[\[(.+)\]\]", '#\g<1>', self.text)
+        return text[1:]
 
     def get_tags(self):
         return [self._get_name()]
+
+    def to_string(self):
+        return self.text
 
     def to_html(self, *arg, **kwargs):
         return '<span class="rm-page-ref-tag">#%s</span>' % self._get_name()
@@ -591,13 +636,20 @@ class PageTag(RoamObject):
 
 class BlockRef(RoamObject):
     RE = "\(\([\w\d\-_]{9}\)\)"
-    def __init__(self, string, **kwargs):
-        super().__init__(string)
-        self.roam_db = kwargs.get("roam_db", None)
+    def __init__(self, uid):
+        self.uid = uid
+
+    @classmethod
+    def from_string(cls, string, **kwargs):
+        super().from_string(string)
+        roam_db = kwargs.get("roam_db", None)
+        return cls(string[2:-2], roam_db)
+
+    def to_string(self):
+        return f"(({self.uid}))"
 
     def to_html(self, *arg, **kwargs):
-        uid = self.string[2:-2]
-        block = self.roam_db.get_block_by_uid(uid)
+        block = self.roam_db.get_block_by_uid(self.uid)
         return '<span class="rm-block-ref">%s</span>' % block.to_html()
 
     def get_tags(self):
