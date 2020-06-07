@@ -80,9 +80,22 @@ class RoamObjectList(RoamInterface, list):
 
     @classmethod
     def from_string(cls, string, *args, **kwargs):
-        roam_objects = [String(string)]
-        for rmobj_cls in [Cloze, Image, Alias, Checkbox, View, Button, PageRef, PageTag, BlockRef]:
-            roam_objects = rmobj_cls.find_and_replace(roam_objects, *args, **kwargs)
+        roam_object_types_in_parse_order = [
+            Cloze, 
+            Image,
+            Alias,
+            CodeBlock,
+            Checkbox,
+            View,
+            Button,
+            PageRef,
+            PageTag,
+            BlockRef,
+            #Url, #TODO: don't have a good regex for this right now
+        ]
+        roam_objects = RoamObjectList([String(string)])
+        for rm_obj_type in roam_object_types_in_parse_order:
+            roam_objects = rm_obj_type.find_and_replace(roam_objects, *args, **kwargs)
         return cls(roam_objects)
 
     def get_tags(self):
@@ -227,15 +240,15 @@ class RoamObject(RoamInterface):
 
     @classmethod
     def validate_string(cls, string):
-        roam_objects = RoamObjectList([String(string)])
-        for pat in cls._create_patterns(roam_objects):
-            if re.search("^"+pat+"$", string):
-                return True
+        pat = cls.create_pattern(string)
+        pat = "|".join([f"^{p}$" for p in pat.split("|")])
+        if re.match(re.compile(pat), string):
+            return True
         return False
 
     @classmethod
-    def _create_patterns(cls, roam_objects):
-        "Return list of regex patterns for this type"
+    def create_pattern(cls, string):
+        "Return regex pattern for sub-strings representing this roam object type"
         raise NotImplementedError
 
     def to_string(self):
@@ -248,9 +261,12 @@ class RoamObject(RoamInterface):
         return []
     
     @classmethod
-    def _find_and_replace(cls, string, pat, *args, **kwargs):
+    def _find_and_replace(cls, string, *args, **kwargs):
+        pat = cls.create_pattern(string)
+        if not pat:
+            return [String(string)]
         "See the find_and_replace method"
-        roam_objects = [cls.from_string(s, *args, **kwargs) for s in re.findall(pat, string)]
+        roam_objects = [cls.from_string(s, validate=False, *args, **kwargs) for s in re.findall(pat, string)]
         string_split = [String(s) for s in re.split(pat, string)]
         # Weave strings and roam objects together 
         roam_objects = [a for b in zip_longest(string_split, roam_objects) for a in b if a]
@@ -258,27 +274,29 @@ class RoamObject(RoamInterface):
         return roam_objects
 
     @classmethod
-    def find_and_replace(cls, roam_objects, *args, **kwargs):
+    def find_and_replace(cls, string, *args, **kwargs):
         """Replace all substring representations of this object with this object
 
         Args:
-            string (str): string or RoamObjectList
+            string (str or sequence of RoamObject)
 
         Returns:
             RoamObjectList: A sequence of String and this object type. 
         """
-        if type(roam_objects)==str: 
-            roam_objects = RoamObjectList([String(roam_objects)])
+        if type(string)==str: 
+            roam_objects = RoamObjectList([String(string)])
+        elif type(string)==RoamObjectList:
+            roam_objects = string
+        else:
+            raise ValueError(f"'{type(string)}' is an invalid type for `string`")
 
-        pats = cls._create_patterns(roam_objects)
-        for pat in pats:
-            new_roam_objects = []
-            for obj in roam_objects:
-                if type(obj)==String:
-                    new_roam_objects += cls._find_and_replace(obj.to_string(), pat, *args, **kwargs)
-                else:
-                    new_roam_objects += [obj]
-            roam_objects = new_roam_objects
+        new_roam_objects = []
+        for obj in roam_objects:
+            if type(obj)==String:
+                new_roam_objects += cls._find_and_replace(obj.to_string(), *args, **kwargs)
+            else:
+                new_roam_objects += [obj]
+        roam_objects = new_roam_objects
 
         return RoamObjectList(roam_objects)
 
@@ -291,10 +309,6 @@ class RoamObject(RoamInterface):
 
 
 class Cloze(RoamObject):
-    RE = r"(?<!}){c?\d*[:|]?[^{}]+}(?!})"
-    ROAM_TEMPLATE = "{c%s:%s}"
-    ANKI_TEMPLATE = "{{c%s::%s}}"
-
     def __init__(self, id, text, string=None):
         self.id = id
         self.text = text
@@ -302,24 +316,20 @@ class Cloze(RoamObject):
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
-        super().from_string(string)
+        super().from_string(string, validate)
         id = cls._get_id(string)
         text = cls._get_text(string)
         return cls(id, text, string)
 
     @classmethod
-    def find_and_replace(cls, roam_objects, *args, **kwargs):
-        """
-        Args:
-            roam_objects (List[RoamObjects] or string)
-        """
-        roam_objects = super().find_and_replace(roam_objects)
+    def find_and_replace(cls, string, *args, **kwargs):
+        roam_objects = super().find_and_replace(string)
         cls._assign_cloze_ids([o for o in roam_objects if type(o)==Cloze])
         return RoamObjectList(roam_objects)
 
     @classmethod
-    def _create_patterns(cls, string):
-        return [cls.RE] 
+    def create_pattern(cls, string=None):
+        return r"(?<!}){c?\d*[:|]?[^{}]+}(?!})"
 
     def get_tags(self):
         return RoamObjectList.from_string(self.text).get_tags()
@@ -330,9 +340,9 @@ class Cloze(RoamObject):
             style (string): {'anki','roam'}
         """
         if style=="anki":
-            return self.ANKI_TEMPLATE % (self.id, self.text)
+            return "{{c%s::%s}}" % (self.id, self.text)
         elif style=="roam":
-            return self.ROAM_TEMPLATE % (self.id, self.text)
+            return "{c%s:%s}" % (self.id, self.text)
         else:
             raise ValueError(f"style='{style}' is an invalid. "\
                               "Must be 'anki' or 'roam'")
@@ -397,6 +407,31 @@ class Cloze(RoamObject):
             self.__class__.__name__, self.id, self.string)
 
 
+class Image(RoamObject):
+    def __init__(self, src, alt="", string=None):
+        self.src = src
+        self.alt = alt
+        self.string = string
+
+    @classmethod
+    def from_string(cls, string, **kwargs):
+        super().__init__(string)
+        alt, src = re.search("!\[([^\[\]]*)\]\(([^()]*)\)", string).groups()
+        return cls(src, alt)
+
+    @classmethod
+    def create_pattern(cls, string=None):
+        return r"!\[[^\[\]]*\]\([^()]*\)"
+
+    def to_string(self):
+        if self.string: 
+            return self.string
+        return f"![{self.alt}]({self.src})" 
+
+    def to_html(self, *arg, **kwargs):
+        return f'<img src="{self.src}" alt="{self.alt}" draggable="false" class="rm-inline-img">'
+
+
 class Alias(RoamObject):
     RE_TEMPLATE = r"\[[^\[]+\]\(%s\)"
     def __init__(self, alias, destination, string=None):
@@ -410,10 +445,10 @@ class Alias(RoamObject):
         alias, destination = re.search(r"\[(.+)\]\((.+)\)", string).groups()
         if re.match("^\[\[.*\]\]$", destination):
             destination = PageRef(destination)
-        elif re.match("^%s$" % BlockRef.RE, destination):
+        elif re.match("^\(\(.*\)\)$", destination):
             destination = BlockRef(destination)
         else:
-            destination = URL(destination)
+            destination = Url(destination)
         return cls(alias, destination, string)
 
     def to_string(self):
@@ -436,43 +471,73 @@ class Alias(RoamObject):
         return self.destination.get_tags()
     
     @classmethod
-    def _create_patterns(cls, roam_objects):
-        pats = []
-        page_refs = [p for o in roam_objects.get_strings() 
-                       for p in PageRef.extract_page_ref_strings(o.to_string())]
-        if page_refs:
-            pats.append("|".join([cls.RE_TEMPLATE % re.escape(p) for p in page_refs]))
-        pats.append(cls.RE_TEMPLATE % BlockRef.RE)
-        pats.append(cls.RE_TEMPLATE % "[^\[\]\(\)]+")
+    def create_pattern(cls, string=None):
+        re_template = r"\[[^\[]+\]\(%s\)"
+        destination_pats = []
+        for o in [PageRef, BlockRef]:
+            dest_pat = o.create_pattern(string)
+            destination_pats += dest_pat.split("|") if dest_pat else []
+        destination_pats.append("[^\(\)\[\]]+") # TODO: replace this with a real url regex
 
-        return pats
+        return  "|".join([re_template % pat for pat in destination_pats])
 
 
-class String(RoamObject):
-    def __init__(self, string):
+class CodeBlock(RoamObject):
+    def __init__(self, code, language=None, string=None):
+        self.code = code
+        self.language = language
         self.string = string
 
     @classmethod
-    def from_string(cls, string, validate=True, **kwargs):
-        super().__init__(string, validate=True)
-        return cls(string)
+    def from_string(cls, string, **kwargs):
+        super().__init__(string)
+        m = re.search("```(\w*)\n(.*)```", string, re.DOTALL)
+        language, code = m.groups()
+        if not language: 
+            language = None
+        return cls(code, language, string) 
 
     @classmethod
-    def validate_string(cls, string):
-        return True
-
-    def to_html(self, *arg, **kwargs):
-        return self.to_string()
-
-    def get_tags(self):
-        return []
+    def create_pattern(cls, string=None):
+        return f"```[\w\W]*```"
 
     def to_string(self):
-        return self.string
+        if self.string:
+            return self.string 
+        return f'```{self.language}\n{self.code}```'
+
+    def to_html(self):
+        code = self.code.replace("\n","<br>")
+        return f'<pre>{code}</pre>'
+
+
+class Checkbox(RoamObject):
+    def __init__(self, checked=False):
+        self.checked = checked
+
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
+        super().from_string(string, validate)
+        return cls(checked="DONE" in string)
+
+    @classmethod
+    def create_pattern(cls, string=None):
+        return re.escape("{{[[TODO]]}}")+"|"+re.escape("{{[[DONE]]}}")
+
+    def get_tags(self):
+        return ["DONE"] if self.checked else ["TODO"]
+
+    def to_string(self):
+        return "{{[[DONE]]}}" if self.checked else "{{[[TODO]]}}"
+
+    def to_html(self, *arg, **kwargs):
+        if self.checked:
+            return '<span><label class="check-container"><input type="checkbox" checked=""><span class="checkmark"></span></label></span>'
+        else:
+            return '<span><label class="check-container"><input type="checkbox"><span class="checkmark"></span></label></span>'
 
 
 class View(RoamObject):
-    RE_TEMPLATE = "{{%s:.*}}"
     def __init__(self, type, text, string=None):
         self.type = type
         self.text = text
@@ -496,12 +561,13 @@ class View(RoamObject):
         return []
 
     @classmethod
-    def _create_patterns(cls, roam_objects):
+    def create_pattern(cls, strings=None):
+        re_template = "{{%s:.*}}"
         pats = []
         for view in ["youtube", "embed", "query", "mentions"]:
-            pats.append(cls.RE_TEMPLATE % view)
-            pats.append(cls.RE_TEMPLATE % re.escape(f"[[{view}]]"))
-        return pats
+            pats.append(re_template % view)
+            pats.append(re_template % re.escape(f"[[{view}]]"))
+        return "|".join(pats)
 
     def to_string(self):
         if self.string:
@@ -509,35 +575,7 @@ class View(RoamObject):
         return "{{%s:%s}}" % (self.type, self.text)
 
 
-class Checkbox(RoamObject):
-    def __init__(self, checked=False):
-        self.checked = checked
-
-    @classmethod
-    def from_string(cls, string, validate=True, **kwargs):
-        super().from_string(string, validate)
-        return cls(checked="DONE" in string)
-
-    @classmethod
-    def _create_patterns(cls, roam_objects=None):
-        pats = [re.escape("{{[[%s]]}}" % s) for s in ['TODO','DONE']]
-        return pats
-
-    def get_tags(self):
-        return ["DONE"] if self.checked else ["TODO"]
-
-    def to_string(self):
-        return "{{[[DONE]]}}" if self.checked else "{{[[TODO]]}}"
-
-    def to_html(self, *arg, **kwargs):
-        if self.checked:
-            return '<span><label class="check-container"><input type="checkbox" checked=""><span class="checkmark"></span></label></span>'
-        else:
-            return '<span><label class="check-container"><input type="checkbox"><span class="checkmark"></span></label></span>'
-
-
 class Button(RoamObject):
-    RE = "{{.(?:(?<!{{).)*}}" 
     def __init__(self, name, text="", string=None):
         self.name = name
         self.text = text
@@ -568,37 +606,8 @@ class Button(RoamObject):
         return '<button class="bp3-button bp3-small dont-focus-block">%s</button>' % self.text
 
     @classmethod
-    def _create_patterns(cls, roam_objects=None):
-        return [cls.RE]
-
-
-def _get_page_ref_strings(string):
-    # https://stackoverflow.com/questions/524548/regular-expression-to-detect-semi-colon-terminated-c-for-while-loops/524624#524624
-
-    bracket_count = 0
-    pages = []
-    page = ""
-    prev_char = ""
-    for j,c in enumerate(string):
-        # Track page opening and closing
-        if prev_char+c == "[[":
-            if not page:
-                page = string[j-1]
-            bracket_count += 1
-            prev_char = ""
-        elif prev_char+c == "]]":
-            bracket_count -= 1
-            prev_char = ""
-        else:
-            prev_char = c
-        if page:
-            page += c
-        # End of page
-        if bracket_count == 0 and page:
-            pages.append(page)
-            page = ""
-            
-    return pages
+    def create_pattern(cls, string=None):
+        return "{{.(?:(?<!{{).)*}}" 
 
 
 class PageRef(RoamObject):
@@ -613,14 +622,11 @@ class PageRef(RoamObject):
         return cls(string[2:-2], string=string)
 
     @classmethod
-    def _create_patterns(cls, roam_objects):
-        page_refs = [p for o in roam_objects.get_strings() 
-                       for p in PageRef.extract_page_ref_strings(o.to_string())]
+    def create_pattern(cls, string):
+        page_refs = PageRef.extract_page_ref_strings(string)
         if page_refs:
-            pat = "|".join([re.escape(p) for p in page_refs])
-            return [pat]
-        else:
-            return []
+            return "|".join([re.escape(p) for p in page_refs])
+        return None
 
     def get_tags(self):
         # TODO handle case of pages in pages
@@ -676,7 +682,6 @@ class PageRef(RoamObject):
 
 
 class PageTag(RoamObject):
-    RE = r"#[\w\-_@]+"
     def __init__(self, text):
         self.text = text
 
@@ -702,19 +707,17 @@ class PageTag(RoamObject):
                f'class="rm-page-ref rm-page-ref-tag">#{self.title}</span>'
 
     @classmethod
-    def _create_patterns(cls, roam_objects):
-        pats = [cls.RE]
+    def create_pattern(cls, string):
+        pats = ["#[\w\-_@]+"]
         # Create pattern for page refs which look like tags
-        page_ref_pats = PageRef._create_patterns(roam_objects)
-        if page_ref_pats:
-            page_refs = page_ref_pats[0].split("|")
-            pats.append("|".join(["#"+p for p in page_refs]))
+        page_ref_pat = PageRef.create_pattern(string)
+        if page_ref_pat:
+            pats += ["#"+pat for pat in page_ref_pat.split("|")]
 
-        return pats
+        return "|".join(pats)
 
 
 class BlockRef(RoamObject):
-    RE = "\(\([\w\d\-_]{9}\)\)"
     def __init__(self, uid, roam_db=None, string=None):
         self.uid = uid
         self.roam_db = roam_db
@@ -743,14 +746,14 @@ class BlockRef(RoamObject):
         return []
 
     @classmethod
-    def _create_patterns(cls, roam_objects=None):
-        return [cls.RE]
+    def create_pattern(cls, string=None):
+        return "\(\([\w\d\-_]{9}\)\)"
 
     def get_referenced_block(self):
         return self.roam_db.get_block_by_uid(self.uid)
 
 
-class URL(RoamObject):
+class Url(RoamObject):
     def __init__(self, text):
         self.text = text
 
@@ -766,51 +769,24 @@ class URL(RoamObject):
         return f'<span><a href="{self.text}">{self.text}</a></span>'
 
 
-class Image(RoamObject):
-    RE = r"!\[[^\[\]]*\]\([^()]*\)"
-    def __init__(self, src, alt="", string=None):
-        self.src = src
-        self.alt = alt
+class String(RoamObject):
+    def __init__(self, string):
         self.string = string
 
     @classmethod
-    def from_string(cls, string, **kwargs):
-        super().__init__(string)
-        alt, src = re.search("!\[([^\[\]]*)\]\(([^()]*)\)", string).groups()
-        return cls(src, alt)
+    def from_string(cls, string, validate=True, **kwargs):
+        super().__init__(string, validate)
+        return cls(string)
 
     @classmethod
-    def _create_patterns(cls, roam_objects):
-        return [cls.RE]
-
-    def to_string(self):
-        if self.string: 
-            return self.string
-        return f"![{self.alt}]({self.src})" 
+    def validate_string(cls, string):
+        return True
 
     def to_html(self, *arg, **kwargs):
-        return f'<img src="{self.src}" alt="{self.alt}" draggable="false" class="rm-inline-img">'
+        return self.to_string()
 
+    def get_tags(self):
+        return []
 
-class CodeBlock(RoamObject):
-    def __init__(self, code, language=None, string=None):
-        self.code = code
-        self.language = language
-        self.string = string
-
-    @classmethod
-    def from_string(cls, string, **kwargs):
-        super().__init__(string)
-        m = re.search("```(\w*)\n(.*)```", string, re.DOTALL)
-        language, code = m.groups()
-        if not language: 
-            language = None
-        return cls(code, language, string) 
-
-    def _create_patterns(cls, roam_objects):
-        return [f"```[\w\W]*```"]
-
-    def to_html(self):
-        code = self.code.replace("\n","<br>")
-        return f'<pre>{code}</pre>'
-
+    def to_string(self):
+        return self.string
