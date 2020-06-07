@@ -259,12 +259,17 @@ class RoamObject(RoamInterface):
 
     @classmethod
     def find_and_replace(cls, roam_objects, *args, **kwargs):
-        """Replace all strings representing this object with this object
+        """Replace all substring representations of this object with this object
 
         Args:
-            roam_objects: RoamObjectList or string
+            string (str): string or RoamObjectList
+
+        Returns:
+            RoamObjectList: A sequence of String and this object type. 
         """
-        if type(roam_objects)==str: roam_objects = RoamObjectList([String(roam_objects)])
+        if type(roam_objects)==str: 
+            roam_objects = RoamObjectList([String(roam_objects)])
+
         pats = cls._create_patterns(roam_objects)
         for pat in pats:
             new_roam_objects = []
@@ -290,16 +295,17 @@ class Cloze(RoamObject):
     ROAM_TEMPLATE = "{c%s:%s}"
     ANKI_TEMPLATE = "{{c%s::%s}}"
 
-    def __init__(self, id, text):
+    def __init__(self, id, text, string=None):
         self.id = id
         self.text = text
+        self.string = string
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string)
         id = cls._get_id(string)
         text = cls._get_text(string)
-        return cls(id, text)
+        return cls(id, text, string)
 
     @classmethod
     def find_and_replace(cls, roam_objects, *args, **kwargs):
@@ -393,23 +399,26 @@ class Cloze(RoamObject):
 
 class Alias(RoamObject):
     RE_TEMPLATE = r"\[[^\[]+\]\(%s\)"
-    def __init__(self, alias, destination):
+    def __init__(self, alias, destination, string=None):
         self.alias = alias
         self.destination = destination
+        self.string = string
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
-        alias, destination = re.search(cls.RE, string).groups()
+        alias, destination = re.search(r"\[(.+)\]\((.+)\)", string).groups()
         if re.match("^\[\[.*\]\]$", destination):
             destination = PageRef(destination)
         elif re.match("^%s$" % BlockRef.RE, destination):
             destination = BlockRef(destination)
         else:
             destination = URL(destination)
-        return cls(alias, destination)
+        return cls(alias, destination, string)
 
     def to_string(self):
+        if self.string:
+            return self.string
         return f"[{self.alias}]({self.destination.to_string()})"
 
     def to_html(self, *arg, **kwargs):
@@ -440,8 +449,8 @@ class Alias(RoamObject):
 
 
 class String(RoamObject):
-    def __init__(self, text):
-        self.text = text
+    def __init__(self, string):
+        self.string = string
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
@@ -453,22 +462,18 @@ class String(RoamObject):
         return True
 
     def to_html(self, *arg, **kwargs):
-        return self.text
+        return self.to_string()
 
     def get_tags(self):
         return []
 
-    @classmethod
-    def _create_patterns(cls, roam_objects):
-        return [r".*","\n"]
-
     def to_string(self):
-        return self.text
+        return self.string
 
 
 class View(RoamObject):
     RE_TEMPLATE = "{{%s:.*}}"
-    def __init__(self, type, text, string=""):
+    def __init__(self, type, text, string=None):
         self.type = type
         self.text = text
         self.string = string
@@ -499,7 +504,9 @@ class View(RoamObject):
         return pats
 
     def to_string(self):
-        return self.string
+        if self.string:
+            return self.string
+        return "{{%s:%s}}" % (self.type, self.text)
 
 
 class Checkbox(RoamObject):
@@ -531,9 +538,10 @@ class Checkbox(RoamObject):
 
 class Button(RoamObject):
     RE = "{{.(?:(?<!{{).)*}}" 
-    def __init__(self, name, text=""):
+    def __init__(self, name, text="", string=None):
         self.name = name
         self.text = text
+        self.string = string
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
@@ -544,13 +552,17 @@ class Button(RoamObject):
             name, text = m.groups()
         else:
             name, text = contents, ""
-        return cls(name, text)
+        return cls(name, text, string)
 
     def get_tags(self):
         return RoamObjectList(self.text).get_tags()
 
     def to_string(self):
-        return "{{%s}}" % self.name
+        if self.string: return self.string
+        if self.text:
+            return "{{%s:%s}}" % (self.name, self.text)
+        else:
+            return "{{%s}}" % self.name
 
     def to_html(self, *arg, **kwargs):
         return '<button class="bp3-button bp3-small dont-focus-block">%s</button>' % self.text
@@ -590,14 +602,15 @@ def _get_page_ref_strings(string):
 
 
 class PageRef(RoamObject):
-    def __init__(self, title, uid=""):
+    def __init__(self, title, uid="", string=None):
         self.title = title
         self.uid = uid
+        self.string = string
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().__init__(string, validate)
-        return cls(string[2:-2])
+        return cls(string[2:-2], string=string)
 
     @classmethod
     def _create_patterns(cls, roam_objects):
@@ -620,6 +633,7 @@ class PageRef(RoamObject):
         return os.path.split(self.title)[1]
 
     def to_string(self):
+        if self.string: return self.string
         return f"[[{self.title}]]"
 
     def to_html(self, title=None):
@@ -701,20 +715,23 @@ class PageTag(RoamObject):
 
 class BlockRef(RoamObject):
     RE = "\(\([\w\d\-_]{9}\)\)"
-    def __init__(self, uid, roam_db=None):
+    def __init__(self, uid, roam_db=None, string=None):
         self.uid = uid
         self.roam_db = roam_db
+        self.string = string
 
     @classmethod
     def from_string(cls, string, **kwargs):
         super().from_string(string)
         roam_db = kwargs.get("roam_db", None)
-        return cls(string[2:-2], roam_db)
+        return cls(string[2:-2], roam_db=roam_db, string=string)
 
     def to_string(self, expand=False):
         if expand:
             block = self.get_referenced_block()
             return block.to_string()
+        if self.string:
+            return self.string
         else:
             return f"(({self.uid}))"
 
@@ -731,6 +748,7 @@ class BlockRef(RoamObject):
 
     def get_referenced_block(self):
         return self.roam_db.get_block_by_uid(self.uid)
+
 
 class URL(RoamObject):
     def __init__(self, text):
@@ -750,9 +768,10 @@ class URL(RoamObject):
 
 class Image(RoamObject):
     RE = r"!\[[^\[\]]*\]\([^()]*\)"
-    def __init__(self, src, alt=""):
+    def __init__(self, src, alt="", string=None):
         self.src = src
         self.alt = alt
+        self.string = string
 
     @classmethod
     def from_string(cls, string, **kwargs):
@@ -764,45 +783,34 @@ class Image(RoamObject):
     def _create_patterns(cls, roam_objects):
         return [cls.RE]
 
+    def to_string(self):
+        if self.string: 
+            return self.string
+        return f"![{self.alt}]({self.src})" 
+
     def to_html(self, *arg, **kwargs):
         return f'<img src="{self.src}" alt="{self.alt}" draggable="false" class="rm-inline-img">'
 
 
 class CodeBlock(RoamObject):
-    def __init__(self, string, **kwargs):
+    def __init__(self, code, language=None, string=None):
+        self.code = code
+        self.language = language
+        self.string = string
+
+    @classmethod
+    def from_string(cls, string, **kwargs):
         super().__init__(string)
+        m = re.search("```(\w*)\n(.*)```", string, re.DOTALL)
+        language, code = m.groups()
+        if not language: 
+            language = None
+        return cls(code, language, string) 
 
+    def _create_patterns(cls, roam_objects):
+        return [f"```[\w\W]*```"]
 
+    def to_html(self):
+        code = self.code.replace("\n","<br>")
+        return f'<pre>{code}</pre>'
 
-
-#    @staticmethod
-#    def page_title_to_html(title):
-#        return \
-#            f'<span class="rm-page-ref-brackets">[[</span>'\
-#            f'<span class="rm-page-ref-link-color">{title}</span>'\
-#            f'<span class="rm-page-ref-brackets">]]</span>'
-#
-#    def to_html(self, **kwargs):
-#        """
-#        Args:
-#            pageref_cloze (str): {'outside', 'inside', 'base_only'}
-#        """
-#        pageref_cloze = kwargs.get("pageref_cloze")
-#        if not self.clozed:
-#            return self.page_title_to_html(self.get_name())
-#        if pageref_cloze=="outside":
-#            page_html = self.page_title_to_html(self.get_name())
-#            return Cloze.roam_encloze(self.cloze_id, page_html)
-#        elif pageref_cloze=="inside":
-#            page_cloze = Cloze.roam_encloze(self.cloze_id, self.get_name())
-#            return self.page_title_to_html(page_cloze)
-#        elif pageref_cloze=="base_only":
-#            clozed_basename = Cloze.roam_encloze(self.cloze_id, self.get_basenamename())
-#            namespace = self.get_namespace()
-#            if namespace:
-#                page_clozed_based = namespace + "/" + clozed_basename
-#            else:
-#                page_clozed_based = clozed_basename
-#            return self.page_title_to_html(page_clozed_based)
-
-    

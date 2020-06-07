@@ -1,6 +1,6 @@
 import unittest 
 import anki_connect
-from roam import Block, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, URL, Image, String, RoamObjectList 
+from roam import Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, URL, Image, String, RoamObjectList 
 import roam
 
 # TODO: all RoamObject types should implement the interface
@@ -237,8 +237,10 @@ class TestAlias(unittest.TestCase):
         b = '<a title="url: www.google.com" class="rm-alias rm-alias-external" href="www.google.com">text</a>'
         self.assertEqual(a, b)
 
-#    def test_get_tags(self):
-#        self.assertEqual()
+    def test_get_tags(self):
+        a = Alias("text",PageRef("page")).get_tags()
+        b = ["page"]
+        self.assertListEqual(a, b)
 
     def test_validate_string(self):
         string = "[something](www.google.com)"
@@ -268,8 +270,11 @@ class TestAlias(unittest.TestCase):
         string = "[something](www.google.com) and something)"
         self.assertFalse(Alias.validate_string(string))
 
-#    def test_find_and_replace(self):
-#        self.assertEqual()
+    def test_find_and_replace(self):
+        a = Alias.find_and_replace("something [link]([[page]]) to something")
+        b = [String("something "),Alias("link",PageRef("page")),String(" to something")]
+        self.assertListEqual(a, b)
+
 
 
 class TestButton(unittest.TestCase):
@@ -353,12 +358,30 @@ class TestView(unittest.TestCase):
         view = View.from_string(string)
         self.assertEqual(view.to_string(), string)
 
-if __name__=="__main__":
-    #string = "{[[something/which]]} and [some](www.google.com) other stuff"
-    #roam_objects = RoamObjectList.from_string(string)
-    #print(roam_objects.to_html())
-    #string = "{something} {which} totally {{c3:has}} a {c5:lot} of {1:clozes} {2|brah}"
-    #objects = Cloze.find_and_replace(string)
-    #print(objects)
 
+class TestCodeBlock(unittest.TestCase):
+    def test_init(self):
+        string = "```clojure\ndef foo(x+y):\n    return x+y```"
+        language = 'clojure'
+        code = 'def foo(x+y):\n    return x+y'
+        cb = CodeBlock.from_string(string)
+        self.assertEqual(cb.language, language)
+        self.assertEqual(cb.code, code)
+
+        string = "```\ndef foo(x+y):\n    return x+y```"
+        language = None
+        code = 'def foo(x+y):\n    return x+y'
+        cb = CodeBlock.from_string(string)
+        self.assertEqual(cb.language, language)
+        self.assertEqual(cb.code, code)
+
+    def test_to_html(self):
+        a = CodeBlock("def foo(x+y):\n    return x+y", "clojure").to_html()
+        b = "<pre>def foo(x+y):<br>    return x+y</pre>"
+        self.assertEqual(a, b)
+
+
+
+
+if __name__=="__main__":
     unittest.main()

@@ -75,6 +75,18 @@ code {
     min-width: 24px;
     padding: 0 7px;
 }
+
+pre {
+    text-align: left;
+    border-radius: 5px;
+    border: 1px solid #BCBEC0;
+    display: block;
+    padding: 10px;
+    margin: 0 0 10px;
+    font:12px Monaco,Consolas,"Andale  Mono","DejaVu Sans Mono",monospace
+    color: #333;
+    background-color: #f5f5f5;
+}
 """
 
 ROAM_BASIC = {
