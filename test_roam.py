@@ -1,6 +1,6 @@
 import unittest 
 import anki_connect
-from roam import Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, RoamObjectList 
+from roam import Attribute, Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, RoamObjectList 
 import roam
 
 # TODO: all RoamObject types should implement the interface
@@ -21,9 +21,42 @@ import roam
 #
 #    def test_find_and_replace(self):
 #        self.assertEqual()
-    
+
 
 class TestRoamObjectList(unittest.TestCase):
+    def test_find_and_replace(self):
+        """
+        Roam Object Coverage
+        Cloze: 
+        Image:
+        Alias: 1,
+        CodeBlock: 
+        Checkbox: 1,
+        View:
+        Button:
+        PageRef: 1,
+        PageTag: 1,
+        BlockRef: 1,
+        """
+        # Test 1 
+        string = "{{[[TODO]]}} something [this]([[This]]) [[Saturday]] about ((ZtmwW4k32)) #Important"
+        a = RoamObjectList.from_string(string)
+        b = RoamObjectList([
+            Checkbox(False),
+            String(" something "),
+            Alias("this",PageRef("This")),
+            String(" "),
+            PageRef("Saturday"),
+            String(" about "),
+            BlockRef("ZtmwW4k32"),
+            String(" "),
+            PageTag("#Important")
+        ])
+        self.assertListEqual(a, b)
+        tags = ["TODO","This","Saturday","Important"]
+        self.assertSetEqual(set(a.get_tags()), set(tags))
+
+
     def test_get_tags(self):
         string = "Something with [[page refs]] and #some #[[tags]]"
         tags = sorted(RoamObjectList.from_string(string).get_tags())
@@ -405,6 +438,9 @@ class TestPageTag(unittest.TestCase):
         a = PageTag("#[[tag]]").to_html()
         b = '<span tabindex="-1" data-tag="tag" class="rm-page-ref rm-page-ref-tag">#tag</span>'
         self.assertEqual(a, b)
+        a = PageTag("#[[[[tag]]:((cdYtyouxk))]]").to_html()
+        b = '<span tabindex="-1" data-tag="[[tag]]:((cdYtyouxk))" class="rm-page-ref rm-page-ref-tag">#[[tag]]:((cdYtyouxk))</span>'
+        self.assertEqual(a, b)
 
 
 class TestBlockRef(unittest.TestCase):
@@ -451,6 +487,17 @@ class TestUrl(unittest.TestCase):
         self.assertEqual(a, b)
 
 
+class TestAttribute(unittest.TestCase):
+    def test_find_and_replace(self):
+        string = "attribute:: text"
+        a = Attribute.find_and_replace(string)
+        b = RoamObjectList([Attribute("attribute"), String(" text")])
+        self.assertListEqual(a,b)
+
+        string = "attribute:::: text"
+        a = Attribute.find_and_replace(string)
+        b = RoamObjectList([Attribute("attribute"), String(":: text")])
+        self.assertListEqual(a,b)
 
 if __name__=="__main__":
     unittest.main()

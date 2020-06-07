@@ -444,11 +444,11 @@ class Alias(RoamObject):
         super().from_string(string, validate)
         alias, destination = re.search(r"\[(.+)\]\((.+)\)", string).groups()
         if re.match("^\[\[.*\]\]$", destination):
-            destination = PageRef(destination)
+            destination = PageRef.from_string(destination)
         elif re.match("^\(\(.*\)\)$", destination):
-            destination = BlockRef(destination)
+            destination = BlockRef.from_string(destination)
         else:
-            destination = Url(destination)
+            destination = Url.from_string(destination)
         return cls(alias, destination, string)
 
     def to_string(self):
@@ -790,3 +790,36 @@ class String(RoamObject):
 
     def to_string(self):
         return self.string
+
+
+class Attribute(RoamObject):
+    def __init__(self, title, string=None):
+        self.title = title
+        self.string = string
+
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
+        super().__init__(string, validate)
+        return cls(string[:-2], string)
+
+    @classmethod
+    def validate_string(cls, string):
+        pat = re.compile(cls.create_pattern(string)+"$")
+        if re.match(pat, string):
+            return True
+        return False
+
+    @classmethod
+    def create_pattern(cls, string=None):
+        return "^(?:(?<!:)[^:])+::"
+
+    def to_html(self, *arg, **kwargs):
+        return self.to_string()
+
+    def get_tags(self):
+        return [self.title]
+
+    def to_string(self):
+        if self.string:
+            return self.string
+        return self.title+"::"
