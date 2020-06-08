@@ -2,6 +2,7 @@ import os
 import re
 from itertools import zip_longest
 import logging
+from functools import reduce
 
 # TODO: I think the extract_*  methods should be in the RoamObject class
 
@@ -616,14 +617,24 @@ class Button(RoamObject):
 
 class PageRef(RoamObject):
     def __init__(self, title, uid="", string=None):
-        self.title = title
+        """
+        Args:
+            title (str or RoamObjectList)
+        """
+        if type(title)==str: title = PageRef.find_and_replace(title)
+        self._title = title
         self.uid = uid
         self.string = string
+
+    @property
+    def title(self):
+        return self._title.to_string()
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().__init__(string, validate)
-        return cls(string[2:-2], string=string)
+        roam_objects = PageRef.find_and_replace(string[2:-2])
+        return cls(roam_objects, string=string)
 
     @classmethod
     def create_pattern(cls, string):
@@ -633,8 +644,9 @@ class PageRef(RoamObject):
         return None
 
     def get_tags(self):
-        # TODO handle case of pages in pages
-        return [self.title]
+        tags_in_title = [o.get_tags() for o in self._title]
+        tags_in_title = list(set(reduce(lambda x,y: x+y, tags_in_title)))
+        return [self.title] + tags_in_title
 
     def get_namespace(self):
         return os.path.split(self.title)[0]
@@ -686,29 +698,40 @@ class PageRef(RoamObject):
 
 
 class PageTag(RoamObject):
-    def __init__(self, text):
-        self.text = text
+    def __init__(self, title, string=None):
+        """
+        Args:
+            title (str or RoamObjectList)
+        """
+        if type(title)==str: title = PageRef.find_and_replace(title)
+        self._title = title
+        self.string = string
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().__init__(string, validate)
-        return cls(string)
+        title = re.sub("\[\[(.*)\]\]", "\g<1>", string[1:])
+        roam_objects = PageRef.find_and_replace(title)
+        return cls(roam_objects, string)
 
     @property
     def title(self):
-        # Remove brackets, if any
-        title = re.sub("#\[\[(.+)\]\]", '#\g<1>', self.text)
-        return title[1:]
+        return self._title.to_string()
 
     def get_tags(self):
-        return [self.title]
+        tags_in_title = [o.get_tags() for o in self._title]
+        tags_in_title = list(set(reduce(lambda x,y: x+y, tags_in_title)))
+        return [self.title] + tags_in_title
 
     def to_string(self):
-        return self.text
+        if self.string:
+            return self.string
+        return "#"+self.title
 
     def to_html(self, *arg, **kwargs):
-        return f'<span tabindex="-1" data-tag="{self.title}" '\
-               f'class="rm-page-ref rm-page-ref-tag">#{self.title}</span>'
+        title = re.sub("^\[\[(.*)\]\]$", "\g<1>", self.title)
+        return f'<span tabindex="-1" data-tag="{title}" '\
+               f'class="rm-page-ref rm-page-ref-tag">#{title}</span>'
 
     @classmethod
     def create_pattern(cls, string):

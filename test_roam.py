@@ -107,7 +107,7 @@ class TestRoamObjectList(unittest.TestCase):
             String(" about "),
             BlockRef("ZtmwW4k32"),
             String(" "),
-            PageTag("#Important")
+            PageTag("Important")
         ])
         self.assertListEqual(a, b)
         tags = ["TODO","This","Saturday","Important"]
@@ -460,7 +460,13 @@ class TestButton(unittest.TestCase):
 
 
 class TestPageRef(unittest.TestCase):
+    def test_get_tags(self):
+        a = PageRef("[[page in a [[page]]]]ness").get_tags()
+        b = ["[[page in a [[page]]]]ness","page in a [[page]]", "page"]
+        self.assertSetEqual(set(a), set(b))
+
     def test_find_and_replace(self):
+        x = PageRef("sting")
         string = "something with a [[couple]] of [[pages]] in it"
         a = PageRef.find_and_replace(string)
         b = RoamObjectList([
@@ -488,25 +494,30 @@ class TestPageRef(unittest.TestCase):
 
 
 class TestPageTag(unittest.TestCase):
+    def test_get_tags(self):
+        a = PageTag("[[page in a [[page]]]]ness").get_tags()
+        b = ["[[page in a [[page]]]]ness","page in a [[page]]", "page"]
+        self.assertSetEqual(set(a), set(b))
+
     def test_find_and_replace(self):
         string = "something with [[some]] #[[tags]] in #it"
         a = PageTag.find_and_replace(string)
         b = RoamObjectList([
             String("something with [[some]] "), 
-            PageTag("#[[tags]]"), 
+            PageTag.from_string("#[[tags]]"), 
             String(" in "), 
-            PageTag("#it"), 
+            PageTag("it"), 
         ])
         self.assertListEqual(a, b)
-
+    
     def test_to_html(self):
-        a = PageTag("#tag").to_html()
+        a = PageTag("tag").to_html()
         b = '<span tabindex="-1" data-tag="tag" class="rm-page-ref rm-page-ref-tag">#tag</span>'
         self.assertEqual(a, b)
-        a = PageTag("#[[tag]]").to_html()
+        a = PageTag.from_string("#[[tag]]").to_html()
         b = '<span tabindex="-1" data-tag="tag" class="rm-page-ref rm-page-ref-tag">#tag</span>'
         self.assertEqual(a, b)
-        a = PageTag("#[[[[tag]]:((cdYtyouxk))]]").to_html()
+        a = PageTag.from_string("#[[[[tag]]:((cdYtyouxk))]]").to_html()
         b = '<span tabindex="-1" data-tag="[[tag]]:((cdYtyouxk))" class="rm-page-ref rm-page-ref-tag">#[[tag]]:((cdYtyouxk))</span>'
         self.assertEqual(a, b)
 
