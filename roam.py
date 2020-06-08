@@ -17,6 +17,7 @@ class RoamDb:
         roam_db = cls()
         pages = [Page.from_json(p, roam_db) for p in page_jsons]
         roam_db.add_pages(pages)
+        roam_db.apply_tag_inheritance()
         return roam_db
 
     def add_pages(self, pages):
@@ -36,13 +37,16 @@ class RoamDb:
             if block:
                 return block
 
-    def set_tags(self, objs=None, parent_tags=[]):
-        if objs is None: objs=self.pages
-        for obj in objs:
-            if type(obj)==Block:
-                obj.set_parent_tags(parent_tags)
-            if obj.get("children"):
-                self.set_tags(obj.get("children"), parent_tags=obj.get_tags())
+    def _apply_tag_inheritance(self, blocks, parent_tags=[]):
+        for block in blocks:
+            if type(block)==Block:
+                block.set_parent_tags(parent_tags)
+            if block.get("children"):
+                self._apply_tag_inheritance(block.get("children"), parent_tags=block.get_tags())
+
+    def apply_tag_inheritance(self):
+        for page in self.pages:
+            self._apply_tag_inheritance(page.get("children",[]), parent_tags=page.get_tags())
 
     def get_blocks_by_tag(self, tag, objs=None):
         if objs is None: objs=self.pages

@@ -1,6 +1,6 @@
 import unittest 
 import anki_connect
-from roam import Attribute, Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, RoamObjectList 
+from roam import RoamDb, Attribute, Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, RoamObjectList 
 import roam
 
 # TODO: all RoamObject types should implement the interface
@@ -22,6 +22,63 @@ import roam
 #    def test_find_and_replace(self):
 #        self.assertEqual()
 
+class TestRoamDb(unittest.TestCase):
+    def setUp(self):
+        pages = [ 
+            {
+              "title": "test page for [[ankify_roam]]",
+              "children": [
+                {
+                  "string": "{{[[TODO]]}} has some blocks with [[page]] [links]([[temp]])",
+                  "create-email": "taylor.j.mitchell@gmail.com",
+                  "create-time": 1591572843972,
+                  "children": [
+                    {
+                      "string": "some have children #tag ",
+                      "create-email": "taylor.j.mitchell@gmail.com",
+                      "create-time": 1591572870827,
+                      "uid": "5xB8JO-xg",
+                      "edit-time": 1591572883462,
+                      "edit-email": "taylor.j.mitchell@gmail.com"
+                    }
+                  ],
+                  "uid": "YlgtAqOYv",
+                  "edit-time": 1591572870832,
+                  "edit-email": "taylor.j.mitchell@gmail.com"
+                },
+                {
+                  "string": "It's got some queries: {{query:{and:[[TODO]][[test page for [[ankify_roam]]]]}}}",
+                  "create-email": "taylor.j.mitchell@gmail.com",
+                  "create-time": 1591572883456,
+                  "uid": "_xUQrzbZY",
+                  "edit-time": 1591572918548,
+                  "edit-email": "taylor.j.mitchell@gmail.com"
+                },
+                {
+                  "string": "Some block refs: ((5xB8JO-xg)) #temp ",
+                  "create-email": "taylor.j.mitchell@gmail.com",
+                  "create-time": 1591572908104,
+                  "uid": "L7EuhRiXa",
+                  "edit-time": 1591572963120,
+                  "edit-email": "taylor.j.mitchell@gmail.com"
+                }
+              ],
+              "edit-time": 1591572842475,
+              "edit-email": "taylor.j.mitchell@gmail.com"
+            }
+        ]
+        self.roam_db = RoamDb.from_json(pages)
+
+    def test_get_tags(self):
+        block = self.roam_db.get_block_by_uid("L7EuhRiXa")
+        a = set(block.get_tags())
+        b = set(["temp","test page for [[ankify_roam]]"])
+        self.assertSetEqual(a,b)
+
+        block = self.roam_db.get_block_by_uid("YlgtAqOYv")
+        a = set(block.get_tags())
+        b = set(["TODO","page","temp","test page for [[ankify_roam]]"])
+        self.assertSetEqual(a,b)
 
 class TestRoamObjectList(unittest.TestCase):
     def test_find_and_replace(self):
@@ -30,13 +87,13 @@ class TestRoamObjectList(unittest.TestCase):
         Cloze: 
         Image:
         Alias: 1,
-        CodeBlock: 
+        CodeBlock: 2,
         Checkbox: 1,
         View:
         Button:
-        PageRef: 1,
+        PageRef: 1,2
         PageTag: 1,
-        BlockRef: 1,
+        BlockRef: 1,2
         """
         # Test 1 
         string = "{{[[TODO]]}} something [this]([[This]]) [[Saturday]] about ((ZtmwW4k32)) #Important"
@@ -55,6 +112,18 @@ class TestRoamObjectList(unittest.TestCase):
         self.assertListEqual(a, b)
         tags = ["TODO","This","Saturday","Important"]
         self.assertSetEqual(set(a.get_tags()), set(tags))
+
+        # Test 2 
+        string = "\n".join([
+            "```clojure",
+            "www.google.com",
+            "[[page]]",
+            "((E-j9hXq0m))```"])
+        a = RoamObjectList.from_string(string)
+        b = RoamObjectList([
+            CodeBlock("www.google.com\n[[page]]\n((E-j9hXq0m))","clojure"),
+        ])
+        self.assertListEqual(a, b)
 
 
     def test_get_tags(self):
@@ -257,7 +326,6 @@ class TestCodeBlock(unittest.TestCase):
                 String("something something "), 
                 CodeBlock('def foo(x+y):\n    return x+y',"clojure")])
         self.assertListEqual(a, b)
-
 
     def test_to_html(self):
         a = CodeBlock("def foo(x+y):\n    return x+y", "clojure").to_html()
