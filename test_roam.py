@@ -5,23 +5,6 @@ import roam
 
 # TODO: all RoamObject types should implement the interface
 
-#class TestExample(unittest.TestCase):
-#    def test_to_string(self):
-#        self.assertEqual()
-#
-#    def test_to_html(self):
-#        self.assertEqual()
-#        
-#    def test_get_tags(self):
-#        self.assertEqual()
-#
-#    def test_validate_string(self):
-#        self.assertTrue()
-#        self.assertFalse()
-#
-#    def test_find_and_replace(self):
-#        self.assertEqual()
-
 class TestRoamDb(unittest.TestCase):
     def setUp(self):
         pages = [ 
@@ -136,26 +119,39 @@ class TestCloze(unittest.TestCase):
     def setUp(self):
         self.maxDiff = 1000
 
-    def test_get_content(self):
-        self.assertEqual(Cloze._get_text("{something}"), "something")
-        self.assertEqual(Cloze._get_text("{c1:something}"), "something")
-        self.assertEqual(Cloze._get_text("{c99:something}"), "something")
-        self.assertEqual(Cloze._get_text("{1:something}"), "something")
-        self.assertEqual(Cloze._get_text("{2|something}"), "something")
+    def test_from_string(self):
+        string = "{text}"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.text, "text")
+        
+        string = "{1:text}"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.id, 1)
+        self.assertEqual(cloze.text, "text")
 
-    def test_get_id(self):
-        self.assertEqual(Cloze._get_id("{something}"), None)
-        self.assertEqual(Cloze._get_id("{c1:something}"), 1)
-        self.assertEqual(Cloze._get_id("{c99:something}"), 99)
-        self.assertEqual(Cloze._get_id("{1:something}"), 1)
-        self.assertEqual(Cloze._get_id("{2|something}"), 2)
+        string = "{c1:text}"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.id, 1)
+        self.assertEqual(cloze.text, "text")
 
-    def test_assign_cloze_ids(self):
-        clozes = [Cloze(None, "no id"), Cloze(6, "has id"), Cloze(1, "has id"), 
-                  Cloze(None, "no id"), Cloze(3, "also has id")]
-        Cloze._assign_cloze_ids(clozes)
-        cloze_ids = [c.id for c in clozes]
-        self.assertListEqual(cloze_ids, [2,6,1,4,3])
+        string = "{c1|text}"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.id, 1)
+        self.assertEqual(cloze.text, "text")
+
+        string = "text"
+        self.assertRaises(ValueError, Cloze.from_string, string)
+
+        string = "{text} and {more text}"
+        self.assertRaises(ValueError, Cloze.from_string, string)
+
+        string = "{{button}}"
+        self.assertRaises(ValueError, Cloze.from_string, string)
+
+    def test_find_and_replace(self):
+        a = Cloze.find_and_replace("Something with a {cloze}")
+        b = [String("Something with a "), Cloze(1, "cloze")]
+        self.assertListEqual(a, b)
 
     def test_to_string(self):
         self.assertTrue(Cloze(1, "text").to_string(), "{{c1::text}}")
@@ -193,50 +189,112 @@ class TestCloze(unittest.TestCase):
         cloze = Cloze(1, "Something with [[page refs]] and #some #[[tags]]")
         self.assertListEqual(sorted(cloze.get_tags()), ["page refs","some","tags"])
 
-    def test_validate_string(self):
-        string = "{text}"
-        self.assertTrue(Cloze.validate_string(string))
-        string = "{1:text}"
-        self.assertTrue(Cloze.validate_string(string))
-        string = "{c1:text}"
-        self.assertTrue(Cloze.validate_string(string))
-        string = "{c1|text}"
-        self.assertTrue(Cloze.validate_string(string))
-        string = "text"
-        self.assertFalse(Cloze.validate_string(string))
-        string = "{text} and {more text}"
-        self.assertFalse(Cloze.validate_string(string))
-        string = "{{button}}"
-        self.assertFalse(Cloze.validate_string(string))
+    def test_get_content(self):
+        self.assertEqual(Cloze._get_text("{something}"), "something")
+        self.assertEqual(Cloze._get_text("{c1:something}"), "something")
+        self.assertEqual(Cloze._get_text("{c99:something}"), "something")
+        self.assertEqual(Cloze._get_text("{1:something}"), "something")
+        self.assertEqual(Cloze._get_text("{2|something}"), "something")
 
-    def test_find_and_replace(self):
-        a = Cloze.find_and_replace("Something with a {cloze}")
-        b = [String("Something with a "), Cloze(1, "cloze")]
-        self.assertListEqual(a, b)
+    def test_get_id(self):
+        self.assertEqual(Cloze._get_id("{something}"), None)
+        self.assertEqual(Cloze._get_id("{c1:something}"), 1)
+        self.assertEqual(Cloze._get_id("{c99:something}"), 99)
+        self.assertEqual(Cloze._get_id("{1:something}"), 1)
+        self.assertEqual(Cloze._get_id("{2|something}"), 2)
+
+    def test_assign_cloze_ids(self):
+        clozes = [Cloze(None, "no id"), Cloze(6, "has id"), Cloze(1, "has id"), 
+                  Cloze(None, "no id"), Cloze(3, "also has id")]
+        Cloze._assign_cloze_ids(clozes)
+        cloze_ids = [c.id for c in clozes]
+        self.assertListEqual(cloze_ids, [2,6,1,4,3])
 
 
 class TestImage(unittest.TestCase):
-    def test_validate_string(self):
-        string = "![alt](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840)"
-        self.assertTrue(Image.validate_string(string))
-        string = "[alt](https://google.com)"
-        self.assertFalse(Image.validate_string(string))
+    def test_from_string(self):
+        img = Image.from_string("![](www.google.com/image.png)")
+        self.assertEqual(img.src, "www.google.com/image.png")
+        self.assertEqual(img.alt, "")
 
-    def test_parse_url(self):
-        string = "![alt](https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840)"
-        image = Image.from_string(string)
-        src = "https://firebasestorage.googleapis.com/v0/b/firescript-577a2.appspot.com/o/imgs%2Fapp%2Fsecond_brain%2Feih7AcCzD1.png?alt=media&token=12eae516-db41-4fbf-907c-4e0f8eec5840"
-        alt = "alt"
-        self.assertEqual(image.src, src)
-        self.assertEqual(image.alt, alt)
+        img = Image.from_string("![text](www.google.com/image.png)")
+        self.assertEqual(img.src, "www.google.com/image.png")
+        self.assertEqual(img.alt, "text")
+
+        string = "![text](www.google.com)/image.png)"
+        self.assertRaises(ValueError, Image.from_string, string)
+        string = "[text](www.google.com/image.png)"
+        self.assertRaises(ValueError, Image.from_string, string)
+        string = "![]()"
+        self.assertRaises(ValueError, Image.from_string, string)
+
+    def test_find_and_replace(self):
+        string = "something with an ![](image.png) in it"
+        a = Image.find_and_replace(string)
+        b = RoamObjectList([
+            String("something with an "),
+            Image("image.png"),
+            String(" in it")
+        ])
+        self.assertEqual(a, b)
+
+    def test_to_string(self):
+        a = Image("www.google.com/image.png", "text").to_string()
+        b = "![text](www.google.com/image.png)"
+        self.assertEqual(a, b)
+
+        a = Image("www.google.com/image.png", "te\nxt").to_string()
+        b = "![te\nxt](www.google.com/image.png)"
+        self.assertEqual(a, b)
 
     def test_to_html(self):
         a = Image("https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png", "alt").to_html()
         b = '<img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" alt="alt" draggable="false" class="rm-inline-img">'
         self.assertEqual(a, b)
 
+    def test_get_tags(self):
+        a = Image("www.google.com/image.png", "text").get_tags()
+        b = []
+        self.assertListEqual(a, b)
+
 
 class TestAlias(unittest.TestCase):
+    def test_from_string(self):
+        string = "[something](www.google.com)"
+        alias = Alias.from_string(string)
+        self.assertEqual(alias.alias, "something")
+        self.assertEqual(alias.destination, String("www.google.com"))
+
+        string = "[something]([[page]])"
+        alias = Alias.from_string(string)
+        self.assertEqual(alias.alias, "something")
+        self.assertEqual(alias.destination, PageRef("page"))
+
+        string = "[something](((LtKPM-UZe)))"
+        alias = Alias.from_string(string)
+        self.assertEqual(alias.alias, "something")
+        self.assertEqual(alias.destination, BlockRef("LtKPM-UZe"))
+
+        string = "[](www.google.com)"
+        self.assertRaises(ValueError, Alias.from_string, string)
+
+        string = "[something[]](www.google.com)"
+        self.assertRaises(ValueError, Alias.from_string, string)
+
+        string = "[something]()"
+        self.assertRaises(ValueError, Alias.from_string, string)
+
+        string = "[something](www.google.com[)"
+        self.assertRaises(ValueError, Alias.from_string, string)
+
+        string = "[something](www.google.com) and something)"
+        self.assertRaises(ValueError, Alias.from_string, string)
+
+    def test_find_and_replace(self):
+        a = Alias.find_and_replace("something [link]([[page]]) to something")
+        b = [String("something "),Alias("link",PageRef("page")),String(" to something")]
+        self.assertListEqual(a, b)
+
     def test_to_string(self):
         link = Alias("text", Url("www.google.com"))
         self.assertEqual(link.to_string(), "[text](www.google.com)")
@@ -269,42 +327,9 @@ class TestAlias(unittest.TestCase):
         b = ["page"]
         self.assertListEqual(a, b)
 
-    def test_validate_string(self):
-        string = "[something](www.google.com)"
-        self.assertTrue(Alias.validate_string(string))
-
-        string = "[something]([[page]])"
-        self.assertTrue(Alias.validate_string(string))
-
-        string = "[something](((LtKPM-UZe)))"
-        self.assertTrue(Alias.validate_string(string))
-
-        string = "[something](((LtKPM- UZe)))"
-        self.assertFalse(Alias.validate_string(string))
-
-        string = "[](www.google.com)"
-        self.assertFalse(Alias.validate_string(string))
-
-        string = "[something[]](www.google.com)"
-        self.assertFalse(Alias.validate_string(string))
-
-        string = "[something]()"
-        self.assertFalse(Alias.validate_string(string))
-
-        string = "[something](www.google.com[)"
-        self.assertFalse(Alias.validate_string(string))
-
-        string = "[something](www.google.com) and something)"
-        self.assertFalse(Alias.validate_string(string))
-
-    def test_find_and_replace(self):
-        a = Alias.find_and_replace("something [link]([[page]]) to something")
-        b = [String("something "),Alias("link",PageRef("page")),String(" to something")]
-        self.assertListEqual(a, b)
-
 
 class TestCodeBlock(unittest.TestCase):
-    def test_init(self):
+    def test_from_string(self):
         string = "```clojure\ndef foo(x+y):\n    return x+y```"
         language = 'clojure'
         code = 'def foo(x+y):\n    return x+y'
@@ -312,7 +337,28 @@ class TestCodeBlock(unittest.TestCase):
         self.assertEqual(cb.language, language)
         self.assertEqual(cb.code, code)
 
+        string = "```css\n.rm-page-ref-tag{\n  display:none;\n}```"
+        language = 'css'
+        code = '.rm-page-ref-tag{\n  display:none;\n}'
+        cb = CodeBlock.from_string(string)
+        self.assertEqual(cb.language, language)
+        self.assertEqual(cb.code, code)
+
+        string = "```python\ndef foo(x+y):\n    return x+y```"
+        language = None
+        code = 'python\ndef foo(x+y):\n    return x+y'
+        cb = CodeBlock.from_string(string)
+        self.assertEqual(cb.language, language)
+        self.assertEqual(cb.code, code)
+
         string = "```\ndef foo(x+y):\n    return x+y```"
+        language = None
+        code = '\ndef foo(x+y):\n    return x+y'
+        cb = CodeBlock.from_string(string)
+        self.assertEqual(cb.language, language)
+        self.assertEqual(cb.code, code)
+
+        string = "```def foo(x+y):\n    return x+y```"
         language = None
         code = 'def foo(x+y):\n    return x+y'
         cb = CodeBlock.from_string(string)
@@ -327,13 +373,39 @@ class TestCodeBlock(unittest.TestCase):
                 CodeBlock('def foo(x+y):\n    return x+y',"clojure")])
         self.assertListEqual(a, b)
 
+    def test_to_string(self):
+        a = CodeBlock("def foo():\n    print('foo')", "clojure").to_string()
+        b = "```clojure\ndef foo():\n    print('foo')```"
+        self.assertEqual(a, b)
+
     def test_to_html(self):
         a = CodeBlock("def foo(x+y):\n    return x+y", "clojure").to_html()
         b = "<pre>def foo(x+y):<br>    return x+y</pre>"
         self.assertEqual(a, b)
 
+    def test_get_tags(self): 
+        a = CodeBlock("def foo():\n    #[[tag]]", "clojure").get_tags()
+        b = []
+        self.assertListEqual(a, b)
+
 
 class TestCheckbox(unittest.TestCase):
+    def test_from_string(self):
+        string = "{{[[TODO]]}}"
+        self.assertFalse(Checkbox.from_string(string).checked)
+        string = "{{[[DONE]]}}"
+        self.assertTrue(Checkbox.from_string(string).checked)
+        string = "{{[[TODO]]}} some text"
+        self.assertRaises(ValueError, Checkbox.from_string, string)
+        string = "{{TODO}}"
+        self.assertRaises(ValueError, Checkbox.from_string, string)
+
+    def test_find_and_replace(self):
+        roam_objects = RoamObjectList.from_string("{{[[TODO]]}} thing to do")
+        a = Checkbox.find_and_replace(roam_objects)
+        b = [Checkbox(checked=False), String(" thing to do")]
+        self.assertListEqual(a, b)
+
     def test_to_string(self):
         self.assertEqual(Checkbox(True).to_string(), "{{[[DONE]]}}")
         self.assertEqual(Checkbox(False).to_string(), "{{[[TODO]]}}")
@@ -354,24 +426,41 @@ class TestCheckbox(unittest.TestCase):
         checkbox = Checkbox.from_string("{{[[DONE]]}}")
         self.assertListEqual(checkbox.get_tags(), ["DONE"])
 
-    def test_validate_string(self):
-        string = "{{[[TODO]]}}"
-        self.assertTrue(Checkbox.validate_string(string))
-        string = "{{[[DONE]]}}"
-        self.assertTrue(Checkbox.validate_string(string))
-        string = "{{[[TODO]]}} some text"
-        self.assertFalse(Checkbox.validate_string(string))
-        string = "{{TODO}}"
-        self.assertFalse(Checkbox.validate_string(string))
-
-    def test_find_and_replace(self):
-        roam_objects = RoamObjectList.from_string("{{[[TODO]]}} thing to do")
-        a = Checkbox.find_and_replace(roam_objects)
-        b = [Checkbox(checked=False), String(" thing to do")]
-        self.assertListEqual(a, b)
-
 
 class TestView(unittest.TestCase):
+    def test_from_string(self):
+        embed = View.from_string("{{[[embed]]:((hh2wTNsMz))}}")
+        self.assertEqual(embed.name, PageRef("embed"))
+        self.assertEqual(embed.text, "((hh2wTNsMz))")
+
+        youtube = View.from_string("{{[[youtube]]:www.youtube.com}}")
+        self.assertEqual(youtube.name, PageRef("youtube"))
+        self.assertEqual(youtube.text, "www.youtube.com")
+
+        query = View.from_string("{{[[query]]:{and:[[page]][[tag]]}}}")
+        self.assertEqual(query.name, PageRef("query"))
+        self.assertEqual(query.text, "{and:[[page]][[tag]]}")
+
+        mentions = View.from_string("{{[[mentions]]:[[page]]}}")
+        self.assertEqual(mentions.name, PageRef("mentions"))
+        self.assertEqual(mentions.text, "[[page]]")
+
+        embed = View.from_string("{{embed:((hh2wTNsMz))}}")
+        self.assertEqual(embed.name, String("embed"))
+        self.assertEqual(embed.text, "((hh2wTNsMz))")
+
+        youtube = View.from_string("{{youtube:www.youtube.com}}")
+        self.assertEqual(youtube.name, String("youtube"))
+        self.assertEqual(youtube.text, "www.youtube.com")
+
+        query = View.from_string("{{query:{and:[[page]][[tag]]}}}")
+        self.assertEqual(query.name, String("query"))
+        self.assertEqual(query.text, "{and:[[page]][[tag]]}")
+
+        mentions = View.from_string("{{mentions:[[page]]}}")
+        self.assertEqual(mentions.name, String("mentions"))
+        self.assertEqual(mentions.text, "[[page]]")
+
     def test_find_and_replace(self):
         string = "here's a {{query: {and:[[page]]}}}"
         a = View.find_and_replace(string)
@@ -381,38 +470,10 @@ class TestView(unittest.TestCase):
         ])
         self.assertListEqual(a,b)
 
-    def test_from_string(self):
-        embed = View.from_string("{{[[embed]]:((hh2wTNsMz))}}")
-        self.assertEqual(embed.type, "embed")
-        self.assertEqual(embed.text, "((hh2wTNsMz))")
-
-        youtube = View.from_string("{{[[youtube]]:www.youtube.com}}")
-        self.assertEqual(youtube.type, "youtube")
-        self.assertEqual(youtube.text, "www.youtube.com")
-
-        query = View.from_string("{{[[query]]:{and:[[page]][[tag]]}}}")
-        self.assertEqual(query.type, "query")
-        self.assertEqual(query.text, "{and:[[page]][[tag]]}")
-
-        mentions = View.from_string("{{[[mentions]]:[[page]]}}")
-        self.assertEqual(mentions.type, "mentions")
-        self.assertEqual(mentions.text, "[[page]]")
-
-        embed = View.from_string("{{embed:((hh2wTNsMz))}}")
-        self.assertEqual(embed.type, "embed")
-        self.assertEqual(embed.text, "((hh2wTNsMz))")
-
-        youtube = View.from_string("{{youtube:www.youtube.com}}")
-        self.assertEqual(youtube.type, "youtube")
-        self.assertEqual(youtube.text, "www.youtube.com")
-
-        query = View.from_string("{{query:{and:[[page]][[tag]]}}}")
-        self.assertEqual(query.type, "query")
-        self.assertEqual(query.text, "{and:[[page]][[tag]]}")
-
-        mentions = View.from_string("{{mentions:[[page]]}}")
-        self.assertEqual(mentions.type, "mentions")
-        self.assertEqual(mentions.text, "[[page]]")
+    def to_string(self):
+        a = View("embed", "some text").to_string()
+        b = "{{embed:some text}}"
+        self.assertEqual(a, b)
 
     def test_to_html(self):
         string = "{{[[embed]]: ((hh2wTNsMz))}}"
@@ -431,8 +492,21 @@ class TestView(unittest.TestCase):
         view = View.from_string(string)
         self.assertEqual(view.to_string(), string)
 
+    def test_get_tags(self):
+        a = View.from_string("{{[[query]]:some text}}").get_tags()
+        b = ["query"]
+        self.assertListEqual(a, b)
+
 
 class TestButton(unittest.TestCase):
+    def test_from_string(self):
+        a = Button.from_string("{{text}}")
+        self.assertEqual(a.name, "text")
+        self.assertEqual(a.text, "")
+        a = Button.from_string("{{text: with more text}}")
+        self.assertEqual(a.name, "text")
+        self.assertEqual(a.text, " with more text")
+
     def test_find_and_replace(self):
         string = "here's a {{Button}} and {{another: with stuff}}"
         a = Button.find_and_replace(string)
@@ -444,26 +518,32 @@ class TestButton(unittest.TestCase):
         ])
         self.assertListEqual(a,b)
 
-    def test_validate_string(self):
-        string = "{{text}}"
-        self.assertTrue(Button.validate_string(string))
-        string = "{{text: with more text}}"
-        self.assertTrue(Button.validate_string(string))
+    def test_to_string(self):
+        a = Button("text")
+        self.assertEqual(a.to_string(), "{{text}}")
 
-    def to_html(self):
-        a = Button("name")
+    def test_to_html(self):
+        a = Button("name").to_html()
         b = '<button class="bp3-button bp3-small dont-focus-block">name</button>'
         self.assertEqual(a, b)
-        a = Button("name", "with some other name")
+        a = Button("name", "with some other name").to_html()
         b = '<button class="bp3-button bp3-small dont-focus-block">name</button>'
         self.assertEqual(a, b)
 
+    def test_get_tags(self):
+        a = Button("text", "text with [[tags]] in [[it]]").get_tags()
+        b = ["tags","it"]
+        self.assertListEqual(a, b)
 
 class TestPageRef(unittest.TestCase):
-    def test_get_tags(self):
-        a = PageRef("[[page in a [[page]]]]ness").get_tags()
-        b = ["[[page in a [[page]]]]ness","page in a [[page]]", "page"]
-        self.assertSetEqual(set(a), set(b))
+    def test_from_string(self):
+        a = PageRef.from_string("[[page]]").title
+        b = "page"
+        self.assertEqual(a, b)
+
+        a = PageRef.from_string("[[page in [[a [[page]]]] man]]").title
+        b = "page in [[a [[page]]]] man"
+        self.assertEqual(a, b)
 
     def test_find_and_replace(self):
         x = PageRef("sting")
@@ -477,6 +557,11 @@ class TestPageRef(unittest.TestCase):
             String(" in it")
         ])
         self.assertListEqual(a, b)
+
+    def test_to_string(self):
+        a = PageRef("page").to_string()
+        b = "[[page]]"
+        self.assertEqual(a, b)
 
     def test_to_html(self):
         a = PageRef("page", "PMXeggRpU").to_html()
@@ -492,12 +577,21 @@ class TestPageRef(unittest.TestCase):
             '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
 
-
-class TestPageTag(unittest.TestCase):
     def test_get_tags(self):
-        a = PageTag("[[page in a [[page]]]]ness").get_tags()
+        a = PageRef("[[page in a [[page]]]]ness").get_tags()
         b = ["[[page in a [[page]]]]ness","page in a [[page]]", "page"]
         self.assertSetEqual(set(a), set(b))
+
+
+class TestPageTag(unittest.TestCase):
+    def test_from_string(self):
+        a = PageTag.from_string("#[[page]]").title
+        b = "page"
+        self.assertEqual(a, b)
+
+        a = PageTag.from_string("#page").title
+        b = "page"
+        self.assertEqual(a, b)
 
     def test_find_and_replace(self):
         string = "something with [[some]] #[[tags]] in #it"
@@ -509,7 +603,16 @@ class TestPageTag(unittest.TestCase):
             PageTag("it"), 
         ])
         self.assertListEqual(a, b)
-    
+
+    def test_to_string(self):
+        a = PageTag("page").to_string()
+        b = "#page"
+        self.assertEqual(a, b)
+
+        a = PageTag.from_string("#[[page]]").to_string()
+        b = "#[[page]]"
+        self.assertEqual(a, b)
+
     def test_to_html(self):
         a = PageTag("tag").to_html()
         b = '<span tabindex="-1" data-tag="tag" class="rm-page-ref rm-page-ref-tag">#tag</span>'
@@ -520,6 +623,11 @@ class TestPageTag(unittest.TestCase):
         a = PageTag.from_string("#[[[[tag]]:((cdYtyouxk))]]").to_html()
         b = '<span tabindex="-1" data-tag="[[tag]]:((cdYtyouxk))" class="rm-page-ref rm-page-ref-tag">#[[tag]]:((cdYtyouxk))</span>'
         self.assertEqual(a, b)
+
+    def test_get_tags(self):
+        a = PageTag("[[page in a [[page]]]]ness").get_tags()
+        b = ["[[page in a [[page]]]]ness","page in a [[page]]", "page"]
+        self.assertSetEqual(set(a), set(b))
 
 
 class TestBlockRef(unittest.TestCase):
@@ -533,6 +641,11 @@ class TestBlockRef(unittest.TestCase):
                 return blocks[uid]
         self.roam_db = RoamDbProxy()
 
+    def test_from_string(self):
+        a = BlockRef.from_string("((LWGXbhfz_))", roam_db=self.roam_db).uid
+        b = "LWGXbhfz_"
+        self.assertEqual(a, b)
+
     def test_find_and_replace(self):
         string = "something with a ((4MxiXZn9f)) in #it"
         a = BlockRef.find_and_replace(string)
@@ -542,6 +655,15 @@ class TestBlockRef(unittest.TestCase):
             String(" in #it"), 
         ])
         self.assertListEqual(a, b)
+
+    def test_to_string(self):
+        a = BlockRef("LWGXbhfz_", self.roam_db).to_string(expand=False)
+        b = "((LWGXbhfz_))"
+        self.assertEqual(a, b)
+
+        a = BlockRef("LWGXbhfz_", self.roam_db).to_string(expand=True)
+        b = "{{[[TODO]]}} some block with a [[page]] ref and a #tag"
+        self.assertEqual(a, b)
 
     def test_to_html(self):
         a = BlockRef("mZPhN5wFj", self.roam_db).to_html()
@@ -558,6 +680,11 @@ class TestBlockRef(unittest.TestCase):
             '#tag</span></span></div>'
         self.assertEqual(a, b)
 
+    def test_get_tags(self):
+        a = BlockRef("LWGXbhfz_", self.roam_db).get_tags()
+        b = []
+        self.assertListEqual(a, b)
+
 
 class TestUrl(unittest.TestCase):
     def test_to_html(self):
@@ -567,6 +694,11 @@ class TestUrl(unittest.TestCase):
 
 
 class TestAttribute(unittest.TestCase):
+    def test_from_string(self):
+        a = Attribute("attr").title
+        b = "attr"
+        self.assertEqual(a,b)
+
     def test_find_and_replace(self):
         string = "attribute:: text"
         a = Attribute.find_and_replace(string)
@@ -576,6 +708,21 @@ class TestAttribute(unittest.TestCase):
         string = "attribute:::: text"
         a = Attribute.find_and_replace(string)
         b = RoamObjectList([Attribute("attribute"), String(":: text")])
+        self.assertListEqual(a,b)
+
+    def test_to_string(self):
+        a = Attribute("attr").to_string()
+        b = "attr::"
+        self.assertEqual(a,b)
+
+    def test_to_html(self):
+        a = Attribute("attribute").to_html()
+        b = '<span><strong tabindex="-1" style="cursor: pointer;">attribute:</strong></span>'
+        self.assertEqual(a,b)
+
+    def test_get_tags(self):
+        a = Attribute("attr").get_tags()
+        b = ["attr"]
         self.assertListEqual(a,b)
 
 if __name__=="__main__":
