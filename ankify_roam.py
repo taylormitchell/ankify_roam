@@ -39,7 +39,7 @@ if __name__=="__main__":
     roam_db = RoamDb.from_json(pages)
     logging.info("Placed into roam classes")
 
-    anki_blocks = roam_db.get_blocks_by_tag("anki_note")
+    anki_blocks = roam_db.get_blocks_by_tag("anki_note", inherit=False)
     logging.info("Fetched anki_note blocks")
 
     anki_notes = [AnkiNote.from_block(b, args.default_deck, args.default_basic, args.default_cloze) for b in anki_blocks]
