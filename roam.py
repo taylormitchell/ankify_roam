@@ -345,7 +345,10 @@ class Cloze(RoamObject):
 
     @classmethod
     def create_pattern(cls, string=None):
-        return r"(?<!}){c?\d*[:|]?[^{}]+}(?!})"
+        pats = [    
+        "\[\[{c?\d*:?\]\][^{}]+\[\[}\]\]",
+        "(?<!{){c?\d*[:|]?[^{}]+}(?!})"]
+        return "|".join(pats)
 
     def get_tags(self):
         return RoamObjectList.from_string(self.text).get_tags()
@@ -396,14 +399,25 @@ class Cloze(RoamObject):
         
     @staticmethod
     def _get_id(string):
-        match = re.search("{c?(\d+)[:|]", string)
+        if string[0]=="{":
+            pat = "{c?(\d+)[:|]"
+        elif string[0]=="[":
+            pat = "\[\[{c?(\d+):\]\]"
+        else:
+            raise ValueError(f"Couldn't extract cloze id from '{string}'")
+        match = re.search(pat, string)
         if match: 
             return int(match.group(1))
         return None
 
     @staticmethod
     def _get_text(string):
-        return re.sub("{c?\d+[:|]","{", string)[1:-1]
+        if string[0]=="{":
+            return re.sub(r"{c?\d+[:|]","{", string)[1:-1]
+        elif string[0]=="[":
+            return re.sub(r"\[\[{c?\d+[:|]\]\]","[[{]]", string)[5:-5]
+        else:
+            raise ValueError(f"Couldn't extract cloze text from '{string}'")
 
     @staticmethod
     def _assign_cloze_ids(clozes):

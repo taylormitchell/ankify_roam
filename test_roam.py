@@ -148,6 +148,20 @@ class TestCloze(unittest.TestCase):
         string = "{{button}}"
         self.assertRaises(ValueError, Cloze.from_string, string)
 
+        string = "[[{]]text[[}]]"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.text, "text")
+        
+        string = "[[{1:]]text[[}]]"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.id, 1)
+        self.assertEqual(cloze.text, "text")
+
+        string = "[[{c1:]]text[[}]]"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.id, 1)
+        self.assertEqual(cloze.text, "text")
+
     def test_find_and_replace(self):
         a = Cloze.find_and_replace("Something with a {cloze}")
         b = [String("Something with a "), Cloze(1, "cloze")]
