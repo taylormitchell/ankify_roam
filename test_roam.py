@@ -204,23 +204,29 @@ class TestCloze(unittest.TestCase):
             '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
 
+        a = Cloze.from_string("[[{c2:]]something[[}]]").to_html(proc_cloze=False)
+        b = '<span data-link-title="{c2:">'\
+            '<span class="rm-page-ref-brackets">[[</span>'\
+            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">{c2:</span>'\
+            '<span class="rm-page-ref-brackets">]]</span></span>'\
+            'something'\
+            '<span data-link-title="}">'\
+            '<span class="rm-page-ref-brackets">[[</span>'\
+            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">}</span>'\
+            '<span class="rm-page-ref-brackets">]]</span></span>'
+        self.assertEqual(a, b)
+
+        a = Cloze.from_string("{c2:something}").to_html(proc_cloze=False)
+        b = "{c2:something}"
+        self.assertEqual(a, b)
+
+        a = Cloze.from_string("{c2|something}").to_html(proc_cloze=False)
+        b = "{c2|something}"
+        self.assertEqual(a, b)
+
     def test_get_tags(self):
         cloze = Cloze(1, "Something with [[page refs]] and #some #[[tags]]")
         self.assertListEqual(sorted(cloze.get_tags()), ["page refs","some","tags"])
-
-    def test_get_content(self):
-        self.assertEqual(Cloze._get_text("{something}"), "something")
-        self.assertEqual(Cloze._get_text("{c1:something}"), "something")
-        self.assertEqual(Cloze._get_text("{c99:something}"), "something")
-        self.assertEqual(Cloze._get_text("{1:something}"), "something")
-        self.assertEqual(Cloze._get_text("{2|something}"), "something")
-
-    def test_get_id(self):
-        self.assertEqual(Cloze._get_id("{something}"), None)
-        self.assertEqual(Cloze._get_id("{c1:something}"), 1)
-        self.assertEqual(Cloze._get_id("{c99:something}"), 99)
-        self.assertEqual(Cloze._get_id("{1:something}"), 1)
-        self.assertEqual(Cloze._get_id("{2|something}"), 2)
 
     def test_assign_cloze_ids(self):
         clozes = [Cloze(None, "no id"), Cloze(6, "has id"), Cloze(1, "has id"), 

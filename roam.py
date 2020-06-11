@@ -333,15 +333,20 @@ class RoamObject(RoamInterface):
 
 class Cloze(RoamObject):
     def __init__(self, id, text, string=None):
-        self.id = id
+        self._id = id
         self.text = text
         self.string = string
+
+    @property
+    def id(self):
+        return self._id or 1
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
-        id = cls._get_id(string)
-        text = cls._get_text(string)
+        open, text, close = cls.split_string(string)
+        m = re.match("\d+", open)
+        id = m.group() if m else None
         return cls(id, text, string)
 
     @classmethod
@@ -351,11 +356,29 @@ class Cloze(RoamObject):
         return RoamObjectList(roam_objects)
 
     @classmethod
+    def split_string(cls, string):
+        for pat in cls.create_grouped_patterns(string):
+            groups = re.findall(pat, string)
+            if groups: 
+                return groups[0]
+
+    @classmethod
+    def create_grouped_patterns(cls, string):
+        pat_groups = cls._create_patterns()
+        return ["".join([f"({g})" for g in groups]) for groups in pat_groups]
+
+    @classmethod
     def create_pattern(cls, string=None):
+        pat_tuples = cls._create_patterns()
+        return "|".join(["".join(p) for p in pat_tuples])
+
+    @classmethod
+    def _create_patterns(cls, string=None):
         pats = [    
-        "\[\[{c?\d*:?\]\][^{}]+\[\[}\]\]",
-        "(?<!{){c?\d*[:|]?[^{}]+}(?!})"]
-        return "|".join(pats)
+            ("\[\[{c?\d*:?\]\]","[^{}]+","\[\[}\]\]"),
+            ("(?<!{){c?\d+[:|]","[^{}]+","}(?!})"),
+            ("(?<!{){","[^{}]+","}(?!})")]
+        return pats
 
     def get_tags(self):
         return RoamObjectList.from_string(self.text).get_tags()
@@ -378,71 +401,53 @@ class Cloze(RoamObject):
         Args:
             pageref_cloze (str): {'outside', 'inside', 'base_only'}
         """
+        proc_cloze = kwargs.get("proc_cloze", True)
         pageref_cloze = kwargs.get("pageref_cloze", "outside")
+
+        if not proc_cloze:
+            if self.string:
+                sections = self.split_string(self.string)
+                htmls = [RoamObjectList.from_string(s).to_html() for s in sections]
+                return "".join(htmls)
+            else:
+                content = RoamObjectList.from_string(self.text).to_html()
+                return Cloze(self.id, content).to_string()
+
         roam_objects = RoamObjectList.from_string(self.text)
         if not roam_objects.is_single_pageref():
             return Cloze(self.id, roam_objects.to_html()).to_string()
 
         # Fancy options to move around the cloze when it's only around a PageRef
         pageref = roam_objects[0]
-
         if pageref_cloze=="outside":
             text = pageref.to_html()
             return Cloze(self.id, text).to_string()
-
         elif pageref_cloze=="inside":
             clozed_title = Cloze(self.id, pageref.title).to_string()
             return pageref.to_html(title=clozed_title)
-
         elif pageref_cloze=="base_only":
             clozed_base = Cloze(self.id, pageref.get_basename()).to_string()
             namespace = pageref.get_namespace()
             if namespace:
                 clozed_base = namespace + "/" + clozed_base
             return pageref.to_html(title=clozed_base)
-
         else:
             raise ValueError(f"{pageref_cloze} is an invalid option for `pageref_cloze`")
         
     @staticmethod
-    def _get_id(string):
-        if string[0]=="{":
-            pat = "{c?(\d+)[:|]"
-        elif string[0]=="[":
-            pat = "\[\[{c?(\d+):\]\]"
-        else:
-            raise ValueError(f"Couldn't extract cloze id from '{string}'")
-        match = re.search(pat, string)
-        if match: 
-            return int(match.group(1))
-        return None
-
-    @staticmethod
-    def _get_text(string):
-        if string[0]=="{":
-            return re.sub(r"{c?\d+[:|]","{", string)[1:-1]
-        elif string[0]=="[":
-            return re.sub(r"\[\[{c?\d+[:|]\]\]","[[{]]", string)[5:-5]
-        else:
-            raise ValueError(f"Couldn't extract cloze text from '{string}'")
-
-    @staticmethod
     def _assign_cloze_ids(clozes):
-        assigned_ids = [c.id for c in clozes if c.id]
+        assigned_ids = [c._id for c in clozes if c._id]
         next_id = 1
         for cloze in clozes:
-            if cloze.id: continue
+            if cloze._id: continue
             while next_id in assigned_ids:
                 next_id += 1
             assigned_ids += [next_id]
-            cloze.id = next_id
-    @staticmethod
-    def _only_enclozes_pageref(roam_objects):
-        return len(roam_objects)==1 and type(roam_objects[0])==PageRef
+            cloze._id = next_id
 
     def __repr__(self):
         return "<%s(id=%s, string='%s')>" % (
-            self.__class__.__name__, self.id, self.string)
+            self.__class__.__name__, self._id, self.string)
 
 
 class Image(RoamObject):
@@ -679,11 +684,15 @@ class PageRef(RoamObject):
         return cls(roam_objects, string=string)
 
     @classmethod
-    def create_pattern(cls, string):
+    def create_pattern(cls, string, groups=False):
         page_refs = PageRef.extract_page_ref_strings(string)
-        if page_refs:
+        if not page_refs:
+            return None
+        if groups:
+            titles = [re.escape(p[2:-2]) for p in page_refs]
+            return "|".join([f"(\[\[)({t})(\]\])" for t in titles])
+        else:
             return "|".join([re.escape(p) for p in page_refs])
-        return None
 
     def get_tags(self):
         tags_in_title = [o.get_tags() for o in self._title]

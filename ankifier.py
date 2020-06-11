@@ -15,7 +15,9 @@ class AnkiNote:
         return [re.sub("\s","_",tag) for tag in self.roam_tags]
 
     def to_dict(self, field_names, **kwargs):
-        fields = {fn:f.to_html(**kwargs) for fn,f in zip(field_names, self.fields)}
+        fields = {fn:f.to_html(proc_cloze=False, **kwargs) 
+                  for fn,f in zip(field_names[1:], self.fields[1:])}
+        fields[field_names[0]] = self.fields[0].to_html(**kwargs)
         if "uid" in field_names:
             fields["uid"] = self.uid
         return {
