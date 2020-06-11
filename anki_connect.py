@@ -61,8 +61,9 @@ def upload(anki_note):
             return _update_note(note_id, anki_note)
         else:
             return _add_note(anki_note)
-    except DuplicateError as e:
-        logging.warning(f"Didn't upload the card with uid='{anki_note['fields']['uid']}' because there was a duplicate error")
+    except Exception as e:
+        logging.warning(f"Encountered the following error while trying to upload uid='{anki_note['fields']['uid']}'")
+        print(e)
         traceback.print_exc()
             
 def _add_note(anki_note):

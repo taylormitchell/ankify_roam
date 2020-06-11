@@ -158,6 +158,16 @@ class TestCloze(unittest.TestCase):
         self.assertEqual(cloze.id, 1)
         self.assertEqual(cloze.text, "text")
 
+        string = "[[{5]]text[[}]]"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.id, 5)
+        self.assertEqual(cloze.text, "text")
+
+        string = "[[{99:]]text[[}]]"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.id, 99)
+        self.assertEqual(cloze.text, "text")
+
         string = "[[{c1:]]text[[}]]"
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.id, 1)

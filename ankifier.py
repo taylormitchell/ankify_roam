@@ -1,5 +1,6 @@
 import re
 import logging
+from itertools import zip_longest
 from roam import RoamDb, Cloze
 import anki_connect
 
@@ -15,9 +16,10 @@ class AnkiNote:
         return [re.sub("\s","_",tag) for tag in self.roam_tags]
 
     def to_dict(self, field_names, **kwargs):
-        fields = {fn:f.to_html(proc_cloze=False, **kwargs) 
-                  for fn,f in zip(field_names[1:], self.fields[1:])}
-        fields[field_names[0]] = self.fields[0].to_html(**kwargs)
+        fields = {}
+        for i, (field_name, field) in enumerate(zip_longest(field_names, self.fields, fillvalue="")):
+            proc_cloze = True if i==0 else False
+            fields[field_name] = field.to_html(proc_cloze=proc_cloze, **kwargs) if field else field
         if "uid" in field_names:
             fields["uid"] = self.uid
         return {
@@ -28,30 +30,15 @@ class AnkiNote:
         }
 
     @staticmethod
-    def _extract_deck(block, default_deck):
-        RE_DECK = r"\[\[anki_deck\]\]:(\w+)"
-        for tag in block.get_tags():
-            match = re.search(RE_DECK, tag)
-            if match: break
-        return match.group() if match else default_deck
-
-    @staticmethod
-    def _extract_type(block, default_basic, default_cloze):
-        RE_TYPE = r"\[\[anki_type\]\]:(\w+)"
-        for tag in block.get_tags():
-            match = re.search(RE_TYPE, tag)
-            if match: break
-        if match:
-            return match.group(1)
-        else:
-            if any([type(obj)==Cloze for obj in block.content]):
-                return default_cloze
-            else:
-                return default_basic
+    def is_block_cloze(block):
+        return any([type(obj)==Cloze for obj in block.content])
 
     @classmethod
     def from_block(cls, block, default_deck, default_basic, default_cloze):
-        deckName = cls._extract_deck(block, default_deck)
-        type = cls._extract_type(block, default_basic, default_cloze)
-        fields = [block, block.get("children")]
-        return cls(type, fields, deckName, block.get("uid"), block.get_tags())
+        if cls.is_block_cloze(block):
+            type = default_cloze
+            fields = [block]
+        else:
+            type = default_basic
+            fields = [block, block.get("children")]
+        return cls(type, fields, default_deck, block.get("uid"), block.get_tags())

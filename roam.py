@@ -345,8 +345,8 @@ class Cloze(RoamObject):
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
         open, text, close = cls.split_string(string)
-        m = re.match("\d+", open)
-        id = m.group() if m else None
+        m = re.search("\d+", open)
+        id = int(m.group()) if m else None
         return cls(id, text, string)
 
     @classmethod
@@ -375,7 +375,7 @@ class Cloze(RoamObject):
     @classmethod
     def _create_patterns(cls, string=None):
         pats = [    
-            ("\[\[{c?\d*:?\]\]","[^{}]+","\[\[}\]\]"),
+            ("\[\[{c?\d*[:|]?\]\]","[^{}]+","\[\[}\]\]"),
             ("(?<!{){c?\d+[:|]","[^{}]+","}(?!})"),
             ("(?<!{){","[^{}]+","}(?!})")]
         return pats
