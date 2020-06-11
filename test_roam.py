@@ -63,6 +63,7 @@ class TestRoamDb(unittest.TestCase):
         b = set(["TODO","page","temp","test page for [[ankify_roam]]"])
         self.assertSetEqual(a,b)
 
+
 class TestRoamObjectList(unittest.TestCase):
     def test_find_and_replace(self):
         """
@@ -162,6 +163,10 @@ class TestCloze(unittest.TestCase):
         self.assertEqual(cloze.id, 1)
         self.assertEqual(cloze.text, "text")
 
+        string = "\n".join(["{te","xt}"])
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.text, "\n".join(["te","xt"]))
+
     def test_find_and_replace(self):
         a = Cloze.find_and_replace("Something with a {cloze}")
         b = [String("Something with a "), Cloze(1, "cloze")]
@@ -241,6 +246,8 @@ class TestImage(unittest.TestCase):
         self.assertRaises(ValueError, Image.from_string, string)
         string = "![]()"
         self.assertRaises(ValueError, Image.from_string, string)
+        string = "\n".join(["![](www.go","ogle.com/image.png)"])
+        self.assertRaises(ValueError, Image.from_string, string)
 
     def test_find_and_replace(self):
         string = "something with an ![](image.png) in it"
@@ -288,6 +295,12 @@ class TestAlias(unittest.TestCase):
         alias = Alias.from_string(string)
         self.assertEqual(alias.alias, "something")
         self.assertEqual(alias.destination, BlockRef("LtKPM-UZe"))
+
+        # Can have newline in alias
+        string = "\n".join(["[somet","hing](www.google.com)"])
+        alias = Alias.from_string(string)
+        self.assertEqual(alias.alias, "\n".join(["somet","hing"]))
+        self.assertEqual(alias.destination, String("www.google.com"))
 
         string = "[](www.google.com)"
         self.assertRaises(ValueError, Alias.from_string, string)
@@ -475,6 +488,9 @@ class TestView(unittest.TestCase):
         self.assertEqual(mentions.name, String("mentions"))
         self.assertEqual(mentions.text, "[[page]]")
 
+        string = "\n".join(["{{query:{and:[[pa","ge]]}}}"])
+        self.assertRaises(ValueError, View.from_string, string)
+
     def test_find_and_replace(self):
         string = "here's a {{query: {and:[[page]]}}}"
         a = View.find_and_replace(string)
@@ -521,6 +537,9 @@ class TestButton(unittest.TestCase):
         self.assertEqual(a.name, "text")
         self.assertEqual(a.text, " with more text")
 
+        string = "\n".join(["{{te","xt}}"])
+        self.assertRaises(ValueError, Button.from_string, string)
+
     def test_find_and_replace(self):
         string = "here's a {{Button}} and {{another: with stuff}}"
         a = Button.find_and_replace(string)
@@ -547,7 +566,8 @@ class TestButton(unittest.TestCase):
     def test_get_tags(self):
         a = Button("text", "text with [[tags]] in [[it]]").get_tags()
         b = ["tags","it"]
-        self.assertListEqual(a, b)
+        self.assertSetEqual(set(a), set(b))
+
 
 class TestPageRef(unittest.TestCase):
     def test_from_string(self):
@@ -557,6 +577,11 @@ class TestPageRef(unittest.TestCase):
 
         a = PageRef.from_string("[[page in [[a [[page]]]] man]]").title
         b = "page in [[a [[page]]]] man"
+        self.assertEqual(a, b)
+
+        string = "\n".join(["[[pa","ge]]"])
+        a = PageRef.from_string(string).title
+        b = string[2:-2]
         self.assertEqual(a, b)
 
     def test_find_and_replace(self):
@@ -605,6 +630,11 @@ class TestPageTag(unittest.TestCase):
 
         a = PageTag.from_string("#page").title
         b = "page"
+        self.assertEqual(a, b)
+
+        string = "\n".join(["#[[pa","ge]]"])
+        a = PageTag.from_string(string).title
+        b = string[3:-2]
         self.assertEqual(a, b)
 
     def test_find_and_replace(self):
@@ -709,8 +739,13 @@ class TestUrl(unittest.TestCase):
 
 class TestAttribute(unittest.TestCase):
     def test_from_string(self):
-        a = Attribute("attr").title
+        a = Attribute.from_string("attr::").title
         b = "attr"
+        self.assertEqual(a,b)
+
+        string = "\n".join(["attri","bute::"])
+        a = Attribute(string).title
+        b = string
         self.assertEqual(a,b)
 
     def test_find_and_replace(self):

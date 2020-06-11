@@ -3,6 +3,7 @@ import re
 from itertools import zip_longest
 import logging
 from functools import reduce
+import traceback
 
 # TODO: I think the extract_*  methods should be in the RoamObject class
 
@@ -207,11 +208,12 @@ class Block:
         # TODO: rename this
         content = RoamObjectList.from_string(block["string"], roam_db=roam_db)
         child_block_objects = []
-        for c in block.get("children",[]):
+        for child_block in block.get("children",[]):
             try:
-                child_block_objects.append(Block.from_json(c, roam_db))
-            except:
-                logging.warning(f"Unknown problem parsing block '{block['uid']}' :(. Skipping")
+                child_block_objects.append(Block.from_json(child_block, roam_db))
+            except Exception as e:
+                logging.warning(f"Unknown problem parsing block '{child_block['uid']}' :(. Skipping")
+                traceback.print_exc()
         children = BlockList(child_block_objects)
         return cls(content, children, block['uid'], block.get('create-time'),
                    block.get('create-email'), block.get('edit-time'), block.get('edit-email'), roam_db)
@@ -240,13 +242,18 @@ class Page:
 
     @classmethod
     def from_json(cls, page, roam_db):
-        children = [Block.from_json(c, roam_db) for c in page.get("children",[])]
-        return cls(page['title'], children, page['edit-time'], page['edit-email'])
+        child_block_objects = []
+        for block in page.get("children",[]):
+            try:
+                child_block_objects.append(Block.from_json(block, roam_db))
+            except Exception as e:
+                logging.warning(f"Unknown problem parsing block '{block['title']}' :(. Skipping")
+                traceback.print_stack()
+        return cls(page['title'], child_block_objects, page['edit-time'], page['edit-email'])
 
 
 # Roam Objects
 # -------------
-
 
 class RoamObject(RoamInterface):
     @classmethod
@@ -447,12 +454,12 @@ class Image(RoamObject):
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
-        alt, src = re.search("!\[([^\[\]]*)\]\((.*)\)", string).groups()
+        alt, src = re.search("!\[([^\[\]]*)\]\(([^\)\n]+)\)", string).groups()
         return cls(src, alt)
 
     @classmethod
     def create_pattern(cls, string=None):
-        return r"!\[[^\[\]]*\]\([^\)]+\)"
+        return r"!\[[^\[\]]*\]\([^\)\n]+\)"
 
     def to_string(self):
         if self.string: 
@@ -464,7 +471,6 @@ class Image(RoamObject):
 
 
 class Alias(RoamObject):
-    RE_TEMPLATE = r"\[[^\[]+\]\(%s\)"
     def __init__(self, alias, destination, string=None):
         self.alias = alias
         self.destination = destination
@@ -473,7 +479,7 @@ class Alias(RoamObject):
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
-        alias, destination = re.search(r"\[(.+)\]\((.+)\)", string).groups()
+        alias, destination = re.search(r"^\[([^\[]+)\]\(([\W\w]+)\)$", string).groups()
         if re.match("^\[\[.*\]\]$", destination):
             destination = PageRef.from_string(destination)
         elif re.match("^\(\(.*\)\)$", destination):
@@ -587,17 +593,13 @@ class View(RoamObject):
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
-        super().from_string(string, validate=True)
+        super().from_string(string, validate)
         name, text = re.search("{{([^:]*):(.*)}}", string).groups()
         if re.match("^\[\[.*\]\]$", name):
             name = PageRef.from_string(name)
         else:
             name = String(name)
         return cls(name, text, string)
-
-    @classmethod
-    def validate_string(cls, string):
-        return True
 
     def to_html(self, *arg, **kwargs):
         return self.text
@@ -750,7 +752,7 @@ class PageTag(RoamObject):
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
-        title = re.sub("\[\[(.*)\]\]", "\g<1>", string[1:])
+        title = re.sub("\[\[([\W\w]*)\]\]", "\g<1>", string[1:])
         roam_objects = PageRef.find_and_replace(title)
         return cls(roam_objects, string)
 

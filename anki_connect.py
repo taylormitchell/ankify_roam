@@ -1,6 +1,7 @@
 import json 
 import urllib.request 
 import logging
+import traceback
 
 class AnkiConnectException(Exception):
     """Base class for exceptions in this module."""
@@ -60,8 +61,9 @@ def upload(anki_note):
             return _update_note(note_id, anki_note)
         else:
             return _add_note(anki_note)
-    except DuplicateError:
-        logging.warning(f"Didn't upload the card with uid={anki_note['fields']['uid']} because there was a duplicate error")
+    except DuplicateError as e:
+        logging.warning(f"Didn't upload the card with uid='{anki_note['fields']['uid']}' because there was a duplicate error")
+        traceback.print_exc()
             
 def _add_note(anki_note):
     return _invoke("addNote", note=anki_note)
