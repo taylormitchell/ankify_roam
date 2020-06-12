@@ -11,10 +11,10 @@ RE_TAG = r"#[\w\-_@]+"
 RE_PAGE_REF = "\[\[[^\[\]]*\]\]"
 RE_SPLIT_OR = "(?<!\\\)\|"
 
-class RoamDb:
-    def __init__(self):
-        pass
-
+class PyRoam:
+    def __init__(self, pages):
+        self.pages = [Page.from_dict(p, self) for p in pages]
+        self.apply_tag_inheritance()
 
     @classmethod
     def from_path(cls, path):
@@ -29,18 +29,10 @@ class RoamDb:
             raise ValueError(f"'{path}' must be refer to a directory, zip, or json")
 
     @classmethod
-    def from_dict(cls, pages):
-        roam_db = cls()
-        pages = [Page.from_dict(p, roam_db) for p in pages]
-        roam_db.add_pages(pages)
-        roam_db.apply_tag_inheritance()
-        return roam_db
-
-    @classmethod
     def from_json(cls, path):
         with open(path) as f:
             roam_pages = json.load(f)
-        return cls.from_dict(roam_pages)
+        return cls(roam_pages)
     
     @classmethod
     def from_zip(cls, path):
@@ -48,7 +40,7 @@ class RoamDb:
             filename = zip_ref.namelist()[0]
             with zip_ref.open(filename) as f:
                 roam_pages = json.load(f)
-        return cls.from_dict(roam_pages)
+        return cls(roam_pages)
 
     @classmethod
     def from_dir(cls, path):
@@ -57,15 +49,21 @@ class RoamDb:
         filename = sorted(roam_exports)[-1]
         return cls.from_zip(os.path.join(path,filename))
 
-    def add_pages(self, pages):
-        self.pages = pages
+    def query(self, condition, blocks=None):
+        if blocks is None: blocks=self.pages
+        res = []
+        for block in blocks:
+            if type(block)==Block and condition(block):
+                res.append(block)
+            res += self.query(condition, block.children)
+        return res
 
-    def get_block_by_uid(self, uid, blocks=None):
+    def get(self, uid, blocks=None):
         if blocks is None: blocks = self.pages
         for block in blocks:
             if block.get("uid") == uid:
                 return block
-            block = self.get_block_by_uid(uid, block.get('children',[]))
+            block = self.get(uid, block.get('children',[]))
             if block:
                 return block
 
@@ -226,9 +224,6 @@ class Block:
             return list(set(self.parent_tags + self.content.get_tags()))
         else:
             return list(set(self.content.get_tags()))
-
-    def get_block_tags(self):
-        return self.content.get_tags()
 
     def to_string(self):
         return self.content.to_string()
@@ -861,7 +856,7 @@ class BlockRef(RoamObject):
         return "\(\([\w\d\-_]{9}\)\)"
 
     def get_referenced_block(self):
-        return self.roam_db.get_block_by_uid(self.uid)
+        return self.roam_db.get(self.uid)
 
 
 class Url(RoamObject):

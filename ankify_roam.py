@@ -2,7 +2,7 @@ import argparse
 import os
 import sys
 import logging
-from roam import RoamDb
+from roam import PyRoam
 import anki
 from anki import AnkiNote
 from model_templates import ROAM_BASIC, ROAM_CLOZE
@@ -28,16 +28,17 @@ if __name__=="__main__":
                         type=str, action='store', 
                         choices=["inside", "outside", "base_only"],
                         help='where to place clozes around page references')
+    parser.add_argument('--tag', default="anki_note",
+                        type=str, action='store', 
+                        help='default deck')
 
     args = parser.parse_args()
 
-    logging.info("Starting")
+    logging.info("Loading PyRoam")
+    pyroam = PyRoam.from_path(args.Path)
 
-    roam_db = RoamDb.from_path(args.Path)
-    logging.info("Initialized RoamDb")
-
-    anki_blocks = roam_db.get_blocks_by_tag("anki_note", inherit=False)
-    logging.info("Fetched anki_note blocks")
+    logging.info("Fetching blocks to ankify")
+    anki_blocks = pyroam.query(lambda b: args.tag in b.get_tags(inherit=False))
 
     anki_notes = [AnkiNote.from_block(b, args.default_deck, args.default_basic, args.default_cloze) for b in anki_blocks]
     logging.info("Converted to anki notes")

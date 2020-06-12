@@ -1,11 +1,11 @@
 import unittest 
-import anki_connect
-from roam import RoamDb, Attribute, Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, RoamObjectList 
+import anki
+from roam import PyRoam, Attribute, Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, RoamObjectList 
 import roam
 
 # TODO: all RoamObject types should implement the interface
 
-class TestRoamDb(unittest.TestCase):
+class TestPyRoam(unittest.TestCase):
     def setUp(self):
         pages = [ 
             {
@@ -50,7 +50,7 @@ class TestRoamDb(unittest.TestCase):
               "edit-email": "taylor.j.mitchell@gmail.com"
             }
         ]
-        self.roam_db = RoamDb.from_json(pages)
+        self.roam_db = PyRoam(pages)
 
     def test_get_tags(self):
         block = self.roam_db.get_block_by_uid("L7EuhRiXa")
@@ -353,10 +353,10 @@ class TestAlias(unittest.TestCase):
         self.assertEqual(a, b)
 
         # Alias to roam block
-        class RoamDbProxy:
+        class PyRoamProxy:
             def get_block_by_uid(self, uid):
                 return Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag")
-        a = Alias("text", BlockRef("y3LFc4rFK", roam_db=RoamDbProxy())).to_html()
+        a = Alias("text", BlockRef("y3LFc4rFK", roam_db=PyRoamProxy())).to_html()
         b = '<a title="block: {{[[TODO]]}} some block with a [[page]] ref and a #tag" class="rm-alias rm-alias-block">text</a>'
         self.assertEqual(a, b)
 
@@ -692,14 +692,14 @@ class TestPageTag(unittest.TestCase):
 
 class TestBlockRef(unittest.TestCase):
     def setUp(self):
-        class RoamDbProxy:
+        class PyRoamProxy:
             def get_block_by_uid(self, uid):
                 blocks = {
                     "mZPhN5wFj": Block.from_string("some block"),
                     "LWGXbhfz_": Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag") 
                 }
                 return blocks[uid]
-        self.roam_db = RoamDbProxy()
+        self.roam_db = PyRoamProxy()
 
     def test_from_string(self):
         a = BlockRef.from_string("((LWGXbhfz_))", roam_db=self.roam_db).uid

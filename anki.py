@@ -4,7 +4,7 @@ import logging
 import traceback
 import re
 from itertools import zip_longest
-from roam import RoamDb, Cloze
+from roam import PyRoam, Cloze
 
 class AnkiNote:
     def __init__(self, type, fields, deck, uid="", tags=[]):
