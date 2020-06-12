@@ -168,8 +168,12 @@ class BlockList(list):
             #TODO: should this be a config?
             return '<div class="centered-block">' + html + '</div>'
 
+    def __repr__(self):
+        return "<%s(%s)>" % (
+            self.__class__.__name__, repr(list(self)))
+
 class Block:
-    def __init__(self, content, children=[], uid="", create_time="", 
+    def __init__(self, content, children=BlockList(), uid="", create_time="", 
                  create_email="",  edit_time="", edit_email="", roam_db=None):
         self.content = content # RoamObjectList
         self.children = children # BlockList

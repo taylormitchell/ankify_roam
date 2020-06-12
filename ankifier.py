@@ -17,9 +17,9 @@ class AnkiNote:
 
     def to_dict(self, field_names, **kwargs):
         fields = {}
-        for i, (field_name, field) in enumerate(zip_longest(field_names, self.fields, fillvalue="")):
+        for i, (field_name, field) in enumerate(zip_longest(field_names, self.fields)):
             proc_cloze = True if i==0 else False
-            fields[field_name] = field.to_html(proc_cloze=proc_cloze, **kwargs) if field else field
+            fields[field_name] = field.to_html(proc_cloze=proc_cloze, **kwargs) if field else ""
         if "uid" in field_names:
             fields["uid"] = self.uid
         return {
@@ -40,5 +40,7 @@ class AnkiNote:
             fields = [block]
         else:
             type = default_basic
+            front = block
+            back = block.get("children")
             fields = [block, block.get("children")]
         return cls(type, fields, default_deck, block.get("uid"), block.get_tags())
