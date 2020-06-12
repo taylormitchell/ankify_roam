@@ -76,8 +76,8 @@ class TestRoamObjectList(unittest.TestCase):
         View:
         Button:
         PageRef: 1,2
-        PageTag: 1,
-        BlockRef: 1,2
+        PageTag: 1,2
+        BlockRef: 1,2,3
         """
         # Test 1 
         string = "{{[[TODO]]}} something [this]([[This]]) [[Saturday]] about ((ZtmwW4k32)) #Important"
@@ -106,6 +106,19 @@ class TestRoamObjectList(unittest.TestCase):
         a = RoamObjectList.from_string(string)
         b = RoamObjectList([
             CodeBlock("www.google.com\n[[page]]\n((E-j9hXq0m))","clojure"),
+        ])
+        self.assertListEqual(a, b)
+
+        # Test 3
+        string = "Some block refs: ((5xB8JO-xg)) #temp #[[anki_note]]"
+        a = PageTag.find_and_replace(string)
+        b = RoamObjectList([
+            String("Some block refs: "), 
+            BlockRef("5xB8JO-xg"),
+            String(" "), 
+            PageTag.from_string("#temp"), 
+            String(" "), 
+            PageTag.from_string("#[[anki_note]]"), 
         ])
         self.assertListEqual(a, b)
 
@@ -664,6 +677,7 @@ class TestPageTag(unittest.TestCase):
         ])
         self.assertListEqual(a, b)
 
+
     def test_to_string(self):
         a = PageTag("page").to_string()
         b = "#page"
@@ -682,6 +696,9 @@ class TestPageTag(unittest.TestCase):
         self.assertEqual(a, b)
         a = PageTag.from_string("#[[[[tag]]:((cdYtyouxk))]]").to_html()
         b = '<span tabindex="-1" data-tag="[[tag]]:((cdYtyouxk))" class="rm-page-ref rm-page-ref-tag">#[[tag]]:((cdYtyouxk))</span>'
+        self.assertEqual(a, b)
+        a = PageTag.from_string("#[[[[source]]:[[some book]]]]").to_html()
+        b = '<span tabindex="-1" data-tag="[[source]]:[[some book]]" class="rm-page-ref rm-page-ref-tag">#[[source]]:[[some book]]</span>'
         self.assertEqual(a, b)
 
     def test_get_tags(self):

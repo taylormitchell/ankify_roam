@@ -58,14 +58,15 @@ class PyRoam:
             res += self.query(condition, block.children)
         return res
 
-    def get(self, uid, blocks=None):
+    def get(self, uid, default=None, blocks=None):
         if blocks is None: blocks = self.pages
         for block in blocks:
             if block.get("uid") == uid:
                 return block
-            block = self.get(uid, block.get('children',[]))
+            block = self.get(uid, default, block.get('children',[]))
             if block:
                 return block
+        return default
 
     def _apply_tag_inheritance(self, blocks, parent_tags=[]):
         for block in blocks:
@@ -122,8 +123,8 @@ class RoamObjectList(RoamInterface, list):
             Checkbox,
             View,
             Button,
-            PageRef,
             PageTag,
+            PageRef,
             BlockRef,
             Attribute,
             #Url, #TODO: don't have a good regex for this right now
@@ -808,9 +809,8 @@ class PageTag(RoamObject):
         return "#"+self.title
 
     def to_html(self, *arg, **kwargs):
-        title = re.sub("^\[\[(.*)\]\]$", "\g<1>", self.title)
-        return f'<span tabindex="-1" data-tag="{title}" '\
-               f'class="rm-page-ref rm-page-ref-tag">#{title}</span>'
+        return f'<span tabindex="-1" data-tag="{self.title}" '\
+               f'class="rm-page-ref rm-page-ref-tag">#{self.title}</span>'
 
     @classmethod
     def create_pattern(cls, string):
@@ -846,7 +846,8 @@ class BlockRef(RoamObject):
 
     def to_html(self, *arg, **kwargs):
         block = self.get_referenced_block()
-        return '<div class="rm-block-ref"><span>%s</span></div>' % block.to_html()
+        text = block.to_html() if block else self.to_string
+        return '<div class="rm-block-ref"><span>%s</span></div>' % text
 
     def get_tags(self):
         return []
