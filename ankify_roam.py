@@ -2,10 +2,9 @@ import argparse
 import os
 import sys
 import logging
-import anki_connect
-import roam_loaders 
 from roam import RoamDb
-from ankifier import AnkiNote
+import anki
+from anki import AnkiNote
 from model_templates import ROAM_BASIC, ROAM_CLOZE
 
 if __name__=="__main__":
@@ -33,11 +32,9 @@ if __name__=="__main__":
     args = parser.parse_args()
 
     logging.info("Starting")
-    pages = roam_loaders.loader(args.Path)
-    logging.info("Loaded pages")
 
-    roam_db = RoamDb.from_json(pages)
-    logging.info("Placed into roam classes")
+    roam_db = RoamDb.from_path(args.Path)
+    logging.info("Initialized RoamDb")
 
     anki_blocks = roam_db.get_blocks_by_tag("anki_note", inherit=False)
     logging.info("Fetched anki_note blocks")
@@ -48,11 +45,11 @@ if __name__=="__main__":
     field_names = {}
     for model_name in [args.default_basic, args.default_cloze]:
         try:
-            field_names[model_name] = anki_connect.get_field_names(model_name)
-        except anki_connect.ModelNotFoundError as e:
+            field_names[model_name] = anki.get_field_names(model_name)
+        except anki.ModelNotFoundError as e:
             if model_name in [ROAM_BASIC['modelName'],ROAM_BASIC['modelName']]:
                 # TODO: make sure this is the actual function name I'm using
-                raise anki_connect.ModelNotFoundError(f"'{model_name}' not in Anki. Running `create_default_models.py` should fix the problem")
+                raise anki.ModelNotFoundError(f"'{model_name}' not in Anki. Running `create_default_models.py` should fix the problem")
             else:
                 raise e
 
@@ -61,5 +58,5 @@ if __name__=="__main__":
     }
     anki_dicts = [an.to_dict(field_names[an.type], **options) for an in anki_notes]
 
-    anki_connect.upload_all(anki_dicts)
+    anki.upload_all(anki_dicts)
 

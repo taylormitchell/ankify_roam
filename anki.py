@@ -2,30 +2,51 @@ import json
 import urllib.request 
 import logging
 import traceback
+import re
+from itertools import zip_longest
+from roam import RoamDb, Cloze
 
-class AnkiConnectException(Exception):
-    """Base class for exceptions in this module."""
-    pass
+class AnkiNote:
+    def __init__(self, type, fields, deck, uid="", tags=[]):
+        self.type = type
+        self.fields = fields
+        self.uid = uid
+        self.deck = deck
+        self.roam_tags = tags
 
-class BadResponse(AnkiConnectException):
-    def __init__(self, response, message):
-        self.response = response
-        self.message = message
+    def get_tags(self):
+        return [re.sub("\s","_",tag) for tag in self.roam_tags]
 
-class GenericResponseError(AnkiConnectException):
-    def __init__(self, response_error):
-        self.response_error = response_error
+    def to_dict(self, field_names, **kwargs):
+        fields = {}
+        for i, (field_name, field) in enumerate(zip_longest(field_names, self.fields)):
+            proc_cloze = True if i==0 else False
+            fields[field_name] = field.to_html(proc_cloze=proc_cloze, **kwargs) if field else ""
+        if "uid" in field_names:
+            fields["uid"] = self.uid
+        return {
+            "deckName": self.deck,
+            "modelName": self.type,
+            "fields": fields,
+            "tags": self.get_tags()
+        }
 
-class ModelNotFoundError(AnkiConnectException):
-    def __init__(self, response_error):
-        self.response_error = response_error
+    @staticmethod
+    def is_block_cloze(block):
+        return any([type(obj)==Cloze for obj in block.content])
 
-class DuplicateError(AnkiConnectException):
-    def __init__(self, response_error):
-        self.response_error = response_error
+    @classmethod
+    def from_block(cls, block, default_deck, default_basic, default_cloze):
+        if cls.is_block_cloze(block):
+            type = default_cloze
+            fields = [block]
+        else:
+            type = default_basic
+            front = block
+            back = block.get("children")
+            fields = [block, block.get("children")]
+        return cls(type, fields, default_deck, block.get("uid"), block.get_tags())
 
-
-# https://github.com/FooSoft/anki-connect#python
 def _create_request_dict(action, **params):
     return {'action': action, 'params': params, 'version': 6}
 
@@ -48,7 +69,6 @@ def _invoke(action, **params):
         else:
             raise GenericResponseError(response['error'])
     return response['result']
-
 
 def upload_all(anki_notes):
     for anki_note in anki_notes:
@@ -101,3 +121,25 @@ def update_model(model):
     }
     res_styling = _invoke("updateModelStyling", model=model_styling_update)
     return [res_template, res_styling]
+
+
+class AnkiConnectException(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+class BadResponse(AnkiConnectException):
+    def __init__(self, response, message):
+        self.response = response
+        self.message = message
+
+class GenericResponseError(AnkiConnectException):
+    def __init__(self, response_error):
+        self.response_error = response_error
+
+class ModelNotFoundError(AnkiConnectException):
+    def __init__(self, response_error):
+        self.response_error = response_error
+
+class DuplicateError(AnkiConnectException):
+    def __init__(self, response_error):
+        self.response_error = response_error

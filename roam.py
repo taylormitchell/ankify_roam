@@ -1,11 +1,11 @@
 import os
 import re
+import json
 from itertools import zip_longest
 import logging
 from functools import reduce
 import traceback
-
-# TODO: I think the extract_*  methods should be in the RoamObject class
+from zipfile import ZipFile
 
 RE_TAG = r"#[\w\-_@]+"
 RE_PAGE_REF = "\[\[[^\[\]]*\]\]"
@@ -15,21 +15,50 @@ class RoamDb:
     def __init__(self):
         pass
 
+
     @classmethod
-    def from_json(cls, page_jsons):
+    def from_path(cls, path):
+        path = os.path.expanduser(path)
+        if os.path.isdir(path):
+            return cls.from_dir(path)
+        elif os.path.splitext(path)[-1]==".zip":
+            return cls.from_zip(path)
+        elif os.path.splitext(path)[-1]==".json":
+            return cls.from_json(path)
+        else:
+            raise ValueError(f"'{path}' must be refer to a directory, zip, or json")
+
+    @classmethod
+    def from_dict(cls, pages):
         roam_db = cls()
-        pages = [Page.from_json(p, roam_db) for p in page_jsons]
+        pages = [Page.from_dict(p, roam_db) for p in pages]
         roam_db.add_pages(pages)
         roam_db.apply_tag_inheritance()
         return roam_db
 
+    @classmethod
+    def from_json(cls, path):
+        with open(path) as f:
+            roam_pages = json.load(f)
+        return cls.from_dict(roam_pages)
+    
+    @classmethod
+    def from_zip(cls, path):
+        with ZipFile(path, 'r') as zip_ref:
+            filename = zip_ref.namelist()[0]
+            with zip_ref.open(filename) as f:
+                roam_pages = json.load(f)
+        return cls.from_dict(roam_pages)
+
+    @classmethod
+    def from_dir(cls, path):
+        "Initialize using the latest roam export in the given directory"
+        roam_exports = [f for f in os.listdir(path) if re.match("Roam-Export-.*", f)]
+        filename = sorted(roam_exports)[-1]
+        return cls.from_zip(os.path.join(path,filename))
+
     def add_pages(self, pages):
         self.pages = pages
-
-    def get_tags(self, string):
-        RE_PAGE_REF = "\[\[([^\[\]]+)\]\]"
-        RE_TAG = "#([\w\d_\-@]+)"
-        return list(set(re.findall(RE_PAGE_REF, string)+ re.findall(RE_TAG, string)))
 
     def get_block_by_uid(self, uid, blocks=None):
         if blocks is None: blocks = self.pages
@@ -208,13 +237,13 @@ class Block:
         return self.content.to_html(*args, **kwargs)
 
     @classmethod
-    def from_json(cls, block, roam_db):
+    def from_dict(cls, block, roam_db):
         # TODO: rename this
         content = RoamObjectList.from_string(block["string"], roam_db=roam_db)
         child_block_objects = []
         for child_block in block.get("children",[]):
             try:
-                child_block_objects.append(Block.from_json(child_block, roam_db))
+                child_block_objects.append(Block.from_dict(child_block, roam_db))
             except Exception as e:
                 logging.warning(f"Unknown problem parsing block '{child_block['uid']}' :(. Skipping")
                 traceback.print_exc()
@@ -245,11 +274,11 @@ class Page:
         return getattr(self, key) if hasattr(self, key) else default
 
     @classmethod
-    def from_json(cls, page, roam_db):
+    def from_dict(cls, page, roam_db):
         child_block_objects = []
         for block in page.get("children",[]):
             try:
-                child_block_objects.append(Block.from_json(block, roam_db))
+                child_block_objects.append(Block.from_dict(block, roam_db))
             except Exception as e:
                 logging.warning(f"Unknown problem parsing block '{block['title']}' :(. Skipping")
                 traceback.print_stack()
