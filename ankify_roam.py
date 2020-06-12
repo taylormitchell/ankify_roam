@@ -40,24 +40,22 @@ if __name__=="__main__":
     logging.info("Fetching blocks to ankify")
     anki_blocks = pyroam.query(lambda b: args.tag in b.get_tags(inherit=False))
 
-    anki_notes = [AnkiNote.from_block(b, args.default_deck, args.default_basic, args.default_cloze) for b in anki_blocks]
-    logging.info("Converted to anki notes")
-
     field_names = {}
-    for model_name in [args.default_basic, args.default_cloze]:
-        try:
-            field_names[model_name] = anki.get_field_names(model_name)
-        except anki.ModelNotFoundError as e:
-            if model_name in [ROAM_BASIC['modelName'],ROAM_BASIC['modelName']]:
-                # TODO: make sure this is the actual function name I'm using
-                raise anki.ModelNotFoundError(f"'{model_name}' not in Anki. Running `create_default_models.py` should fix the problem")
-            else:
-                raise e
+    try:
+        basic_fields = anki.get_field_names(args.default_basic)
+        cloze_fields = anki.get_field_names(args.default_cloze)
+    except anki.ModelNotFoundError as e:
+        raise anki.ModelNotFoundError(
+            f"'{args.default_basic}' or '{args.default_cloze}' not in Anki. "\
+            "Try running `setup_anki.py` then pass 'Roam Basic' and 'Roam Cloze' "\
+            "to default_basic and default_cloze")
 
-    options = {
-        "pageref_cloze": args.pageref_cloze, 
-    }
-    anki_dicts = [an.to_dict(field_names[an.type], **options) for an in anki_notes]
+    logging.info("Converting blocks to anki notes")
+    anki_notes = [AnkiNote.from_block(
+        b, args.default_deck, args.default_basic, args.default_cloze, 
+        basic_fields, cloze_fields) for b in anki_blocks]
 
+    logging.info("Uploading to anki")
+    anki_dicts = [an.to_dict(pageref_cloze=args.pageref_cloze) for an in anki_notes]
     anki.upload_all(anki_dicts)
 

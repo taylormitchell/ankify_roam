@@ -17,12 +17,12 @@ class AnkiNote:
     def get_tags(self):
         return [re.sub("\s","_",tag) for tag in self.roam_tags]
 
-    def to_dict(self, field_names, **kwargs):
+    def to_dict(self, **kwargs):
         fields = {}
-        for i, (field_name, field) in enumerate(zip_longest(field_names, self.fields)):
+        for i, (field_name, field) in enumerate(self.fields.items()):
             proc_cloze = True if i==0 else False
             fields[field_name] = field.to_html(proc_cloze=proc_cloze, **kwargs) if field else ""
-        if "uid" in field_names:
+        if "uid" in self.fields.keys():
             fields["uid"] = self.uid
         return {
             "deckName": self.deck,
@@ -36,16 +36,25 @@ class AnkiNote:
         return any([type(obj)==Cloze for obj in block.content])
 
     @classmethod
-    def from_block(cls, block, default_deck, default_basic, default_cloze):
+    def from_block(cls, block, deck, basic_model, cloze_model, basic_fields, cloze_fields):
+        """
+        Args:
+            block (BlockObject): 
+            deck (str): Deck
+            basic_model (str): Name of card type to upload basic cards to  
+            cloze_model (str): Name of card type to upload cloze cards to  
+            basic_fields (list of str): Field names of the basic card type
+            cloze_fields (list of str): Field names of the cloze card type
+        """
         if cls.is_block_cloze(block):
-            type = default_cloze
-            fields = [block]
+            type = cloze_model
+            fields = {n:f for n,f in zip_longest(
+                basic_fields, [block], fillvalue="")}
         else:
-            type = default_basic
-            front = block
-            back = block.get("children")
-            fields = [block, block.get("children")]
-        return cls(type, fields, default_deck, block.get("uid"), block.get_tags())
+            type = basic_model
+            fields = {n:f for n,f in zip_longest(
+                basic_fields, [block, block.children], fillvalue="")}
+        return cls(type, fields, deck, block.get("uid"), block.get_tags())
 
 def _create_request_dict(action, **params):
     return {'action': action, 'params': params, 'version': 6}
