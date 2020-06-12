@@ -15,12 +15,12 @@
 }
 
 code {
-    border-radius: 5px; 
-    -moz-border-radius: 5px; 
-    -webkit-border-radius: 5px; 
-    border: 1px solid #BCBEC0;
-    padding: 2px;
-    font:12px Monaco,Consolas,"Andale  Mono","DejaVu Sans Mono",monospace
+    margin-right: .2em;
+    border-radius: 4px;
+    background: #eee;
+    border: 1px solid #ddd;
+    padding: .1em .3em;
+    font:12px Monaco,Consolas,"Andale  Mono","DejaVu Sans Mono",monospace;
 }
 
 .centered-block{

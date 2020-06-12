@@ -57,5 +57,7 @@ if __name__=="__main__":
 
     logging.info("Uploading to anki")
     anki_dicts = [an.to_dict(pageref_cloze=args.pageref_cloze) for an in anki_notes]
+
+
     anki.upload_all(anki_dicts)
 

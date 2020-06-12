@@ -53,12 +53,12 @@ class TestPyRoam(unittest.TestCase):
         self.roam_db = PyRoam(pages)
 
     def test_get_tags(self):
-        block = self.roam_db.get_block_by_uid("L7EuhRiXa")
+        block = self.roam_db.get("L7EuhRiXa")
         a = set(block.get_tags())
         b = set(["temp","test page for [[ankify_roam]]"])
         self.assertSetEqual(a,b)
 
-        block = self.roam_db.get_block_by_uid("YlgtAqOYv")
+        block = self.roam_db.get("YlgtAqOYv")
         a = set(block.get_tags())
         b = set(["TODO","page","temp","test page for [[ankify_roam]]"])
         self.assertSetEqual(a,b)
@@ -111,7 +111,7 @@ class TestRoamObjectList(unittest.TestCase):
 
         # Test 3
         string = "Some block refs: ((5xB8JO-xg)) #temp #[[anki_note]]"
-        a = PageTag.find_and_replace(string)
+        a = RoamObjectList.from_string(string)
         b = RoamObjectList([
             String("Some block refs: "), 
             BlockRef("5xB8JO-xg"),
@@ -367,7 +367,7 @@ class TestAlias(unittest.TestCase):
 
         # Alias to roam block
         class PyRoamProxy:
-            def get_block_by_uid(self, uid):
+            def get(self, uid):
                 return Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag")
         a = Alias("text", BlockRef("y3LFc4rFK", roam_db=PyRoamProxy())).to_html()
         b = '<a title="block: {{[[TODO]]}} some block with a [[page]] ref and a #tag" class="rm-alias rm-alias-block">text</a>'
@@ -710,7 +710,7 @@ class TestPageTag(unittest.TestCase):
 class TestBlockRef(unittest.TestCase):
     def setUp(self):
         class PyRoamProxy:
-            def get_block_by_uid(self, uid):
+            def get(self, uid):
                 blocks = {
                     "mZPhN5wFj": Block.from_string("some block"),
                     "LWGXbhfz_": Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag") 

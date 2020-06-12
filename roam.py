@@ -113,8 +113,9 @@ class RoamObjectList(RoamInterface, list):
         for obj in roam_objects:
             self.append(obj)
 
+
     @classmethod
-    def from_string(cls, string, *args, **kwargs):
+    def find_and_replace(cls, string, *args, **kwargs):
         roam_object_types_in_parse_order = [
             Cloze, 
             Image,
@@ -133,6 +134,10 @@ class RoamObjectList(RoamInterface, list):
         for rm_obj_type in roam_object_types_in_parse_order:
             roam_objects = rm_obj_type.find_and_replace(roam_objects, *args, **kwargs)
         return cls(roam_objects)
+
+    @classmethod
+    def from_string(cls, string, *args, **kwargs):
+        return cls.find_and_replace(string, *args, **kwargs)
 
     def get_tags(self):
         tags = []

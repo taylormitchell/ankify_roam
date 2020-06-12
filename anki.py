@@ -79,34 +79,34 @@ def _invoke(action, **params):
             raise GenericResponseError(response['error'])
     return response['result']
 
-def upload_all(anki_notes):
-    for anki_note in anki_notes:
-        upload(anki_note)
+def upload_all(anki_dicts):
+    for anki_dict in anki_dicts:
+        upload(anki_dict)
 
-def upload(anki_note):
-    note_id = _get_note_id(anki_note)
+def upload(anki_dict):
+    note_id = _get_note_id(anki_dict)
     try:
         if note_id:
-            return _update_note(note_id, anki_note)
+            return _update_note(note_id, anki_dict)
         else:
-            return _add_note(anki_note)
+            return _add_note(anki_dict)
     except Exception as e:
-        logging.warning(f"Encountered the following error while trying to upload uid='{anki_note['fields']['uid']}'")
+        logging.warning(f"Encountered the following error while trying to upload uid='{anki_dict['fields']['uid']}'")
         print(e)
         traceback.print_exc()
             
-def _add_note(anki_note):
-    return _invoke("addNote", note=anki_note)
+def _add_note(anki_dict):
+    return _invoke("addNote", note=anki_dict)
 
-def _update_note(note_id, anki_note):
-    note = {"id":note_id, "fields": anki_note["fields"]}
+def _update_note(note_id, anki_dict):
+    note = {"id":note_id, "fields": anki_dict["fields"]}
     return _invoke("updateNoteFields", note=note)
 
 def get_field_names(note_type):
     return _invoke('modelFieldNames', modelName=note_type)
 
-def _get_note_id(anki_note):
-    res = _invoke('findNotes', query=f"uid:{anki_note['fields']['uid']}")
+def _get_note_id(anki_dict):
+    res = _invoke('findNotes', query=f"uid:{anki_dict['fields']['uid']}")
     if res:
         return res[0]
     return None
