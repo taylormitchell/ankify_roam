@@ -49,7 +49,7 @@ class AnkiNote:
         if cls.is_block_cloze(block):
             type = cloze_model
             fields = {n:f for n,f in zip_longest(
-                basic_fields, [block], fillvalue="")}
+                cloze_fields, [block], fillvalue="")}
         else:
             type = basic_model
             fields = {n:f for n,f in zip_longest(
