@@ -13,9 +13,9 @@ DEFAULT_CLOZE = "Roam Cloze"
 PAGEREF_CLOZE = "outside"
 TAG_ANKIFY = "anki_note"
 
-# create logger with 'spam_application'
-logger = logging.getLogger('')
-logger.setLevel(logging.DEBUG)
+# Set up the root logger
+logger_root = logging.getLogger()
+logger_root.setLevel(logging.DEBUG)
 # create file handler which logs even debug messages
 fh = logging.FileHandler('error.log', mode='w')
 fh.setLevel(logging.DEBUG)
@@ -27,8 +27,8 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 fh.setFormatter(formatter)
 ch.setFormatter(formatter)
 # add the handlers to the logger
-logger.addHandler(fh)
-logger.addHandler(ch)
+logger_root.addHandler(fh)
+logger_root.addHandler(ch)
 
 
 def main(
@@ -39,10 +39,12 @@ def main(
     pageref_cloze=PAGEREF_CLOZE, 
     tag_ankify=TAG_ANKIFY):
 
-    logging.info("Loading PyRoam")
+    logger = logging.getLogger(__name__)
+
+    logger.info("Loading PyRoam")
     pyroam = PyRoam.from_path(path)
 
-    logging.info("Fetching blocks to ankify")
+    logger.info("Fetching blocks to ankify")
     anki_blocks = pyroam.query(lambda b: tag_ankify in b.get_tags(inherit=False))
 
     field_names = {}
@@ -55,12 +57,12 @@ def main(
             "Try running `setup_anki.py` then pass 'Roam Basic' and 'Roam Cloze' "\
             "to default_basic and default_cloze")
 
-    logging.info("Converting blocks to anki notes")
+    logger.info("Converting blocks to anki notes")
     anki_notes = [AnkiNote.from_block(
         b, default_deck, default_basic, default_cloze, 
         basic_fields, cloze_fields) for b in anki_blocks]
 
-    logging.info("Uploading to anki")
+    logger.info("Uploading to anki")
     anki_dicts = [an.to_dict(pageref_cloze=pageref_cloze) for an in anki_notes]
 
     anki.upload_all(anki_dicts)

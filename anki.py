@@ -6,6 +6,8 @@ import re
 from itertools import zip_longest
 from roam import PyRoam, Cloze
 
+logger = logging.getLogger(__name__)
+
 class AnkiNote:
     def __init__(self, type, fields, deck, uid="", tags=[]):
         self.type = type
@@ -91,8 +93,8 @@ def upload(anki_dict):
         else:
             return _add_note(anki_dict)
     except Exception as e:
-        logging.warning(f"Encountered the error while uploading uid='{anki_dict['fields']['uid']}'")
-        logging.debug(e, exc_info=1)
+        logger.error(f"Encountered the error while uploading uid='{anki_dict['fields']['uid']}'")
+        logger.debug(e, exc_info=1)
             
 def _add_note(anki_dict):
     return _invoke("addNote", note=anki_dict)

@@ -11,6 +11,8 @@ RE_TAG = r"#[\w\-_@]+"
 RE_PAGE_REF = "\[\[[^\[\]]*\]\]"
 RE_SPLIT_OR = "(?<!\\\)\|"
 
+logger = logging.getLogger(__name__)
+
 class PyRoam:
     def __init__(self, pages):
         self.pages = [Page.from_dict(p, self) for p in pages]
@@ -246,8 +248,8 @@ class Block:
             try:
                 child_block_objects.append(Block.from_dict(child_block, roam_db))
             except Exception as e:
-                logging.warning(f"Unknown problem parsing block '{child_block['uid']}' :(. Skipping")
-                traceback.print_exc()
+                logger.error(f"Unknown problem parsing block '{child_block['uid']}' :(. Skipping")
+                logger.debug(e, exc_info=1)
         children = BlockList(child_block_objects)
         return cls(content, children, block['uid'], block.get('create-time'),
                    block.get('create-email'), block.get('edit-time'), block.get('edit-email'), roam_db)
@@ -281,8 +283,8 @@ class Page:
             try:
                 child_block_objects.append(Block.from_dict(block, roam_db))
             except Exception as e:
-                logging.warning(f"Unknown problem parsing block '{block['title']}' :(. Skipping")
-                traceback.print_stack()
+                logger.error(f"Unknown problem parsing block '{block['title']}' :(. Skipping")
+                logger.debug(e, exc_info=1)
         return cls(page['title'], child_block_objects, page['edit-time'], page['edit-email'])
 
 
