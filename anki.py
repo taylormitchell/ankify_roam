@@ -91,9 +91,8 @@ def upload(anki_dict):
         else:
             return _add_note(anki_dict)
     except Exception as e:
-        logging.warning(f"Encountered the following error while trying to upload uid='{anki_dict['fields']['uid']}'")
-        print(e)
-        traceback.print_exc()
+        logging.warning(f"Encountered the error while uploading uid='{anki_dict['fields']['uid']}'")
+        logging.debug(e, exc_info=1)
             
 def _add_note(anki_dict):
     return _invoke("addNote", note=anki_dict)
