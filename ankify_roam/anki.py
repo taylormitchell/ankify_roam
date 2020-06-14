@@ -4,7 +4,7 @@ import logging
 import traceback
 import re
 from itertools import zip_longest
-from roam import PyRoam, Cloze
+from ankify_roam.roam import PyRoam, Cloze
 
 logger = logging.getLogger(__name__)
 

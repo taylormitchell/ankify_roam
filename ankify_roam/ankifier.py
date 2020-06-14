@@ -2,10 +2,10 @@ import argparse
 import os
 import sys
 import logging
-from roam import PyRoam
-import anki
-from anki import AnkiNote
-from model_templates import ROAM_BASIC, ROAM_CLOZE
+from ankify_roam.roam import PyRoam
+from ankify_roam import anki
+from ankify_roam.anki import AnkiNote
+from ankify_roam.model_templates import ROAM_BASIC, ROAM_CLOZE
 
 DEFAULT_DECK = "Default"
 DEFAULT_BASIC = "Roam Basic"
