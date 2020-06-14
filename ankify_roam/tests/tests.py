@@ -1,9 +1,9 @@
 import unittest 
-import anki
-from roam import PyRoam, Attribute, Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, RoamObjectList 
-import roam
-import ankify_roam
 import logging
+from ankify_roam import anki
+from ankify_roam.roam import PyRoam, Attribute, Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, RoamObjectList 
+from ankify_roam import roam
+from ankify_roam import ankifier
 
 # TODO: all RoamObject types should implement the interface
 
@@ -813,7 +813,7 @@ class TestAttribute(unittest.TestCase):
 class TestAnkifyRoam(unittest.TestCase):
     def test(self):
         with self.assertLogs() as ctx:
-            ankify_roam.main("test_export.json")
+            ankifier.main("ankify_roam/tests/test_export.json")
         self.assertFalse([r for r in ctx.records if r.levelno >= logging.WARNING])
 
 

@@ -67,8 +67,7 @@ def main(
 
     anki.upload_all(anki_dicts)
 
-
-if __name__=="__main__":
+def cli():
     parser = argparse.ArgumentParser(description='Import flashcards from Roam to Anki')
     parser.add_argument('path',
                         metavar='path',
@@ -93,5 +92,9 @@ if __name__=="__main__":
 
     args = parser.parse_args()
     main(**vars(args))
+
+
+if __name__=="__main__":
+    cli()
 
 
