@@ -5,18 +5,17 @@ import logging
 from ankify_roam.roam import PyRoam
 from ankify_roam import anki
 from ankify_roam.anki import AnkiNote
-from ankify_roam.model_templates import ROAM_BASIC, ROAM_CLOZE
-from ankify_roam.config import config  
+from ankify_roam import config  
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def ankify(pyroam, **kwargs):
-    deck = kwargs.get("deck", config["Anki"]["deck"] )
-    basic_model = kwargs.get("basic_model", config["Anki"]["basic_model"] )
-    cloze_model = kwargs.get("cloze_model", config["Anki"]["cloze_model"] )
-    pageref_cloze = kwargs.get("pageref_cloze", config["Options"]["pageref_cloze"] )
-    tag_ankify = kwargs.get("tag_ankify", config["Roam"]["tag_ankify"] )
+    deck = kwargs.get("deck", config.deck )
+    basic_model = kwargs.get("basic_model", config.basic_model )
+    cloze_model = kwargs.get("cloze_model", config.cloze_model )
+    pageref_cloze = kwargs.get("pageref_cloze", config.pageref_cloze )
+    tag_ankify = kwargs.get("tag_ankify", config.tag_ankify )
 
     logger.info("Fetching blocks to ankify")
     anki_blocks = pyroam.query(lambda b: tag_ankify in b.get_tags(inherit=False))

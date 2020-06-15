@@ -15,7 +15,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     entry_points={
         "console_scripts":[
-            "ankify_roam=ankify_roam.ankifier:cli"
+            "ankify_roam=ankify_roam.cli:ankify"
         ]
     },
     classifiers=[
