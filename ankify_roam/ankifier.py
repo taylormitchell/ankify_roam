@@ -13,23 +13,8 @@ DEFAULT_CLOZE = "Roam Cloze"
 PAGEREF_CLOZE = "outside"
 TAG_ANKIFY = "anki_note"
 
-# Set up the root logger
-logger_root = logging.getLogger()
-logger_root.setLevel(logging.DEBUG)
-# create file handler which logs even debug messages
-fh = logging.FileHandler('error.log', mode='w')
-fh.setLevel(logging.DEBUG)
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(formatter)
-# add the handlers to the logger
-logger_root.addHandler(fh)
-logger_root.addHandler(ch)
-
+import logging
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 def main(
     path, 
