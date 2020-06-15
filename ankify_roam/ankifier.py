@@ -6,46 +6,34 @@ from ankify_roam.roam import PyRoam
 from ankify_roam import anki
 from ankify_roam.anki import AnkiNote
 from ankify_roam.model_templates import ROAM_BASIC, ROAM_CLOZE
-from config import config
+from ankify_roam.config import config  
 
-DEFAULT_DECK = config["Anki"]["deck"]
-DEFAULT_BASIC =config["Anki"]["basic_model"]
-DEFAULT_CLOZE =config["Anki"]["cloze_model"]
-PAGEREF_CLOZE =config["Options"]["pageref_cloze"]
-TAG_ANKIFY =config["Roam"]["include_tag"]
-
-import logging
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def main(
-    path, 
-    default_deck=DEFAULT_DECK, 
-    default_basic=DEFAULT_BASIC, 
-    default_cloze=DEFAULT_CLOZE, 
-    pageref_cloze=PAGEREF_CLOZE, 
-    tag_ankify=TAG_ANKIFY):
-
-    logger = logging.getLogger(__name__)
-
-    logger.info("Loading PyRoam")
-    pyroam = PyRoam.from_path(path)
+def ankify(pyroam, **kwargs):
+    deck = kwargs.get("deck", config["Anki"]["deck"] )
+    basic_model = kwargs.get("basic_model", config["Anki"]["basic_model"] )
+    cloze_model = kwargs.get("cloze_model", config["Anki"]["cloze_model"] )
+    pageref_cloze = kwargs.get("pageref_cloze", config["Options"]["pageref_cloze"] )
+    tag_ankify = kwargs.get("tag_ankify", config["Roam"]["tag_ankify"] )
 
     logger.info("Fetching blocks to ankify")
     anki_blocks = pyroam.query(lambda b: tag_ankify in b.get_tags(inherit=False))
 
     field_names = {}
     try:
-        basic_fields = anki.get_field_names(default_basic)
-        cloze_fields = anki.get_field_names(default_cloze)
+        basic_fields = anki.get_field_names(basic_model)
+        cloze_fields = anki.get_field_names(cloze_model)
     except anki.ModelNotFoundError as e:
         raise anki.ModelNotFoundError(
-            f"'{default_basic}' or '{default_cloze}' not in Anki. "\
+            f"'{basic_model}' or '{cloze_model}' not in Anki. "\
             "Try running `setup_anki.py` then pass 'Roam Basic' and 'Roam Cloze' "\
             "to default_basic and default_cloze")
 
     logger.info("Converting blocks to anki notes")
     anki_notes = [AnkiNote.from_block(
-        b, default_deck, default_basic, default_cloze, 
+        b, deck, basic_model, cloze_model, 
         basic_fields, cloze_fields) for b in anki_blocks]
 
     logger.info("Uploading to anki")
@@ -53,34 +41,9 @@ def main(
 
     anki.upload_all(anki_dicts)
 
-def cli():
-    parser = argparse.ArgumentParser(description='Import flashcards from Roam to Anki')
-    parser.add_argument('path',
-                        metavar='path',
-                        type=str,
-                        help='the path to list')
-    parser.add_argument('--default_deck', default=DEFAULT_DECK,
-                        type=str, action='store', 
-                        help='default deck')
-    parser.add_argument('--default_basic', default=DEFAULT_BASIC, 
-                        type=str, action='store', 
-                        help='default deck')
-    parser.add_argument('--default_cloze', default=DEFAULT_CLOZE,
-                        type=str, action='store', 
-                        help='default deck')
-    parser.add_argument('--pageref-cloze', default=PAGEREF_CLOZE,
-                        type=str, action='store', 
-                        choices=["inside", "outside", "base_only"],
-                        help='where to place clozes around page references')
-    parser.add_argument('--tag-ankify', default=TAG_ANKIFY,
-                        type=str, action='store', 
-                        help='default deck')
-
-    args = parser.parse_args()
-    main(**vars(args))
-
-
-if __name__=="__main__":
-    cli()
+def ankify_from_path(path, **kwargs):
+    logger.info("Loading PyRoam")
+    pyroam = PyRoam.from_path(path)
+    ankify(pyroam, **kwargs)
 
 
