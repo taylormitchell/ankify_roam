@@ -6,12 +6,13 @@ from ankify_roam.roam import PyRoam
 from ankify_roam import anki
 from ankify_roam.anki import AnkiNote
 from ankify_roam.model_templates import ROAM_BASIC, ROAM_CLOZE
+from config import config
 
-DEFAULT_DECK = "Default"
-DEFAULT_BASIC = "Roam Basic"
-DEFAULT_CLOZE = "Roam Cloze"
-PAGEREF_CLOZE = "outside"
-TAG_ANKIFY = "anki_note"
+DEFAULT_DECK = config["Anki"]["deck"]
+DEFAULT_BASIC =config["Anki"]["basic_model"]
+DEFAULT_CLOZE =config["Anki"]["cloze_model"]
+PAGEREF_CLOZE =config["Options"]["pageref_cloze"]
+TAG_ANKIFY =config["Roam"]["include_tag"]
 
 import logging
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
