@@ -115,7 +115,6 @@ class RoamObjectList(RoamInterface, list):
         for obj in roam_objects:
             self.append(obj)
 
-
     @classmethod
     def find_and_replace(cls, string, *args, **kwargs):
         roam_object_types_in_parse_order = [
@@ -260,8 +259,8 @@ class Block:
         return cls(content, *args, **kwargs)
 
     def __repr__(self):
-        return "<%s(%s)>" % (
-            self.__class__.__name__, list(self.content))
+        return "<%s(uid='%s', string='%s')>" % (
+            self.__class__.__name__, self.uid, self.to_string()[:10]+"...")
 
 class Page:
     def __init__(self, title, children, edit_time, edit_email):
