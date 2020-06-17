@@ -82,6 +82,9 @@ def update_model(model):
     res_styling = _invoke("updateModelStyling", model=model_styling_update)
     return [res_template, res_styling]
 
+def load_profile(name):
+    _invoke("loadProfile", name=name)
+
 class AnkiConnectException(Exception):
     """Base class for exceptions in this module."""
     pass
