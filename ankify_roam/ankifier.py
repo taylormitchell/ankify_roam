@@ -6,6 +6,7 @@ import re
 from itertools import zip_longest
 from ankify_roam.roam import PyRoam, Cloze
 from ankify_roam import anki
+from ankify_roam.model_templates import ROAM_BASIC, ROAM_CLOZE 
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,10 +29,10 @@ def ankify(pyroam, deck="Default", basic_model="Roam Basic", cloze_model="Roam C
     anki_notes = []
     for block in anki_blocks:
         try:
-            anki_notes.append(AnkiNote.from_block(
+            anki_notes.append(AnkiBlock.from_block(
                 block, deck, basic_model, cloze_model, basic_fields, cloze_fields))
         except Exception as e:
-            logging.exception(f"Failed to convert block '{block.uid}' to an AnkiNote")
+            logging.exception(f"Failed to convert block '{block.uid}' to an AnkiBlock")
 
     logger.info("Preparing for upload to anki")
     anki_dicts = []
@@ -39,7 +40,7 @@ def ankify(pyroam, deck="Default", basic_model="Roam Basic", cloze_model="Roam C
         try:
             anki_dicts.append(an.to_dict(pageref_cloze=pageref_cloze))
         except Exception as e:
-            logging.exception(f"Failed to convert AnkiNote '{block.uid}' to a dictionary")
+            logging.exception(f"Failed to convert AnkiBlock '{block.uid}' to a dictionary")
 
     logger.info("Uploading to anki")
     for anki_dict in anki_dicts:
@@ -55,7 +56,20 @@ def ankify_from_file(path, **kwargs):
     ankify(pyroam, **kwargs)
 
 
-class AnkiNote:
+def setup_models(overwrite=False):
+    modelNames = anki.get_model_names()
+    for model in [ROAM_BASIC, ROAM_CLOZE]:
+        if not model['modelName'] in modelNames:
+            anki.create_model(model)
+        else:
+            if overwrite:
+                anki.update_model(model)
+            else:
+                logging.info(
+                    f"'{model['modelName']}' already in Anki. "\
+                    "If you want to overwrite it, set `overwrite=True`")
+
+class AnkiBlock:
     def __init__(self, type, fields, deck, uid="", tags=[]):
         self.type = type
         self.fields = fields
