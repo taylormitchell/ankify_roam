@@ -1,6 +1,0 @@
-deck="Default"
-basic_model="Roam Basic"
-cloze_model="Roam Cloze"
-tag_ankify="anki_note"
-pageref_cloze="outside"
-path="."

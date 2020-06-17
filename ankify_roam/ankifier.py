@@ -6,7 +6,7 @@ import re
 from itertools import zip_longest
 from ankify_roam.roam import PyRoam, Cloze
 from ankify_roam import anki
-from ankify_roam.model_templates import ROAM_BASIC, ROAM_CLOZE 
+from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE 
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)

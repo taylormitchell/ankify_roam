@@ -5,7 +5,7 @@ from ankify_roam import ankifier
 from ankify_roam import roam
 from ankify_roam import anki
 from ankify_roam.tests.roam_export import ROAM_JSON
-from ankify_roam.model_templates import ROAM_BASIC, ROAM_CLOZE
+from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
 
 class TestAnkifier(unittest.TestCase):
     def setUp(self):
