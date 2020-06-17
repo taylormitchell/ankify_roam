@@ -81,7 +81,13 @@ def update_model(model):
     return [res_template, res_styling]
 
 def load_profile(name):
-    _invoke("loadProfile", name=name)
+    return _invoke("loadProfile", name=name)
+
+def create_deck(name):
+    return _invoke("createDeck", deck=name)
+
+def delete_deck(name, cards_too=True):
+    return _invoke("deleteDecks", decks=[name], cardsToo=cards_too)
 
 class AnkiConnectException(Exception):
     """Base class for exceptions in this module."""
