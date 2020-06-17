@@ -30,10 +30,10 @@ def ankify(pyroam, deck="Default", basic_model="Roam Basic", cloze_model="Roam C
                 logging.exception(f"Failed ankifying {block} during upload to anki")
 
 
-def ankify_from_file(path):
+def ankify_from_file(path, **kwargs):
     logger.info("Loading PyRoam")
     pyroam = PyRoam.from_path(path)
-    ankify(pyroam)
+    ankify(pyroam, **kwargs)
 
 
 def setup_models(overwrite=False):
