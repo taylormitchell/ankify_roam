@@ -8,56 +8,6 @@ from ankify_roam.roam import PyRoam, Cloze
 
 logger = logging.getLogger(__name__)
 
-class AnkiNote:
-    def __init__(self, type, fields, deck, uid="", tags=[]):
-        self.type = type
-        self.fields = fields
-        self.uid = uid
-        self.deck = deck
-        self.roam_tags = tags
-
-    def get_tags(self):
-        return [re.sub("\s","_",tag) for tag in self.roam_tags]
-
-    def to_dict(self, **kwargs):
-        fields = {}
-        for i, (field_name, field) in enumerate(self.fields.items()):
-            proc_cloze = True if i==0 else False
-            fields[field_name] = field.to_html(proc_cloze=proc_cloze, **kwargs) if field else ""
-        if "uid" in self.fields.keys():
-            fields["uid"] = self.uid
-        return {
-            "deckName": self.deck,
-            "modelName": self.type,
-            "fields": fields,
-            "tags": self.get_tags()
-        }
-
-    @staticmethod
-    def is_block_cloze(block):
-        return any([type(obj)==Cloze for obj in block.content])
-
-    @classmethod
-    def from_block(cls, block, deck, basic_model, cloze_model, basic_fields, cloze_fields):
-        """
-        Args:
-            block (BlockObject): 
-            deck (str): Deck
-            basic_model (str): Name of card type to upload basic cards to  
-            cloze_model (str): Name of card type to upload cloze cards to  
-            basic_fields (list of str): Field names of the basic card type
-            cloze_fields (list of str): Field names of the cloze card type
-        """
-        if cls.is_block_cloze(block):
-            type = cloze_model
-            fields = {n:f for n,f in zip_longest(
-                cloze_fields, [block], fillvalue="")}
-        else:
-            type = basic_model
-            fields = {n:f for n,f in zip_longest(
-                basic_fields, [block, block.children], fillvalue="")}
-        return cls(type, fields, deck, block.get("uid"), block.get_tags())
-
 def _create_request_dict(action, **params):
     return {'action': action, 'params': params, 'version': 6}
 
@@ -131,7 +81,6 @@ def update_model(model):
     }
     res_styling = _invoke("updateModelStyling", model=model_styling_update)
     return [res_template, res_styling]
-
 
 class AnkiConnectException(Exception):
     """Base class for exceptions in this module."""
