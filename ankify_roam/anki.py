@@ -3,8 +3,6 @@ import urllib.request
 import logging
 import traceback
 import re
-from itertools import zip_longest
-from ankify_roam.roam import PyRoam, Cloze
 
 logger = logging.getLogger(__name__)
 

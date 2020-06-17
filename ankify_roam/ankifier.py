@@ -2,7 +2,9 @@ import argparse
 import os
 import sys
 import logging
-from ankify_roam.roam import PyRoam
+import re
+from itertools import zip_longest
+from ankify_roam.roam import PyRoam, Cloze
 from ankify_roam import anki
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)

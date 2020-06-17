@@ -810,11 +810,6 @@ class TestAttribute(unittest.TestCase):
         self.assertListEqual(a,b)
 
 
-class TestAnkifyRoam(unittest.TestCase):
-    def test(self):
-        with self.assertLogs() as ctx:
-            ankifier.main("ankify_roam/tests/test_export.json")
-        self.assertFalse([r for r in ctx.records if r.levelno >= logging.WARNING])
 
 
 if __name__=="__main__":
