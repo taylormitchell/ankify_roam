@@ -1,1 +1,1 @@
-python akrm.py --pageref-cloze=base_only ~/Downloads
+python akrm.py add --pageref-cloze=base_only ~/Downloads

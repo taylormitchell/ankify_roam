@@ -13,12 +13,12 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=lo
 logger = logging.getLogger(__name__)
 
 
-def add(pyroam, deck="Default", basic_model="Roam Basic", cloze_model="Roam Cloze", tag_ankify="anki_note", pageref_cloze="outside"): 
+def add(pyroam, deck="Default", basic_model="Roam Basic", cloze_model="Roam Cloze", tag_ankify="ankify", pageref_cloze="outside"): 
     logger.info("Fetching blocks to ankify")
     blocks_to_ankify = pyroam.query(lambda b: tag_ankify in b.get_tags(inherit=False))
 
-    logger.info("Ankifying and uploading")
-    block_ankifier = BlockAnkifier(deck, basic_model, cloze_model, pageref_cloze)
+    logger.info(f"Ankifying and uploading {len(blocks_to_ankify)} blocks")
+    block_ankifier = BlockAnkifier(deck, basic_model, cloze_model, pageref_cloze, tag_ankify)
     for block in blocks_to_ankify:
         try:
             anki_note = block_ankifier.ankify(block, pageref_cloze=pageref_cloze)
@@ -52,20 +52,21 @@ def setup_models(overwrite=False):
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", basic_model="Roam Basic", cloze_model="Roam Cloze", pageref_cloze="outside"):
+    def __init__(self, deck="Default", basic_model="Roam Basic", cloze_model="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify"):
         self.deck = deck
         self.basic_model = basic_model
         self.cloze_model = cloze_model
         self.pageref_cloze = pageref_cloze
+        self.tag_ankify = tag_ankify
         self.field_names = {}
 
     def ankify(self, block, **kwargs):
-        default_model = self.basic_model if self._get_type(block)=="basic" else self.cloze_model
-        modelName = self._get_model(block) or default_model
-        deckName = self._get_deck(block) or self.deck
+        modelName = self._get_model(block)
+        deckName = self._get_deck(block)
         if modelName not in self.field_names.keys():
             self.field_names[modelName] = anki.get_field_names(modelName)
-        fields = self._block_to_fields(block, self.field_names[modelName], **kwargs)
+        model_type = self._get_model_type(modelName)
+        fields = self._block_to_fields(block, self.field_names[modelName], model_type, **kwargs)
         tags = block.get_tags()
         return {
             "deckName": deckName,
@@ -75,28 +76,43 @@ class BlockAnkifier:
         }
 
     def _get_model(self, block):
-        # TODO
-        return ""
+        # Search for assigned model
+        pat = f"""^\[\[{self.tag_ankify}\]\]:model=([\w\s]*)$"""
+        for tag in block.get_tags():
+            m = re.match(pat, tag)
+            if m:
+                return m.group(1)
+        # Otherwise infer from cloze markup
+        if any([type(obj)==Cloze for obj in block.content]):
+            return self.cloze_model
+        else:
+            return self.basic_model
 
     def _get_deck(self, block):
-        # TODO
-        return ""
+        pat = f"^\[\[{self.tag_ankify}\]\]:deck=(\w+)$"
+        for tag in block.get_tags():
+            m = re.match(pat, tag)
+            if m:
+                return m.group(1)
+        return self.deck
 
-    def _get_type(self, block):
-        # TODO: extract type from tags
-        if any([type(obj)==Cloze for obj in block.content]):
+    def _get_model_type(self, modelName):
+        # Infer from blocks assigned model name 
+        if re.search("[Cc]loze", modelName):
             return "cloze"
         else:
             return "basic"
 
-    def _block_to_fields(self, block, field_names, **kwargs):
-        if self._get_type(block)=="basic":
+    def _block_to_fields(self, block, field_names, model_type, **kwargs):
+        if model_type=="basic":
             blocks = [block, block.children] 
+            pc = lambda i: False
         else:
             blocks = [block]
+            pc = lambda i: i==0
         fields = {}
         for i, (fn, b) in enumerate(zip_longest(field_names, blocks)):
-            kwargs["proc_cloze"] = i==0
+            kwargs["proc_cloze"] = pc(i)
             fields[fn] = b.to_html(**kwargs) if b else "" 
         if "uid" in field_names:
             fields["uid"] = block.uid

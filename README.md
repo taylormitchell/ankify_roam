@@ -68,6 +68,13 @@ You can run `ankify_roam` on the Roam export zip, the json inside, or the folder
 
 ## Details
 
+- TODO: stuff which the package can't do
+    - empty cards
+    - delete cards from anki that have been deleted from roam
+    - change the deck (and type?) of a card after it's been uploaded 
+        - you _can_ change the fields though
+
+- All cloze types should have '[Cc]loze' somewhere in the name
 
 ### Marking up Roam
 
