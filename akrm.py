@@ -111,34 +111,42 @@ def cli():
             for k, v in signature.parameters.items()
             if v.default is not inspect.Parameter.empty
         }
-
-    default_args = get_default_args(add)
     parser = argparse.ArgumentParser(description='Import flashcards from Roam to Anki')
-    parser.add_argument('path',
+    subparsers = parser.add_subparsers(help='sub-command help')
+
+    # initialize
+    parser_init = subparsers.add_parser("init", help="Add Roam specific card types in Anki")
+    parser_init.add_argument('--overwrite', type=bool, default=False)
+    parser_init.set_defaults(func=setup_models)
+
+    # add roam to anki
+    default_args = get_default_args(add)
+    parser_add = subparsers.add_parser("add", description='Add cards in roam export to Anki')
+    parser_add.add_argument('path',
                         metavar='path',
                         type=str,
                         help='the path to list')
-    parser.add_argument('--deck', default=default_args['deck'],
+    parser_add.add_argument('--deck', default=default_args['deck'],
                         type=str, action='store', 
                         help='default deck')
-    parser.add_argument('--basic_model', default=default_args['basic_model'], 
+    parser_add.add_argument('--basic_model', default=default_args['basic_model'], 
                         type=str, action='store', 
                         help='default deck')
-    parser.add_argument('--cloze_model', default=default_args['cloze_model'],
+    parser_add.add_argument('--cloze_model', default=default_args['cloze_model'],
                         type=str, action='store', 
                         help='default deck')
-    parser.add_argument('--pageref-cloze', default=default_args['pageref_cloze'],
+    parser_add.add_argument('--pageref-cloze', default=default_args['pageref_cloze'],
                         type=str, action='store', 
                         choices=["inside", "outside", "base_only"],
                         help='where to place clozes around page references')
-    parser.add_argument('--tag-ankify', default=default_args['tag_ankify'],
+    parser_add.add_argument('--tag-ankify', default=default_args['tag_ankify'],
                         type=str, action='store', 
                         help='default deck')
+    parser_add.set_defaults(func=add_from_file)
 
-    kwargs = vars(parser.parse_args())
-    path = kwargs.pop("path")
-    add_from_file(path, **kwargs)
-
+    args = vars(parser.parse_args())
+    func = args.pop("func")
+    func(**args)
 
 if __name__=="__main__":
     cli()
