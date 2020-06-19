@@ -4,6 +4,7 @@ import sys
 import logging
 import re
 import inspect
+import string
 from itertools import zip_longest
 from ankify_roam.roam import PyRoam, Cloze
 from ankify_roam import anki
@@ -12,6 +13,8 @@ from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128) 
+                               if chr(i) not in string.printable])
 
 def add(pyroam, deck="Default", basic_model="Roam Basic", cloze_model="Roam Cloze", tag_ankify="ankify", pageref_cloze="outside"): 
     logger.info("Fetching blocks to ankify")
@@ -113,7 +116,9 @@ class BlockAnkifier:
         fields = {}
         for i, (fn, b) in enumerate(zip_longest(field_names, blocks)):
             kwargs["proc_cloze"] = pc(i)
-            fields[fn] = b.to_html(**kwargs) if b else "" 
+            text = b.to_html(**kwargs) if b else "" 
+            text = re.sub("[%s]" % ASCII_NON_PRINTABLE, "", text)
+            fields[fn] = text
         if "uid" in field_names:
             fields["uid"] = block.uid
         return fields

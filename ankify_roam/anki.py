@@ -35,14 +35,10 @@ def upload_all(anki_dicts):
 
 def upload(anki_dict):
     note_id = _get_note_id(anki_dict)
-    try:
-        if note_id:
-            return _update_note(note_id, anki_dict)
-        else:
-            return _add_note(anki_dict)
-    except Exception as e:
-        logger.error(f"Encountered the error while uploading uid='{anki_dict['fields']['uid']}'")
-        logger.debug(e, exc_info=1)
+    if note_id:
+        return _update_note(note_id, anki_dict)
+    else:
+        return _add_note(anki_dict)
             
 def _add_note(anki_dict):
     return _invoke("addNote", note=anki_dict)

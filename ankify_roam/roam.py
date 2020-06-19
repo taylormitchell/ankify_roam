@@ -11,6 +11,7 @@ RE_TAG = r"#[\w\-_@]+"
 RE_PAGE_REF = "\[\[[^\[\]]*\]\]"
 RE_SPLIT_OR = "(?<!\\\)\|"
 
+
 logger = logging.getLogger(__name__)
 
 class PyRoam:
