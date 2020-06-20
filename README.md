@@ -151,6 +151,7 @@ Now your cloze markup will look like this:
 <span style="color:#DDDCDC">{</span>Paris<span style="color:#DDDCDC">}</span> is the capital and most populour city of <span style="color:#DDDCDC">{</span>France<span style="color:#DDDCDC">}</span> #ankify
 </blockquote>
 
+<span style="color:#DDDCDC">{</span>Paris<span style="color:#DDDCDC">}</span> is the capital and most populour city of <span style="color:#DDDCDC">{</span>France<span style="color:#DDDCDC">}</span> #ankify
 
 
 TODO: fancy cloze markup
