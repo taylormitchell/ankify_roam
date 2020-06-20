@@ -2,6 +2,36 @@
 
 A command-line tool for importing flashcards from Roam into Anki.
 
+<table border=1px>
+<tr>
+    <td width=350px>
+        <b>Geography</b>
+        <ul>
+        <li>What is the <span data-link-title="capital"><span class="rm-page-ref-brackets">[[</span><span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">capital</span><span class="rm-page-ref-brackets">]]</span></span> of <span data-link-title="France"><span class="rm-page-ref-brackets">[[</span><span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">France</span><span class="rm-page-ref-brackets">]]</span></span>? <span tabindex="-1" data-tag="ankify" class="rm-page-ref rm-page-ref-tag">#ankify</span></li>
+        <ul><li>Paris</li></ul>
+        </ul>
+<tr>
+    <td width=350px align="center">
+        <div>|</div>
+        <div>Ankify!</div>
+        <div>↓</div>
+    </td>
+<tr>
+<tr>
+    <td width=350px>
+        <div align="center">
+        <div>What is the <span data-link-title="capital"><span class="rm-page-ref-brackets">[[</span><span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">capital</span><span class="rm-page-ref-brackets">]]</span></span> of <span data-link-title="France"><span class="rm-page-ref-brackets">[[</span><span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">France</span><span class="rm-page-ref-brackets">]]</span></span>? <span tabindex="-1" data-tag="ankify" class="rm-page-ref rm-page-ref-tag">#ankify</div>
+        <hr id=answer>
+        <div>Paris</div>
+        <div>
+    </td>
+</tr>
+<tr>
+    <td>Tags: capital, France, Geography</td>
+</tr>
+</table>
+
+
 ## Installation
 
 ```
@@ -19,31 +49,99 @@ pip install ankify_roam
 
 ## Getting Started
 
-In Roam, tag blocks which you want to import to anki with #ankify. By default, the block is converted to a Basic card:
-- What is the capitol of France? #ankify
+### 1. Ankify Roam
+In Roam, tag blocks which you want to import to anki with #ankify:
+
+
+- What is the capital of France? #ankify
     - Paris
 
-If you add a cloze deletion with curly brackets, then it'll become a Cloze card:
-- {Paris} is the capital of France #ankify 
 
-When you're ready to ankify your roam, export your roam db: 
+If the tagged block includes cloze deletion, then it'll become a Cloze card. You can explicitely define the cloze ids or have ankify_roam infer them. Here's an example of cloze markup in Roam and what it becomes in Anki:
+
+<table width=500px>
+<tr>
+    <td>
+        <div>{1:Paris} is the capital and most populous city of {2:France}, with a estimated population of {2,148,271} residents as of {2020}, in an area of {105} square kilometres #ankify</div>
+    </td>
+</tr>
+<tr>
+    <td align="center">↓<td>
+</tr>
+<tr>
+    <td>
+        <div>{{c1:Paris}} is the capital and most populous city of {{c2:France}}, with a estimated population of {{c3:2,148,271}} residents as of {{c4:2020}}, in an area of {{c5:105}} square kilometres #ankify</div>
+    </td>
+</tr>
+</table>
+
+### 2. Export Roam
+
+Once you've tagged all the blocks to ankify, export your Roam: 
 1. Click on the ... in the top right corner
-2.  Select Export All > JSON > Export All
+2. Select Export All > JSON > Export All
+3. Unzip the downloaded file.
 
-Open Anki.
+### 3. Open Anki
 
-Run the following to create 2 new card types in Anki: 'Roam Basic' and 'Roam Cloze'
-```
-ankify_roam setup
-```
+Open Anki. Make sure you've installed the anki_connect plugin.
 
-Run ankify_roam on your Roam export to create your anki cards:
+### 4. Create Roam specific card types 
+
+Running the following will create 2 new card types in anki for your Roam flashcards: 'Roam Basic' and 'Roam Cloze'
 ```
-ankify_roam Roam-Export-1592174304830.zip
+akrm init
+```
+### 5. Add the Roam export to Anki
+
+```
+akrm add my_roam.json
 ```
 The blocks you tagged in Roam should now be in Anki!
 
-### Updating and creating new cards
+### 6. Create new cards and edit existing ones
+
+When you tag new blocks to ankify or edit ones you've already imported to Anki, you'll need to export your database again, and then rerun `akrm add` on the export. This will add the newly tagged blocks and update the existing ones.  
+
+## Features
+
+Instead of specifying the Roam export json, you can specify the exported zip file or give the directory it's in and ankify_roam will add the latest export in there.
+```
+akrm add Roam-Export-1592525007321.zip
+akrm add ~/Downloads
+```
+
+Use a different tag than #ankify to flag blocks. Just tell ankify_roam what it is:
+```
+akrm add --tag-ankify=flashcard my_roam.json
+```  
+
+Create your own Anki note types and tell ankify_roam to use those instead of 'Roam Cloze' and 'Roam Basic':
+```
+akrm add --default-basic="My Basic" --default-cloze="My Cloze" my_roam.json
+``` 
+Same thing for the deck which the cards are added to:
+```
+akrm add --deck="Biology" my_roam.json
+```
+You can also specify the deck and note type on a per-card basis using tags/page-refs. 
+
+- 2+2={4} #ankify #[[[[akrm]]:deck=Math]] #[[[[akrm]]:model=My Cloze]]
+
+If a block specifies the deck and/or model like the above, then ankify_roam will use those instead of the default options you provid at the command line. 
+
+
+TODO: block refs
+
+TODO: images 
+
+## Fancy stuff
+
+TODO: fancy cloze markup
+
+TODO: pageref_cloze
+
+TODO: styling roam. hide tags. hide brackets. Hide bullets. probably need separate page.
 
 ## Documentation 
 
@@ -63,23 +161,43 @@ You can run `ankify_roam` on the Roam export zip, the json inside, or the folder
 
 --default-cloze
 
-### Examples
+
+<style>
+/*
+table {
+    width:100%;
+    border:none;
+}
+*/
+.table-cell {
+    width:350px;
+}
+.card {
+ font-family: arial;
+ font-size: 20px;
+ text-align: center;
+ color: black;
+ background-color: white;
+}
 
 
-## Details
+.centered-block{
+display: inline-block;
+align: center;
+text-align: left;
+marge:auto;
+}
 
-- TODO: stuff which the package can't do
-    - empty cards
-    - delete cards from anki that have been deleted from roam
-    - change the deck (and type?) of a card after it's been uploaded 
-        - you _can_ change the fields though
+.rm-page-ref-brackets {
+    color: #a7b6c2;
+}
 
-- All cloze types should have '[Cc]loze' somewhere in the name
+.rm-page-ref-link-color {
+    color: #106ba3;
+}
 
-### Marking up Roam
+.rm-page-ref-tag {
+    color: #a7b6c2;
+}
 
-#### Cloze markup
-
-#### Child blocks
-
-
+</style>
