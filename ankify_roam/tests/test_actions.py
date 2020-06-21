@@ -1,7 +1,7 @@
 import unittest
 import json
 import logging
-from ankify_roam import akrm, roam, anki
+from ankify_roam import actions, roam, anki
 from ankify_roam.tests.roam_export import ROAM_JSON
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
 

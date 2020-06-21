@@ -1,6 +1,6 @@
 import unittest 
 import logging
-from ankify_roam import anki, roam, akrm
+from ankify_roam import anki, roam
 from ankify_roam.roam import PyRoam, Attribute, Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, RoamObjectList 
 
 # TODO: all RoamObject types should implement the interface
