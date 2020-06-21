@@ -45,7 +45,6 @@ code {
 
 .rm-page-ref-brackets {
     color: #a7b6c2;
-    display: none;
 }
 
 .rm-page-ref-link-color {

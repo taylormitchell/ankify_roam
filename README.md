@@ -2,7 +2,7 @@
 
 A command-line tool for importing flashcards from Roam into Anki.
 
-<table>
+<table border=0px>
 <tr>
 <td width=300px>
     <img src="images/roam_screenshot.png">
@@ -101,7 +101,7 @@ Use a different tag than #ankify:
 akrm add --tag-ankify=flashcard my_roam.json
 ```  
 
-Use different note types than 'Roam Cloze' and 'Roam Basic':
+Use different note types than 'Roam Cloze' and 'Roam Basic'. See [TODO] for more details on creating compatible note types. 
 ```
 akrm add --default-basic="My Basic" --default-cloze="My Cloze" my_roam.json
 ``` 
@@ -113,31 +113,19 @@ Specify the deck and note type on a per-card basis:
 
 - 2+2={4} #[[[[ankify]]:deck=Math]] #[[[[ankify]]:model=My Cloze]]
 
+TODO: cover all features in this section so that I don't need a separate documentation section
 
 ## Fancy stuff
 
 ### Styling the cloze markup
 
-Instead of using curly brackets to define, you can use page links:
+You can also use curly bracket page links to define cloze deletions:
 
-.rm-page-ref-brackets {
-    color: #a7b6c2;
-}
-
-.rm-page-ref-link-color {
-    color: #106ba3;
-}
-
-.rm-page-ref-tag {
-    color: #a7b6c2;
-}
-<blockquote>
-[[(]]Paris[[)]] is the capital and most populous city of [[(]]France[[)]] #ankify
-</blockquote>
+<img src="images/page_link_clozes.png" width=600px>
 
 The nice thing about doing it this way is that you can now style the cloze markup:
-1. Press `Ctrl-C Ctrl-B` in Roam to hide page link square brackets.
-2. Add this css to your [[roam/css]] page to change the color of the curly brackets:
+1. Press `Ctrl-C Ctrl-B` in Roam to hide the square brackets surrounding page links.
+2. Add this css to your [[roam/css]] page (how to [video here](https://www.youtube.com/watch?v=UY-sAC2eGyI)) to change the color of the curly brackets:
 ```css
 span[data-link-title="{"] > span,
 span[data-link-title="}"] > span
@@ -146,62 +134,54 @@ span[data-link-title="}"] > span
 }
 ```
 
-Now your cloze markup will look like this:
-<blockquote>
-<span style="color:#DDDCDC">{</span>Paris<span style="color:#DDDCDC">}</span> is the capital and most populour city of <span style="color:#DDDCDC">{</span>France<span style="color:#DDDCDC">}</span> #ankify
-</blockquote>
+Now you can #ankify Roam to your hearts content without #uglifying it too: 
 
-<span style="color:#DDDCDC">{</span>Paris<span style="color:#DDDCDC">}</span> is the capital and most populour city of <span style="color:#DDDCDC">{</span>France<span style="color:#DDDCDC">}</span> #ankify
+<img src="images/page_link_clozes_better.png" width=600px>
 
 
-TODO: fancy cloze markup
+### Uncloze Namespaces
 
-TODO: pageref_cloze
+When you add a cloze deletion around a namespaced page reference, you have the option to leave the namespace out of it: 
+```
+ankify_roam add --pageref-cloze=base_only my_roam.json
+```
 
-TODO: styling roam. hide tags. hide brackets. Hide bullets. probably need separate page.
+With that option, a cloze deletion like this in Roam...
 
-TODO: how to create your own note type
+<img src="images/pageref_cloze_roam.png" width=600px>
 
-## Documentation 
+...will look like this in Anki:
 
-### Description
-
-You can run `ankify_roam` on the Roam export zip, the json inside, or the folder containing the zip export:
-
-- from json: `ankify_roam roam_export.json`
-- from zip: `ankify_roam Roam-Export-1592174304830.zip`
-- latest zip in folder: `ankify_roam ~/Downloads/`
-
-### Options
-
---default-deck
-
---default-basic
-
---default-cloze
+<img src="images/pageref_cloze_anki.png" width=500px>
 
 
-<style>
-/*
-table {
-    width:100%;
-    border:none;
-}
-*/
-.table-cell {
-    width:350px;
-}
+### Creating and editing Anki note types
 
-.rm-page-ref-brackets {
-    color: #a7b6c2;
-}
+#### Include a "uid" field
 
-.rm-page-ref-link-color {
-    color: #106ba3;
-}
+When creating your own note type, the most important thing you need to do is create a field called "uid". 
 
+This field is used by ankify_roam to remember which block in Roam corresponds with which note in Anki. Without this field, when you make a change to a block in Roam, ankify_roam will add that block as a new card in Anki rather than updating the existing one.
+
+#### CSS suggestions
+
+Hide all Roam tags 
+```
 .rm-page-ref-tag {
-    color: #a7b6c2;
+    display: none;
 }
+```
 
-</style>
+Hide page reference brackets
+```
+.rm-page-ref-brackets {
+    display: none;
+}
+```
+
+Hide bullet points simulate "View as Document" in Roam:
+```
+li {
+    list-style-type: none;
+}
+```

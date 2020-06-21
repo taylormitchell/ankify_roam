@@ -137,7 +137,7 @@ def cli():
 
     # initialize
     parser_init = subparsers.add_parser("init", help="Add Roam specific card types in Anki")
-    parser_init.add_argument('--overwrite', type=bool, default=False)
+    parser_init.add_argument('--overwrite', action="store_true")
     parser_init.set_defaults(func=setup_models)
 
     # add roam to anki
