@@ -27,8 +27,8 @@ pip install ankify_roam
 ## Requirements
 
 - Python >=3.6
-- Anki
-- AnkiConnect
+- [Anki](https://apps.ankiweb.net/)
+- [AnkiConnect](https://github.com/FooSoft/anki-connect)
     - Open the Install Add-on dialog by selecting Tools | Add-ons | Browse & Install in Anki.
     - Input 2055492159 into the text box labeled Code and press the OK button to proceed.
     - Restart Anki when prompted to do so in order to complete the installation of AnkiConnect.
@@ -69,7 +69,7 @@ Once you've tagged all the blocks to ankify, export your Roam:
 
 ### 3. Open Anki
 
-Open Anki. Make sure you're on the profile you'd like to add the cards to and that you've installed the anki_connect plugin.
+Open Anki. Make sure you're on the profile you'd like to add the cards to and that you've installed the [AnkiConnect](https://github.com/FooSoft/anki-connect) add-on.
 
 ### 4. Create Roam specific card types 
 
@@ -88,26 +88,26 @@ The blocks you tagged in Roam should now be in Anki!
 
 When you tag new blocks to ankify or edit ones you've already imported to Anki, you'll need to export your database again, and then rerun `ankify_roam add` on the export. This will add any newly tagged blocks and update the existing ones with any changes you've made.  
 
-## Features
+## Options
 
 Instead of specifying the Roam export json, you can specify the exported zip file or give the directory it's in and ankify_roam will add the latest export in there.
 ```
-akrm add Roam-Export-1592525007321.zip
-akrm add ~/Downloads
+ankify_roam add Roam-Export-1592525007321.zip
+ankify_roam add ~/Downloads
 ```
 
 Use a different tag than #ankify:
 ```
-akrm add --tag-ankify=flashcard my_roam.json
+ankify_roam add --tag-ankify=flashcard my_roam.json
 ```  
 
 Use different note types than 'Roam Cloze' and 'Roam Basic'. See [TODO] for more details on creating compatible note types. 
 ```
-akrm add --default-basic="My Basic" --default-cloze="My Cloze" my_roam.json
+ankify_roam add --default-basic="My Basic" --default-cloze="My Cloze" my_roam.json
 ``` 
 Same thing for the deck to add to:
 ```
-akrm add --deck="Biology" my_roam.json
+ankify_roam add --deck="Biology" my_roam.json
 ```
 Specify the deck and note type on a per-card basis: 
 
@@ -161,9 +161,9 @@ With that option, a cloze deletion like this in Roam...
 
 When creating your own note type, the most important thing you need to do is create a field called "uid". 
 
-This field is used by ankify_roam to remember which block in Roam corresponds with which note in Anki. Without this field, when you make a change to a block in Roam, ankify_roam will add that block as a new card in Anki rather than updating the existing one.
+This field is used by ankify_roam to remember which block in Roam corresponds with which note in Anki. Without this field, when you make a change to a block in Roam, ankify_roam will add that block as a new note in Anki rather than updating the existing one.
 
-#### CSS suggestions
+#### Suggested CSS modifications
 
 Hide all Roam tags 
 ```
@@ -179,7 +179,7 @@ Hide page reference brackets
 }
 ```
 
-Hide bullet points simulate "View as Document" in Roam:
+Hide bullet points to simulate "View as Document" in Roam:
 ```
 li {
     list-style-type: none;
