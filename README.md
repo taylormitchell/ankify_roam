@@ -1,6 +1,6 @@
 # Ankify Roam
 
-A command-line tool for importing flashcards from [Roam](https://roamresearch.com/) into [Anki](https://apps.ankiweb.net/).
+A command-line tool which brings flashcards created in [Roam](https://roamresearch.com/) to [Anki](https://apps.ankiweb.net/).
 
 <table border=0px>
 <tr>
@@ -16,6 +16,23 @@ A command-line tool for importing flashcards from [Roam](https://roamresearch.co
 </tr>
 </table>
 
+## Main Features
+
+- Create Front/Back or Cloze deletion flashcards. 
+- Edit flashcards in Roam and bring those changes over to Anki. 
+- Supports block references, images, and aliases.
+- Add style to your Anki cards just like in Roam.
+
+## Contents
+1. [What it is](#What-it-is)
+1. [Main Features](#Main-Features)
+1. [Contents](#Contents)
+1. [Installation](#Installation)
+1. [Requirements](#Requirements)
+1. [Basic Usage](#Basic-Usage)
+1. [Options](#Options)
+1. [Customizations](#Modifications)
+
 
 
 ## Installation
@@ -28,37 +45,38 @@ pip install ankify_roam
 
 - Python >=3.6
 - [Anki](https://apps.ankiweb.net/)
-- [AnkiConnect](https://github.com/FooSoft/anki-connect)
-    - Open the Install Add-on dialog by selecting Tools | Add-ons | Browse & Install in Anki.
-    - Input 2055492159 into the text box labeled Code and press the OK button to proceed.
-    - Restart Anki when prompted to do so in order to complete the installation of AnkiConnect.
+- [AnkiConnect](https://github.com/FooSoft/anki-connect) (add-on for Anki)
 
-## Getting Started
+## Basic Usage
 
 ### 1. Ankify Roam
 
 Define a card by adding the #ankify tag. By default the block will be converted into a Basic card with the block content on the front and it's children on the back: 
 
-- What is the capital of France? #ankify
-    - Paris
+> - What is the capital of France? #ankify
+>     - Paris
 
-You can also create cloze deletions with curly brackets. If the block tagged with #ankify has any cloze deletions, then it'll be converted to a Cloze card. You can explicitely define the cloze ids or have ankify_roam infer them. Here's an example of cloze markup in Roam and what it becomes in Anki:
+You can also create cloze deletions with curly brackets. Whenever a block tagged with #ankify has any cloze deletions, ankify_roam converts it to a Cloze note type. 
 
-<table width=500px>
+<em>{1:Paris} is the capital and most populous city of {2:France}, with a estimated population of {2,148,271} residents #ankify</em>
+
+You can explicitely define the cloze ids or have ankify_roam infer them. Here's an example of cloze markup in Roam and what it becomes in Anki:
+
+
+<table border=0px>
 <tr>
-    <td>
+<td width=300px>
         <div>{1:Paris} is the capital and most populous city of {2:France}, with a estimated population of {2,148,271} residents #ankify</div>
-    </td>
-</tr>
-<tr>
-    <td align="center">↓<td>
-</tr>
-<tr>
-    <td>
+</td>
+<td><div>→</div></td>
+<td width=300px>
+    <div>
         <div>{{c1::Paris}} is the capital and most populous city of {{c2::France}}, with a estimated population of {{c3::2,148,271}} residents #ankify</div>
-    </td>
+    </div>
+</td>
 </tr>
 </table>
+
 
 ### 2. Export Roam
 
@@ -73,7 +91,7 @@ Open Anki. Make sure you're on the profile you'd like to add the cards to and th
 
 ### 4. Create Roam specific card types 
 
-Running the following will create 2 new card types in anki for your Roam flashcards: 'Roam Basic' and 'Roam Cloze'
+**First time only**: Run the following to create 2 new card types in anki for your Roam flashcards: 'Roam Basic' and 'Roam Cloze'
 ```
 ankify_roam init
 ```
@@ -90,56 +108,36 @@ When you tag new blocks to ankify or edit ones you've already imported to Anki, 
 
 ## Options
 
-Instead of specifying the Roam export json, you can specify the exported zip file or give the directory it's in and ankify_roam will add the latest export in there.
+The Roam export path can refer to the json, the zip containing the json, or the directory which the zip is in. When a directory is given, ankify_roam find and add the latest export in it.
 ```
+ankify_roam add my_roam.json
 ankify_roam add Roam-Export-1592525007321.zip
 ankify_roam add ~/Downloads
 ```
 
-Use a different tag than #ankify:
+#### Ankify Tag, Default Deck, and Default Models
+
+Use a different tag than #ankify to flag flashcards:
 ```
 ankify_roam add --tag-ankify=flashcard my_roam.json
 ```  
 
-Use different note types than 'Roam Cloze' and 'Roam Basic'. See [TODO] for more details on creating compatible note types. 
+Use different note types than 'Roam Cloze' and 'Roam Basic' (see [Custom Anki note types](#Custom-Anki-note-types) for more details) 
 ```
 ankify_roam add --default-basic="My Basic" --default-cloze="My Cloze" my_roam.json
 ``` 
-Same thing for the deck to add to:
+Same thing for the deck to add the flashcards to:
 ```
 ankify_roam add --deck="Biology" my_roam.json
 ```
+
+#### Block Level Settings   
+
 Specify the deck and note type on a per-card basis: 
 
 - 2+2={4} #[[[[ankify]]:deck=Math]] #[[[[ankify]]:model=My Cloze]]
 
-TODO: cover all features in this section so that I don't need a separate documentation section
-
-## Fancy stuff
-
-### Styling the cloze markup
-
-You can also use curly bracket page links to define cloze deletions:
-
-<img src="images/page_link_clozes.png" width=600px>
-
-The nice thing about doing it this way is that you can now style the cloze markup:
-1. Press `Ctrl-C Ctrl-B` in Roam to hide the square brackets surrounding page links.
-2. Add this css to your [[roam/css]] page (how to [video here](https://www.youtube.com/watch?v=UY-sAC2eGyI)) to change the color of the curly brackets:
-```css
-span[data-link-title="{"] > span,
-span[data-link-title="}"] > span
-{
-  color: #DDDCDC !important;
-}
-```
-
-Now you can #ankify Roam to your hearts content without #uglifying it too: 
-
-<img src="images/page_link_clozes_better.png" width=600px>
-
-
-### Uncloze Namespaces
+#### Uncloze Namespace
 
 When you add a cloze deletion around a namespaced page reference, you have the option to leave the namespace out of it: 
 ```
@@ -154,34 +152,64 @@ With that option, a cloze deletion like this in Roam...
 
 <img src="images/pageref_cloze_anki.png" width=500px>
 
+Note that instead of the entire [[Design Pattern/Adaptor Pattern]] page reference getting cloze-deleted, only the base name in the page title is.
 
-### Creating and editing Anki note types
+TODO: cover all features in this section so that I don't need a separate documentation section
 
-#### Include a "uid" field
+## Customizations
 
-When creating your own note type, the most important thing you need to do is create a field called "uid". 
+### Custom Anki note types
 
-This field is used by ankify_roam to remember which block in Roam corresponds with which note in Anki. Without this field, when you make a change to a block in Roam, ankify_roam will add that block as a new note in Anki rather than updating the existing one.
+The Anki notes created by ankify_roam use very similar html elements and classes to Roam. You should be able to bring over much of the CSS you have for your Roam over to Anki.  
 
-#### Suggested CSS modifications
+If you do want to change the styling of your Anki notes, I'd suggest creating and then modifying the 'Roam Basic' and 'Roam Cloze' types provided, or making copies of those note types. 
 
-Hide all Roam tags 
+To create the 'Roam Basic' and 'Roam Cloze' note types, run the following while Anki is open:
 ```
-.rm-page-ref-tag {
-    display: none;
+ankify_roam init
+``` 
+If you want to make a copy of these type, do the following in Anki:
+- Go to Tools > Manage Note Types
+- Click "Add"
+- Select "Clone: Roam Basic" (or "Clone: Roam Cloze")
+
+#### Style 
+
+Whether you're modifying 'Roam Basic' and 'Roam Cloze' directly or modifying copies of them, you can change the CSS without worrying about compatibility issues 
+
+If you want to change the note type fields, there are a few things to keep in mind: 
+
+#### Fields
+
+##### The "uid" field
+The "uid" field is used by ankify_roam to remember which block in Roam corresponds with which note in Anki. Without this field, when you make a change to a block in Roam, ankify_roam will add that block as a new note in Anki rather than updating the existing one.
+
+##### Blocks to Anki fields
+When ankify_roam is converting a block into an Anki note, it takes the content of the block and places it into the first field of the Anki note. In the case of a Basic type, additionally the children of the block are added to the second field of the Anki note. 
+
+
+### Styling cloze deletions in Roam
+
+You can also use curly bracket page links to define cloze deletions:
+
+<img src="images/page_link_clozes.png" width=600px>
+
+The nice thing about doing it this way is that you can now style the cloze markup. 
+
+For example, you can make the cloze brackets only faintly visible by:
+1. Pressing `Ctrl-C Ctrl-B` in Roam to hide the square brackets surrounding page links.
+2. Adding this css to your [[roam/css]] page (how to [video here](https://www.youtube.com/watch?v=UY-sAC2eGyI)) to change the color of the curly brackets:
+```css
+span[data-link-title="{"] > span,
+span[data-link-title="}"] > span
+{
+  color: #DDDCDC !important;
 }
 ```
 
-Hide page reference brackets
-```
-.rm-page-ref-brackets {
-    display: none;
-}
-```
+Now the block shown above will look like this: 
 
-Hide bullet points to simulate "View as Document" in Roam:
-```
-li {
-    list-style-type: none;
-}
-```
+<img src="images/page_link_clozes_better.png" width=600px>
+
+
+
