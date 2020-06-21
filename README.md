@@ -16,6 +16,15 @@ A command-line tool which brings flashcards created in [Roam](https://roamresear
 </tr>
 </table>
 
+<div style="width: 100%; overflow: hidden;">
+    <div style="width: 300px; float: left;">
+        <img src="images/roam_screenshot.png">
+    </div>
+    <div style="width: 300px; float: left;">
+        <img src="images/anki_screenshot.png">
+    </div>
+</div>
+
 ## Main Features
 
 - Create Front/Back or Cloze deletion flashcards. 
@@ -51,25 +60,25 @@ pip install ankify_roam
 
 ### 1. Ankify Roam
 
-Define a card by adding the #ankify tag. By default the block will be converted into a Basic card with the block content on the front and it's children on the back: 
+Define a card by adding the #ankify tag. By default the block will be converted into a Basic note type with the block content on the front and it's children on the back: 
 
 > - What is the capital of France? #ankify
 >     - Paris
 
-You can also create cloze deletions with curly brackets. Whenever a block tagged with #ankify has any cloze deletions, ankify_roam converts it to a Cloze note type. 
+Use curly brackets to define cloze deletions. Whenever a block tagged with #ankify includes a cloze deletion, ankify_roam converts it to a Cloze note type. 
 
-<em>{1:Paris} is the capital and most populous city of {2:France}, with a estimated population of {2,148,271} residents #ankify</em>
+> {Paris} is the capital and most populous city of {France}, with a estimated population of {2,148,271} residents #ankify
 
-You can explicitely define the cloze ids or have ankify_roam infer them. Here's an example of cloze markup in Roam and what it becomes in Anki:
+You can explicitely define the cloze ids or have ankify_roam infer them. Here's an example showing what cloze markup in Roam becomes in Anki:
 
 
 <table border=0px>
 <tr>
-<td width=300px>
+<td>
         <div>{1:Paris} is the capital and most populous city of {2:France}, with a estimated population of {2,148,271} residents #ankify</div>
 </td>
 <td><div>→</div></td>
-<td width=300px>
+<td>
     <div>
         <div>{{c1::Paris}} is the capital and most populous city of {{c2::France}}, with a estimated population of {{c3::2,148,271}} residents #ankify</div>
     </div>
