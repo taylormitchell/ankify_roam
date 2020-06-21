@@ -119,10 +119,10 @@ class RoamObjectList(RoamInterface, list):
     @classmethod
     def find_and_replace(cls, string, *args, **kwargs):
         roam_object_types_in_parse_order = [
+            CodeBlock,
             Cloze, 
             Image,
             Alias,
-            CodeBlock,
             Checkbox,
             View,
             Button,
