@@ -63,10 +63,14 @@ def create_model(model):
     return _invoke("createModel", **model) 
 
 def update_model(model):
+    card_templates = model["cardTemplates"]
+    names = [ct.pop("Name") for ct in card_templates]
     model_template_update = {
         "name": model["modelName"],
-        "templates": {t["Name"]: {"Front":t["Front"], "Back":["Back"]} 
-                      for t in model["cardTemplates"]}
+        "templates": {
+            name: card_template 
+            for name, card_template in zip(names, card_templates)
+            }
     }
     res_template = _invoke("updateModelTemplates", model=model_template_update)
     model_styling_update = {
@@ -75,6 +79,9 @@ def update_model(model):
     }
     res_styling = _invoke("updateModelStyling", model=model_styling_update)
     return [res_template, res_styling]
+
+def get_model_styling(model_name):
+    return _invoke("modelStyling", modelName=model_name)
 
 def load_profile(name):
     return _invoke("loadProfile", name=name)
