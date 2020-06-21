@@ -1,6 +1,6 @@
 # Ankify Roam
 
-A command-line tool for importing flashcards from Roam into Anki.
+A command-line tool for importing flashcards from [Roam](https://roamresearch.com/) into [Anki](https://apps.ankiweb.net/).
 
 <table border=0px>
 <tr>
