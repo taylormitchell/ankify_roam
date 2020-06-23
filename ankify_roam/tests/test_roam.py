@@ -1,11 +1,11 @@
 import unittest 
 import logging
 from ankify_roam import anki, roam
-from ankify_roam.roam import PyRoam, Attribute, Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, RoamObjectList 
+from ankify_roam.roam import RoamGraph, Attribute, Block, CodeBlock, View, Cloze, Alias, Checkbox, Button, PageRef, PageTag, BlockRef, Url, Image, String, BlockContent 
 
 # TODO: all RoamObject types should implement the interface
 
-class TestPyRoam(unittest.TestCase):
+class TestRoamGraph(unittest.TestCase):
     def setUp(self):
         pages = [ 
             {
@@ -50,7 +50,7 @@ class TestPyRoam(unittest.TestCase):
               "edit-email": "taylor.j.mitchell@gmail.com"
             }
         ]
-        self.roam_db = PyRoam(pages)
+        self.roam_db = RoamGraph(pages)
 
     def test_get_tags(self):
         block = self.roam_db.get("L7EuhRiXa")
@@ -64,7 +64,7 @@ class TestPyRoam(unittest.TestCase):
         self.assertSetEqual(a,b)
 
 
-class TestRoamObjectList(unittest.TestCase):
+class TestBlockContent(unittest.TestCase):
     def test_find_and_replace(self):
         """
         Roam Object Coverage
@@ -81,8 +81,8 @@ class TestRoamObjectList(unittest.TestCase):
         """
         # Test 1 
         string = "{{[[TODO]]}} something [this]([[This]]) [[Saturday]] about ((ZtmwW4k32)) #Important"
-        a = RoamObjectList.from_string(string)
-        b = RoamObjectList([
+        a = BlockContent.from_string(string)
+        b = BlockContent([
             Checkbox(False),
             String(" something "),
             Alias("this",PageRef("This")),
@@ -103,16 +103,16 @@ class TestRoamObjectList(unittest.TestCase):
             "www.google.com",
             "[[page]]",
             "((E-j9hXq0m))```"])
-        a = RoamObjectList.from_string(string)
-        b = RoamObjectList([
+        a = BlockContent.from_string(string)
+        b = BlockContent([
             CodeBlock("www.google.com\n[[page]]\n((E-j9hXq0m))","clojure"),
         ])
         self.assertListEqual(a, b)
 
         # Test 3
         string = "Some block refs: ((5xB8JO-xg)) #temp #[[anki_note]]"
-        a = RoamObjectList.from_string(string)
-        b = RoamObjectList([
+        a = BlockContent.from_string(string)
+        b = BlockContent([
             String("Some block refs: "), 
             BlockRef("5xB8JO-xg"),
             String(" "), 
@@ -125,7 +125,7 @@ class TestRoamObjectList(unittest.TestCase):
 
     def test_get_tags(self):
         string = "Something with [[page refs]] and #some #[[tags]]"
-        tags = sorted(RoamObjectList.from_string(string).get_tags())
+        tags = sorted(BlockContent.from_string(string).get_tags())
         self.assertListEqual(tags, ["page refs","some","tags"])
 
 
@@ -281,7 +281,7 @@ class TestImage(unittest.TestCase):
     def test_find_and_replace(self):
         string = "something with an ![](image.png) in it"
         a = Image.find_and_replace(string)
-        b = RoamObjectList([
+        b = BlockContent([
             String("something with an "),
             Image("image.png"),
             String(" in it")
@@ -366,10 +366,10 @@ class TestAlias(unittest.TestCase):
         self.assertEqual(a, b)
 
         # Alias to roam block
-        class PyRoamProxy:
+        class RoamGraphProxy:
             def get(self, uid):
                 return Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag")
-        a = Alias("text", BlockRef("y3LFc4rFK", roam_db=PyRoamProxy())).to_html()
+        a = Alias("text", BlockRef("y3LFc4rFK", roam_db=RoamGraphProxy())).to_html()
         b = '<a title="block: {{[[TODO]]}} some block with a [[page]] ref and a #tag" class="rm-alias rm-alias-block">text</a>'
         self.assertEqual(a, b)
 
@@ -424,7 +424,7 @@ class TestCodeBlock(unittest.TestCase):
     def test_find_and_replace(self):
         string = "something something ```clojure\ndef foo(x+y):\n    return x+y```"
         a = CodeBlock.find_and_replace(string)
-        b = RoamObjectList([
+        b = BlockContent([
                 String("something something "), 
                 CodeBlock('def foo(x+y):\n    return x+y',"clojure")])
         self.assertListEqual(a, b)
@@ -457,7 +457,7 @@ class TestCheckbox(unittest.TestCase):
         self.assertRaises(ValueError, Checkbox.from_string, string)
 
     def test_find_and_replace(self):
-        roam_objects = RoamObjectList.from_string("{{[[TODO]]}} thing to do")
+        roam_objects = BlockContent.from_string("{{[[TODO]]}} thing to do")
         a = Checkbox.find_and_replace(roam_objects)
         b = [Checkbox(checked=False), String(" thing to do")]
         self.assertListEqual(a, b)
@@ -523,7 +523,7 @@ class TestView(unittest.TestCase):
     def test_find_and_replace(self):
         string = "here's a {{query: {and:[[page]]}}}"
         a = View.find_and_replace(string)
-        b = RoamObjectList([
+        b = BlockContent([
             String("here's a "),
             View("query"," {and:[[page]]}")
         ])
@@ -572,7 +572,7 @@ class TestButton(unittest.TestCase):
     def test_find_and_replace(self):
         string = "here's a {{Button}} and {{another: with stuff}}"
         a = Button.find_and_replace(string)
-        b = RoamObjectList([
+        b = BlockContent([
             String("here's a "),
             Button("Button"),
             String(" and "),
@@ -617,7 +617,7 @@ class TestPageRef(unittest.TestCase):
         x = PageRef("sting")
         string = "something with a [[couple]] of [[pages]] in it"
         a = PageRef.find_and_replace(string)
-        b = RoamObjectList([
+        b = BlockContent([
             String("something with a "), 
             PageRef("couple"), 
             String(" of "), 
@@ -669,7 +669,7 @@ class TestPageTag(unittest.TestCase):
     def test_find_and_replace(self):
         string = "something with [[some]] #[[tags]] in #it"
         a = PageTag.find_and_replace(string)
-        b = RoamObjectList([
+        b = BlockContent([
             String("something with [[some]] "), 
             PageTag.from_string("#[[tags]]"), 
             String(" in "), 
@@ -709,14 +709,14 @@ class TestPageTag(unittest.TestCase):
 
 class TestBlockRef(unittest.TestCase):
     def setUp(self):
-        class PyRoamProxy:
+        class RoamGraphProxy:
             def get(self, uid):
                 blocks = {
                     "mZPhN5wFj": Block.from_string("some block"),
                     "LWGXbhfz_": Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag") 
                 }
                 return blocks[uid]
-        self.roam_db = PyRoamProxy()
+        self.roam_db = RoamGraphProxy()
 
     def test_from_string(self):
         a = BlockRef.from_string("((LWGXbhfz_))", roam_db=self.roam_db).uid
@@ -726,7 +726,7 @@ class TestBlockRef(unittest.TestCase):
     def test_find_and_replace(self):
         string = "something with a ((4MxiXZn9f)) in #it"
         a = BlockRef.find_and_replace(string)
-        b = RoamObjectList([
+        b = BlockContent([
             String("something with a "), 
             BlockRef("4MxiXZn9f"), 
             String(" in #it"), 
@@ -784,12 +784,12 @@ class TestAttribute(unittest.TestCase):
     def test_find_and_replace(self):
         string = "attribute:: text"
         a = Attribute.find_and_replace(string)
-        b = RoamObjectList([Attribute("attribute"), String(" text")])
+        b = BlockContent([Attribute("attribute"), String(" text")])
         self.assertListEqual(a,b)
 
         string = "attribute:::: text"
         a = Attribute.find_and_replace(string)
-        b = RoamObjectList([Attribute("attribute"), String(":: text")])
+        b = BlockContent([Attribute("attribute"), String(":: text")])
         self.assertListEqual(a,b)
 
     def test_to_string(self):

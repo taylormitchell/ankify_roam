@@ -6,7 +6,7 @@ import re
 import inspect
 import string
 from itertools import zip_longest
-from ankify_roam.roam import PyRoam, Cloze
+from ankify_roam import roam
 from ankify_roam import anki
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE 
 
@@ -75,7 +75,7 @@ class BlockAnkifier:
             if m:
                 return m.group(1)
         # Otherwise infer from cloze markup
-        if any([type(obj)==Cloze for obj in block.content]):
+        if any([type(obj)==roam.Cloze for obj in block.content]):
             return self.cloze_model
         else:
             return self.basic_model

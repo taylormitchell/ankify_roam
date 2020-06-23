@@ -14,7 +14,7 @@ RE_SPLIT_OR = "(?<!\\\)\|"
 
 logger = logging.getLogger(__name__)
 
-class PyRoam:
+class RoamGraph:
     def __init__(self, pages):
         self.pages = [Page.from_dict(p, self) for p in pages]
         self.apply_tag_inheritance()
@@ -91,27 +91,95 @@ class PyRoam:
             blocks += self.get_blocks_by_tag(tag, obj.get("children",[]), inherit=inherit)
         return blocks
 
-# Roam Interface
-# --------------
 
-class RoamInterface:
+class Page:
+    def __init__(self, title, children, edit_time, edit_email):
+        self.title = title
+        self.children = children
+        self.edit_time = edit_time
+        self.edit_email = edit_email
+
     def get_tags(self):
-        raise NotImplementedError
+        return [self.title]
+
+    def get(self, key, default=None):
+        return getattr(self, key) if hasattr(self, key) else default
+
+    @classmethod
+    def from_dict(cls, page, roam_db):
+        child_block_objects = []
+        for block in page.get("children",[]):
+            try:
+                child_block_objects.append(Block.from_dict(block, roam_db))
+            except Exception as e:
+                logger.error(f"Unknown problem parsing block '{block['title']}' :(. Skipping")
+                logger.debug(e, exc_info=1)
+        return cls(page['title'], child_block_objects, page['edit-time'], page['edit-email'])
+
+
+class Block:
+    def __init__(self, content=None, children=None, uid="", create_time="", 
+                 create_email="",  edit_time="", edit_email="", roam_db=None):
+        self.content = content or BlockContent()
+        self.children = children or BlockChildren()
+        self.uid = uid
+        self.create_time = create_time
+        self.create_email = create_email
+        self.edit_time = edit_time
+        self.edit_email = edit_email
+        self.roam_db = roam_db
+        self.parent_tags = []
+        self.objects = []
+
+    def set_parent_tags(self, parent_tags):
+        self.parent_tags = parent_tags
+
+    def get(self, key, default=None):
+        if not default: default=BlockChildren()
+        return getattr(self, key) if hasattr(self, key) else default
+
+    def get_tags(self, inherit=True):
+        if inherit:
+            return list(set(self.parent_tags + self.content.get_tags()))
+        else:
+            return list(set(self.content.get_tags()))
 
     def to_string(self):
-        raise NotImplementedError
+        return self.content.to_string()
 
-    def to_html(self, *arg, **kwargs):
-        raise NotImplementedError
+    def to_html(self, *args, **kwargs):
+        return self.content.to_html(*args, **kwargs)
 
-# Roam Container
-# ------------------------
+    @classmethod
+    def from_dict(cls, block, roam_db):
+        # TODO: rename this
+        content = BlockContent.from_string(block["string"], roam_db=roam_db)
+        child_block_objects = []
+        for child_block in block.get("children",[]):
+            try:
+                child_block_objects.append(Block.from_dict(child_block, roam_db))
+            except Exception as e:
+                logger.error(f"Unknown problem parsing block '{child_block['uid']}' :(. Skipping")
+                logger.debug(e, exc_info=1)
+        children = BlockChildren(child_block_objects)
+        return cls(content, children, block['uid'], block.get('create-time'),
+                   block.get('create-email'), block.get('edit-time'), block.get('edit-email'), roam_db)
 
-class RoamObjectList(RoamInterface, list):
+    @classmethod
+    def from_string(cls, string, *args, **kwargs):
+        content = BlockContent.from_string(string)
+        return cls(content, *args, **kwargs)
+
+    def __repr__(self):
+        return "<%s(uid='%s', string='%s')>" % (
+            self.__class__.__name__, self.uid, self.to_string()[:10]+"...")
+
+
+class BlockContent(list):
     def __init__(self, roam_objects):
         """
         Args:
-            roam_objects (List of RoamObject)
+            roam_objects (List of BlockContentItem)
         """
         for obj in roam_objects:
             self.append(obj)
@@ -132,7 +200,7 @@ class RoamObjectList(RoamInterface, list):
             Attribute,
             #Url, #TODO: don't have a good regex for this right now
         ]
-        roam_objects = RoamObjectList([String(string)])
+        roam_objects = BlockContent([String(string)])
         for rm_obj_type in roam_object_types_in_parse_order:
             roam_objects = rm_obj_type.find_and_replace(roam_objects, *args, **kwargs)
         return cls(roam_objects)
@@ -177,7 +245,8 @@ class RoamObjectList(RoamInterface, list):
         return "<%s(%s)>" % (
             self.__class__.__name__, repr(list(self)))
 
-class BlockList(list):
+
+class BlockChildren(list):
     def __init__(self, blocks=[]):
         for b in blocks:
             self.append(b)
@@ -207,91 +276,11 @@ class BlockList(list):
         return "<%s(%s)>" % (
             self.__class__.__name__, repr(list(self)))
 
-class Block:
-    def __init__(self, content, children=BlockList(), uid="", create_time="", 
-                 create_email="",  edit_time="", edit_email="", roam_db=None):
-        self.content = content # RoamObjectList
-        self.children = children # BlockList
-        self.uid = uid
-        self.create_time = create_time
-        self.create_email = create_email
-        self.edit_time = edit_time
-        self.edit_email = edit_email
-        self.roam_db = roam_db
-        self.parent_tags = []
-        self.objects = []
-
-    def set_parent_tags(self, parent_tags):
-        self.parent_tags = parent_tags
-
-    def get(self, key, default=BlockList()):
-        return getattr(self, key) if hasattr(self, key) else default
-
-    def get_tags(self, inherit=True):
-        if inherit:
-            return list(set(self.parent_tags + self.content.get_tags()))
-        else:
-            return list(set(self.content.get_tags()))
-
-    def to_string(self):
-        return self.content.to_string()
-
-    def to_html(self, *args, **kwargs):
-        return self.content.to_html(*args, **kwargs)
-
-    @classmethod
-    def from_dict(cls, block, roam_db):
-        # TODO: rename this
-        content = RoamObjectList.from_string(block["string"], roam_db=roam_db)
-        child_block_objects = []
-        for child_block in block.get("children",[]):
-            try:
-                child_block_objects.append(Block.from_dict(child_block, roam_db))
-            except Exception as e:
-                logger.error(f"Unknown problem parsing block '{child_block['uid']}' :(. Skipping")
-                logger.debug(e, exc_info=1)
-        children = BlockList(child_block_objects)
-        return cls(content, children, block['uid'], block.get('create-time'),
-                   block.get('create-email'), block.get('edit-time'), block.get('edit-email'), roam_db)
-
-    @classmethod
-    def from_string(cls, string, *args, **kwargs):
-        content = RoamObjectList.from_string(string)
-        return cls(content, *args, **kwargs)
-
-    def __repr__(self):
-        return "<%s(uid='%s', string='%s')>" % (
-            self.__class__.__name__, self.uid, self.to_string()[:10]+"...")
-
-class Page:
-    def __init__(self, title, children, edit_time, edit_email):
-        self.title = title
-        self.children = children
-        self.edit_time = edit_time
-        self.edit_email = edit_email
-
-    def get_tags(self):
-        return [self.title]
-
-    def get(self, key, default=None):
-        return getattr(self, key) if hasattr(self, key) else default
-
-    @classmethod
-    def from_dict(cls, page, roam_db):
-        child_block_objects = []
-        for block in page.get("children",[]):
-            try:
-                child_block_objects.append(Block.from_dict(block, roam_db))
-            except Exception as e:
-                logger.error(f"Unknown problem parsing block '{block['title']}' :(. Skipping")
-                logger.debug(e, exc_info=1)
-        return cls(page['title'], child_block_objects, page['edit-time'], page['edit-email'])
-
 
 # Roam Objects
 # -------------
 
-class RoamObject(RoamInterface):
+class BlockContentItem:
     @classmethod
     def from_string(cls, string, validate=True):
         if validate and not cls.validate_string(string):
@@ -337,14 +326,14 @@ class RoamObject(RoamInterface):
         """Replace all substring representations of this object with this object
 
         Args:
-            string (str or sequence of RoamObject)
+            string (str or sequence of BlockContentItem)
 
         Returns:
-            RoamObjectList: A sequence of String and this object type. 
+            BlockContent: A sequence of String and this object type. 
         """
         if type(string)==str: 
-            roam_objects = RoamObjectList([String(string)])
-        elif type(string)==RoamObjectList:
+            roam_objects = BlockContent([String(string)])
+        elif type(string)==BlockContent:
             roam_objects = string
         else:
             raise ValueError(f"'{type(string)}' is an invalid type for `string`")
@@ -357,7 +346,7 @@ class RoamObject(RoamInterface):
                 new_roam_objects += [obj]
         roam_objects = new_roam_objects
 
-        return RoamObjectList(roam_objects)
+        return BlockContent(roam_objects)
 
     def __repr__(self):
         return "<%s(string='%s')>" % (
@@ -367,7 +356,7 @@ class RoamObject(RoamInterface):
         return self.to_string()==b.to_string()
 
 
-class Cloze(RoamObject):
+class Cloze(BlockContentItem):
     def __init__(self, id, text, string=None):
         self._id = id
         self.text = text
@@ -389,7 +378,7 @@ class Cloze(RoamObject):
     def find_and_replace(cls, string, *args, **kwargs):
         roam_objects = super().find_and_replace(string)
         cls._assign_cloze_ids([o for o in roam_objects if type(o)==Cloze])
-        return RoamObjectList(roam_objects)
+        return BlockContent(roam_objects)
 
     @classmethod
     def split_string(cls, string):
@@ -417,7 +406,7 @@ class Cloze(RoamObject):
         return pats
 
     def get_tags(self):
-        return RoamObjectList.from_string(self.text).get_tags()
+        return BlockContent.from_string(self.text).get_tags()
 
     def to_string(self, style="anki"):
         """
@@ -443,13 +432,13 @@ class Cloze(RoamObject):
         if not proc_cloze:
             if self.string:
                 sections = self.split_string(self.string)
-                htmls = [RoamObjectList.from_string(s).to_html() for s in sections]
+                htmls = [BlockContent.from_string(s).to_html() for s in sections]
                 return "".join(htmls)
             else:
-                content = RoamObjectList.from_string(self.text).to_html()
+                content = BlockContent.from_string(self.text).to_html()
                 return Cloze(self.id, content).to_string()
 
-        roam_objects = RoamObjectList.from_string(self.text)
+        roam_objects = BlockContent.from_string(self.text)
         if not roam_objects.is_single_pageref():
             return Cloze(self.id, roam_objects.to_html()).to_string()
 
@@ -486,7 +475,7 @@ class Cloze(RoamObject):
             self.__class__.__name__, self._id, self.string)
 
 
-class Image(RoamObject):
+class Image(BlockContentItem):
     def __init__(self, src, alt="", string=None):
         self.src = src
         self.alt = alt
@@ -511,7 +500,7 @@ class Image(RoamObject):
         return f'<img src="{self.src}" alt="{self.alt}" draggable="false" class="rm-inline-img">'
 
 
-class Alias(RoamObject):
+class Alias(BlockContentItem):
     def __init__(self, alias, destination, string=None):
         self.alias = alias
         self.destination = destination
@@ -561,7 +550,7 @@ class Alias(RoamObject):
         return  "|".join([re_template % pat for pat in destination_pats])
 
 
-class CodeBlock(RoamObject):
+class CodeBlock(BlockContentItem):
     def __init__(self, code, language=None, string=None):
         self.code = code
         self.language = language
@@ -598,7 +587,7 @@ class CodeBlock(RoamObject):
         return f'<pre>{code}</pre>'
 
 
-class Checkbox(RoamObject):
+class Checkbox(BlockContentItem):
     def __init__(self, checked=False):
         self.checked = checked
 
@@ -624,8 +613,8 @@ class Checkbox(RoamObject):
             return '<span><label class="check-container"><input type="checkbox"><span class="checkmark"></span></label></span>'
 
 
-class View(RoamObject):
-    def __init__(self, name: RoamObject, text, string=None):
+class View(BlockContentItem):
+    def __init__(self, name: BlockContentItem, text, string=None):
         if type(name)==str:
             name = String(name)
         self.name = name
@@ -663,7 +652,7 @@ class View(RoamObject):
         return "{{%s:%s}}" % (self.name.to_string(), self.text)
 
 
-class Button(RoamObject):
+class Button(BlockContentItem):
     def __init__(self, name, text="", string=None):
         self.name = name
         self.text = text
@@ -681,7 +670,7 @@ class Button(RoamObject):
         return cls(name, text, string)
 
     def get_tags(self):
-        return RoamObjectList.from_string(self.text).get_tags()
+        return BlockContent.from_string(self.text).get_tags()
 
     def to_string(self):
         if self.string: return self.string
@@ -698,11 +687,11 @@ class Button(RoamObject):
         return "{{.(?:(?<!{{).)*}}" 
 
 
-class PageRef(RoamObject):
+class PageRef(BlockContentItem):
     def __init__(self, title, uid="", string=None):
         """
         Args:
-            title (str or RoamObjectList)
+            title (str or BlockContent)
         """
         if type(title)==str: title = PageRef.find_and_replace(title)
         self._title = title
@@ -784,11 +773,11 @@ class PageRef(RoamObject):
         return pages
 
 
-class PageTag(RoamObject):
+class PageTag(BlockContentItem):
     def __init__(self, title, string=None):
         """
         Args:
-            title (str or RoamObjectList)
+            title (str or BlockContent)
         """
         if type(title)==str: title = PageRef.find_and_replace(title)
         self._title = title
@@ -830,7 +819,7 @@ class PageTag(RoamObject):
         return "|".join(pats)
 
 
-class BlockRef(RoamObject):
+class BlockRef(BlockContentItem):
     def __init__(self, uid, roam_db=None, string=None):
         self.uid = uid
         self.roam_db = roam_db
@@ -867,7 +856,7 @@ class BlockRef(RoamObject):
         return self.roam_db.get(self.uid)
 
 
-class Url(RoamObject):
+class Url(BlockContentItem):
     def __init__(self, text):
         self.text = text
 
@@ -883,7 +872,7 @@ class Url(RoamObject):
         return f'<span><a href="{self.text}">{self.text}</a></span>'
 
 
-class String(RoamObject):
+class String(BlockContentItem):
     def __init__(self, string):
         self.string = string
 
@@ -906,7 +895,7 @@ class String(RoamObject):
         return self.string
 
 
-class Attribute(RoamObject):
+class Attribute(BlockContentItem):
     def __init__(self, title, string=None):
         self.title = title
         self.string = string

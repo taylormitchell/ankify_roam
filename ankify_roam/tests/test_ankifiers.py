@@ -17,10 +17,10 @@ class TestRoamGraphAnkifier(unittest.TestCase):
 
     def test_ankify(self):
         pages = json.loads(ROAM_JSON)
-        pyroam = roam.PyRoam(pages)
+        roam_graph = roam.RoamGraph(pages)
         ankifier = RoamGraphAnkifier(deck=self.deck)
         with self.assertLogs() as ctx:
-            ankifier.ankify(pyroam)
+            ankifier.ankify(roam_graph)
         self.assertFalse([r for r in ctx.records if r.levelno >= logging.WARNING])
 
     #def test_setup_models(self):

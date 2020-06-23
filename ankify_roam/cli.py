@@ -3,13 +3,13 @@ import argparse
 from ankify_roam import anki
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
 from ankify_roam.ankifiers import RoamGraphAnkifier
-from ankify_roam.roam import PyRoam
+from ankify_roam.roam import RoamGraph
 
 logger = logging.getLogger(__name__)
 
 def add(path, **kwargs):
     logger.info("Loading Roam Graph")
-    roam_graph = PyRoam.from_path(path)
+    roam_graph = RoamGraph.from_path(path)
     RoamGraphAnkifier(**kwargs).ankify(roam_graph)
 
 def init(overwrite=False):
