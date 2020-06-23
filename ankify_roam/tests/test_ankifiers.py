@@ -1,11 +1,12 @@
 import unittest
 import json
 import logging
-from ankify_roam import actions, roam, anki
+from ankify_roam import roam, anki
 from ankify_roam.tests.roam_export import ROAM_JSON
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
+from ankify_roam.ankifiers import RoamGraphAnkifier
 
-class TestAkrm(unittest.TestCase):
+class TestRoamGraphAnkifier(unittest.TestCase):
     def setUp(self):
         self.profile="test"
         self.deck="test"
@@ -17,8 +18,9 @@ class TestAkrm(unittest.TestCase):
     def test_ankify(self):
         pages = json.loads(ROAM_JSON)
         pyroam = roam.PyRoam(pages)
+        ankifier = RoamGraphAnkifier(deck=self.deck)
         with self.assertLogs() as ctx:
-            akrm.add(pyroam, deck=self.deck)
+            ankifier.ankify(pyroam)
         self.assertFalse([r for r in ctx.records if r.levelno >= logging.WARNING])
 
     #def test_setup_models(self):
