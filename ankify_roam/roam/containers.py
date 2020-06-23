@@ -172,27 +172,6 @@ class BlockChildren(list):
         for b in blocks:
             self.append(b)
 
-    def _listify(self, blocks, *args, **kwargs):
-        if blocks is None:
-            return ""
-        html = ""
-        for block in blocks:
-            content = block.to_html(*args, **kwargs) + \
-                      self._listify(block.get("children"))
-            html += "<li>" + content + "</li>"
-        html = "<ul>" + html + "</ul>"
-        return html
-
-    def to_html(self, *args, **kwargs):
-        if len(self)==0:
-            return ""
-        elif len(self)==1:
-            return self[0].to_html(*args, **kwargs)
-        else:
-            html = self._listify(self, *args, **kwargs)
-            #TODO: should this be a config?
-            return '<div class="centered-block">' + html + '</div>'
-
     def __repr__(self):
         return "<%s(%s)>" % (
             self.__class__.__name__, repr(list(self)))

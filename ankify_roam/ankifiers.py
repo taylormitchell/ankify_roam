@@ -96,19 +96,40 @@ class BlockAnkifier:
             return "basic"
 
     def _block_to_fields(self, block, field_names, model_type, **kwargs):
-        if model_type=="basic":
-            blocks = [block, block.children] 
-            pc = lambda i: False
+        if model_type=="cloze":
+            htmls = [block.to_html(**kwargs)]
         else:
-            blocks = [block]
-            pc = lambda i: i==0
-        fields = {}
-        for i, (fn, b) in enumerate(zip_longest(field_names, blocks)):
-            kwargs["proc_cloze"] = pc(i)
-            text = b.to_html(**kwargs) if b else "" 
-            text = re.sub("[%s]" % ASCII_NON_PRINTABLE, "", text)
-            fields[fn] = text
+            htmls = self.basic_to_htmls(block, **kwargs)
+        fields = {fn: re.sub("[%s]" % ASCII_NON_PRINTABLE, "", html)
+                  for fn, html in zip_longest(field_names, htmls, fillvalue="")}
         if "uid" in field_names:
             fields["uid"] = block.uid
         return fields
 
+
+    def basic_to_htmls(self, block, **kwargs):
+        htmls = [block.to_html(**kwargs)]
+        children = block.children
+        if len(children)==0: 
+            htmls.append("")
+        elif len(children)==1:
+            htmls.append(children[0].to_html(proc_cloze=False, **kwargs))
+        else:
+            html = self._listify(children, proc_cloze=False, **kwargs)
+            #TODO: should this be a config?
+            htmls.append('<div class="centered-children">' + html + '</div>')
+        return htmls
+
+    def _listify(self, blocks, **kwargs):
+        if blocks is None:
+            return ""
+        html = ""
+        for block in blocks:
+            content = block.to_html(**kwargs) + \
+                      self._listify(block.get("children"))
+            html += "<li>" + content + "</li>"
+        html = "<ul>" + html + "</ul>"
+        return html
+
+
+        
