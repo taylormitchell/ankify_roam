@@ -2,28 +2,8 @@
 
 A command-line tool which brings flashcards created in [Roam](https://roamresearch.com/) to [Anki](https://apps.ankiweb.net/).
 
-<table border=0px>
-<tr>
-<td width=300px>
-    <img src="images/roam_screenshot.png">
-</td>
-<td><div>→</div></td>
-<td width=300px>
-    <div>
-        <img src="images/anki_screenshot.png">
-    </div>
-</td>
-</tr>
-</table>
+<img src="images/anki_roam_screenshot.png">
 
-<div style="width: 100%; overflow: hidden;">
-    <div style="width: 300px; float: left;">
-        <img src="images/roam_screenshot.png">
-    </div>
-    <div style="width: 300px; float: left;">
-        <img src="images/anki_screenshot.png">
-    </div>
-</div>
 
 ## Main Features
 
@@ -33,9 +13,6 @@ A command-line tool which brings flashcards created in [Roam](https://roamresear
 - Add style to your Anki cards just like in Roam.
 
 ## Contents
-1. [What it is](#What-it-is)
-1. [Main Features](#Main-Features)
-1. [Contents](#Contents)
 1. [Installation](#Installation)
 1. [Requirements](#Requirements)
 1. [Basic Usage](#Basic-Usage)
@@ -98,9 +75,9 @@ Once you've tagged all the blocks to ankify, export your Roam:
 
 Open Anki. Make sure you're on the profile you'd like to add the cards to and that you've installed the [AnkiConnect](https://github.com/FooSoft/anki-connect) add-on.
 
-### 4. Create Roam specific card types 
+### 4. (First time only) Create Roam specific card types 
 
-**First time only**: Run the following to create 2 new card types in anki for your Roam flashcards: 'Roam Basic' and 'Roam Cloze'
+Run the following to create 2 new card types in anki for your Roam flashcards: 'Roam Basic' and 'Roam Cloze'
 ```
 ankify_roam init
 ```
