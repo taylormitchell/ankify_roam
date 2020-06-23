@@ -1,5 +1,6 @@
 import inspect
 import argparse
+import logging
 from ankify_roam import anki
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
 from ankify_roam.ankifiers import RoamGraphAnkifier
