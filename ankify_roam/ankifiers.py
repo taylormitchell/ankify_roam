@@ -23,8 +23,27 @@ class RoamGraphAnkifier:
         self.cloze_model = cloze_model
         self.pageref_cloze = pageref_cloze
         self.tag_ankify = tag_ankify
+        
+    def check_conn_and_params(self):
+        if not anki.connection_open():
+            raise ValueError("Couldn't connect to Anki.") 
+        if not self.deck in anki.get_deck_names():
+            raise ValueError(f"Deck named '{self.deck}' not in Anki.")
+        if not self.basic_model in anki.get_model_names():
+            raise ValueError(f"Note type named '{self.basic_model}' not in Anki.")
+        if not self.cloze_model in anki.get_model_names():
+            raise ValueError(f"Note type named '{self.cloze_model}' not in Anki.")
+        if not "uid" in anki.get_field_names(self.basic_model):
+            raise ValueError(f"'{self.basic_model}' note type is missing a 'uid' field.")
+        if not "uid" in anki.get_field_names(self.cloze_model):
+            raise ValueError(f"'{self.cloze_model}' note type is missing a 'uid' field.")
+        if not {'Cloze'} == anki.get_model_templates(self.cloze_model).keys():
+            raise ValueError(f"cloze_model must be a cloze note type and '{self.cloze_model}' isn't.")
+
+
 
     def ankify(self, roam_graph):
+        self.check_conn_and_params()
         logger.info("Fetching blocks to ankify")
         blocks_to_ankify = roam_graph.query(lambda b: self.tag_ankify in b.get_tags(inherit=False))
 

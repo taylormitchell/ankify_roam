@@ -6,6 +6,14 @@ import re
 
 logger = logging.getLogger(__name__)
 
+def connection_open():
+    request = urllib.request.Request('http://localhost:8765', json.dumps({}).encode("utf-8"))
+    try:
+        response = json.load(urllib.request.urlopen(request))
+    except urllib.request.URLError:
+        return False
+    return True
+
 def _create_request_dict(action, **params):
     return {'action': action, 'params': params, 'version': 6}
 
@@ -58,6 +66,15 @@ def _get_note_id(anki_dict):
 
 def get_model_names():
     return _invoke("modelNames")
+
+def get_deck_names():
+    return _invoke("deckNames")
+
+def get_profiles():
+    return _invoke("getProfiles")
+
+def get_model_templates(name):
+    return _invoke("modelTemplates", modelName=name)
 
 def create_model(model):
     return _invoke("createModel", **model) 

@@ -5,13 +5,17 @@ from ankify_roam import anki
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
 from ankify_roam.ankifiers import RoamGraphAnkifier
 from ankify_roam.roam import RoamGraph
+from ankify_roam import util
 
 logger = logging.getLogger(__name__)
 
 def add(path, **kwargs):
+    logger.info("Setting up Ankifier")
+    ankifier = RoamGraphAnkifier(**kwargs)
+    ankifier.check_conn_and_params()
     logger.info("Loading Roam Graph")
     roam_graph = RoamGraph.from_path(path)
-    RoamGraphAnkifier(**kwargs).ankify(roam_graph)
+    ankifier.ankify(roam_graph)
 
 def init(overwrite=False):
     modelNames = anki.get_model_names()
@@ -27,13 +31,6 @@ def init(overwrite=False):
                     "If you want to overwrite it, set `overwrite=True`")
 
 def main():
-    def get_default_args(func):
-        signature = inspect.signature(func)
-        return {
-            k: v.default
-            for k, v in signature.parameters.items()
-            if v.default is not inspect.Parameter.empty
-        }
     parser = argparse.ArgumentParser(description='Import flashcards from Roam to Anki')
     subparsers = parser.add_subparsers(help='sub-command help')
 
@@ -46,7 +43,7 @@ def main():
     parser_init.set_defaults(func=init)
 
     # add roam to anki
-    default_args = get_default_args(RoamGraphAnkifier.__init__)
+    default_args = util.get_default_args(RoamGraphAnkifier.__init__)
     parser_add = subparsers.add_parser("add", 
         help='Add a Roam export to Anki',
         description='Add a Roam export to Anki')
