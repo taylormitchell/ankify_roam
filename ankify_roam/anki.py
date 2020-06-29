@@ -42,23 +42,24 @@ def upload_all(anki_dicts):
         upload(anki_dict)
 
 def upload(anki_dict):
-    note_id = _get_note_id(anki_dict)
+    note_id = get_note_id(anki_dict)
     if note_id:
-        return _update_note(note_id, anki_dict)
+        return update_note(anki_dict, note_id)
     else:
-        return _add_note(anki_dict)
+        return add_note(anki_dict)
             
-def _add_note(anki_dict):
+def add_note(anki_dict):
     return _invoke("addNote", note=anki_dict)
 
-def _update_note(note_id, anki_dict):
+def update_note(anki_dict, note_id=None):
+    note_id = note_id or get_note_id(anki_dict)
     note = {"id":note_id, "fields": anki_dict["fields"]}
     return _invoke("updateNoteFields", note=note)
 
 def get_field_names(note_type):
     return _invoke('modelFieldNames', modelName=note_type)
 
-def _get_note_id(anki_dict):
+def get_note_id(anki_dict):
     res = _invoke('findNotes', query=f"uid:{anki_dict['fields']['uid']}")
     if res:
         return res[0]
@@ -75,6 +76,14 @@ def get_profiles():
 
 def get_model_templates(name):
     return _invoke("modelTemplates", modelName=name)
+
+def is_model_cloze(name):
+    model_template = get_model_templates(name)
+    for card_name, card_template in model_template.items():
+        for field_name, field_template in card_template.items():
+            if re.search("{{cloze:.*}}", field_template):
+                return True
+    return False
 
 def create_model(model):
     return _invoke("createModel", **model) 

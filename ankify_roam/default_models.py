@@ -107,7 +107,7 @@ ROAM_CLOZE = {
     "css": _css_cloze+_css_roam,
     "cardTemplates": [
         {
-            "Name": "Card 1",
+            "Name": "Cloze",
             "Front": "{{cloze:Text}}",
             "Back": "{{cloze:Text}}<br><br>{{Extra}}"
         }

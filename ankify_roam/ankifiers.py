@@ -33,33 +33,46 @@ class RoamGraphAnkifier:
             raise ValueError(f"Note type named '{self.basic_model}' not in Anki.")
         if not self.cloze_model in anki.get_model_names():
             raise ValueError(f"Note type named '{self.cloze_model}' not in Anki.")
-        if not "uid" in anki.get_field_names(self.basic_model):
+        basic_field_names = anki.get_field_names(self.basic_model)
+        if not "uid" in basic_field_names:
             raise ValueError(f"'{self.basic_model}' note type is missing a 'uid' field.")
-        if not "uid" in anki.get_field_names(self.cloze_model):
+        if len([fn for fn in basic_field_names[:2] if fn!="uid"]) != 2:
+            raise ValueError(f"'{self.basic_model}' note type requires 2 fields (excluding the 'uid' field.)")
+        cloze_field_names = anki.get_field_names(self.cloze_model)
+        if not "uid" in cloze_field_names:
             raise ValueError(f"'{self.cloze_model}' note type is missing a 'uid' field.")
-        if not {'Cloze'} == anki.get_model_templates(self.cloze_model).keys():
+        if cloze_field_names[0]=="uid":
+            raise ValueError(f"'{self.cloze_model}' note type requires 1 field (excluding the 'uid' field.)")
+        if not anki.is_model_cloze(self.cloze_model):
             raise ValueError(f"cloze_model must be a cloze note type and '{self.cloze_model}' isn't.")
-
-
 
     def ankify(self, roam_graph):
         self.check_conn_and_params()
         logger.info("Fetching blocks to ankify")
         blocks_to_ankify = roam_graph.query(lambda b: self.tag_ankify in b.get_tags(inherit=False))
 
-        logger.info(f"Ankifying and uploading {len(blocks_to_ankify)} blocks")
+        logger.info(f"Ankifying {len(blocks_to_ankify)} blocks")
         block_ankifier = BlockAnkifier(self.deck, self.basic_model, self.cloze_model, 
                                        self.pageref_cloze, self.tag_ankify)
+        num_added = 0
+        num_updated = 0
         for block in blocks_to_ankify:
             try:
                 anki_note = block_ankifier.ankify(block, pageref_cloze=self.pageref_cloze)
             except:
-                logging.exception(f"Failed ankifying {block} during conversion to anki note")
+                logger.exception(f"Failed ankifying {block} during conversion to anki note")
                 continue
             try:
-                anki.upload(anki_note)
+                note_id = anki.get_note_id(anki_note)
+                if note_id:
+                    anki.update_note(anki_note, note_id)
+                    num_updated += 1
+                else:
+                    anki.add_note(anki_note)
+                    num_added += 1
             except:
-                logging.exception(f"Failed ankifying {block} during upload to anki")
+                logger.exception(f"Failed ankifying {block} during upload to anki")
+        logger.info(f"Added {num_added} new notes and updated {num_updated} existing notes")
 
 
 class BlockAnkifier:

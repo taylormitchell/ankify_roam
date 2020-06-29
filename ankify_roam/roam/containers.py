@@ -34,6 +34,8 @@ class RoamGraph:
     def from_zip(cls, path):
         with ZipFile(path, 'r') as zip_ref:
             filename = zip_ref.namelist()[0]
+            if os.path.splitext(filename)[-1]==".md":
+                raise ValueError("Roam export must be JSON while the provided is markdown")
             with zip_ref.open(filename) as f:
                 roam_pages = json.load(f)
         return cls(roam_pages)
@@ -42,6 +44,8 @@ class RoamGraph:
     def from_dir(cls, path):
         "Initialize using the latest roam export in the given directory"
         roam_exports = [f for f in os.listdir(path) if re.match("Roam-Export-.*", f)]
+        if len(roam_exports)==0:
+            raise ValueError(f"'{path}' doesn't contain any Roam export zip files")
         filename = sorted(roam_exports)[-1]
         return cls.from_zip(os.path.join(path,filename))
 
