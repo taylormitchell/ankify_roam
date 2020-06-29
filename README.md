@@ -8,10 +8,10 @@ A command-line tool which brings flashcards created in [Roam](https://roamresear
 ## Main Features
 
 - Create Front/Back and Cloze deletion flashcards. 
-- Make changes to flashcards you've already imported from Roam and bring those changes over to Anki. 
+- Sync changes to flashcards made in Roam over to Anki. 
 - Supports block references, images, and aliases.
 - Add style to your Anki cards just like in Roam.
-- Option to individually specify the deck and note type on each flashcard in Roam.
+- Option to individually specify the deck and note type of each flashcard.
 - Change the color or hide the cloze deletion markup in Roam.
 
 ## Contents
@@ -96,36 +96,36 @@ When you tag new blocks to ankify or edit ones you already have, updating Anki t
 
 ## Options
 
-#### Roam Export
+### Roam Export
 
-The Roam export path can refer to the json, the zip containing the json, or the directory which the zip is in. When a directory is given, ankify_roam find and add the latest export in it.
+The Roam export path can refer to the json, the zip containing the json, or the directory which the zip is in. When a directory is given, ankify_roam will find and add the latest export in it.
 ```
 ankify_roam add my_roam.json
 ankify_roam add Roam-Export-1592525007321.zip
 ankify_roam add ~/Downloads
 ```
 
-#### Ankify Tag, Default Deck, and Default Models
+### Ankify Tag, Default Deck, and Default Models
 
 Use a different tag than #ankify to flag flashcards:
 ```
 ankify_roam add --tag-ankify=flashcard my_roam.json
 ```  
 
-Use different note types than 'Roam Cloze' and 'Roam Basic' (see [Custom Anki note types](#Custom-Anki-note-types) for more details) 
+Use different note types than 'Roam Cloze' and 'Roam Basic' (see [Custom Anki note types](#Create-custom-note-types) for details) 
 ```
 ankify_roam add --default-basic="My Basic" --default-cloze="My Cloze" my_roam.json
 ``` 
-Same thing for the deck to add the flashcards to:
+By default, cards are added to the "Default" deck but you can specify a different one:
 ```
 ankify_roam add --deck="Biology" my_roam.json
 ```
 
-You can also specify the deck and note type on a per-card basis: 
+You can also specify the deck and note type on a per-card basis using tags in Roam: 
 
 - 2+2={4} #[[[[ankify]]:deck=Math]] #[[[[ankify]]:model=My Cloze]]
 
-#### Uncloze Namespace
+### Uncloze Namespace
 
 When you add a cloze deletion around a namespaced page reference, eg. 
 
@@ -144,7 +144,7 @@ ankify_roam add --pageref-cloze=base_only my_roam.json
 
 ### Create custom note types
 
-As mentioned [options](#Options) section, you can import to different note types than the default 'Roam Basic' and 'Roam Cloze' types provided. Those note types will need to satisfy 2 requirements to be compatible with ankify_roam:   
+As mentioned in the [options](#Options) section, you can import to different note types than the default 'Roam Basic' and 'Roam Cloze' types provided. Those note types will need to satisfy 2 requirements to be compatible with ankify_roam:   
 
 1. **Include at least 2 fields for the basic note type and 1 for the cloze**. When ankify_roam is converting a block into an Anki note, it takes the content of the block and places it into the first field of the Anki note. In the case of a Basic type, the children of the block are added to the second field of the Anki note. 
 
