@@ -53,8 +53,24 @@ def add_note(anki_dict):
 
 def update_note(anki_dict, note_id=None):
     note_id = note_id or get_note_id(anki_dict)
-    note = {"id":note_id, "fields": anki_dict["fields"]}
+    return update_fields(note_id, anki_dict["fields"])
+
+def update_fields(note_id, fields):
+    note = {"id":note_id, "fields": fields}
     return _invoke("updateNoteFields", note=note)
+
+def update_tags(note_id, tags):
+    old_tags = get_note_tags(note_id)
+    delete_tags(note_id, old_tags)
+    add_tags(note_id, tags)
+
+def delete_tags(note_id, tags):
+    for tag in tags:
+        _invoke("removeTags", notes=[note_id], tags=tag)
+
+def add_tags(note_id, tags):
+    for tag in tags:
+        _invoke("addTags", notes=[note_id], tags=tag)
 
 def get_field_names(note_type):
     return _invoke('modelFieldNames', modelName=note_type)
@@ -64,6 +80,16 @@ def get_note_id(anki_dict):
     if res:
         return res[0]
     return None
+
+def get_note(note_id):
+    res = _invoke("notesInfo", notes=[note_id])
+    if res:
+        return res[0]
+    return None
+
+def get_note_tags(note_id):
+    note = get_note(note_id)
+    return note.get("tags")
 
 def get_model_names():
     return _invoke("modelNames")

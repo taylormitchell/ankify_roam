@@ -54,10 +54,10 @@ def main():
     parser_add.add_argument('--deck', default=default_args['deck'],
                         type=str, action='store', 
                         help='default deck to add notes to')
-    parser_add.add_argument('--basic_model', default=default_args['basic_model'], 
+    parser_add.add_argument('--note-basic', default=default_args['note_basic'], 
                         type=str, action='store', 
                         help='default model to assign basic cards')
-    parser_add.add_argument('--cloze_model', default=default_args['cloze_model'],
+    parser_add.add_argument('--note-cloze', default=default_args['note_cloze'],
                         type=str, action='store', 
                         help='default model to assign cloze cards')
     parser_add.add_argument('--pageref-cloze', default=default_args['pageref_cloze'],
@@ -67,6 +67,9 @@ def main():
     parser_add.add_argument('--tag-ankify', default=default_args['tag_ankify'],
                         type=str, action='store', 
                         help='Roam tag used to identify blocks to ankify')
+    parser_add.add_argument('--tag-dont-ankify', default=default_args['tag_dont_ankify'],
+                        type=str, action='store', 
+                        help='Roam tag used to identify blocks not to ankify')
     parser_add.set_defaults(func=add)
 
     args = vars(parser.parse_args())

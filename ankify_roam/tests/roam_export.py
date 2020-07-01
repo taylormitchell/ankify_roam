@@ -6,7 +6,7 @@ ROAM_JSON = r'''
     "title": "second test page for [[ankify_roam]]",
     "children": [
       {
-        "string": "Block ref to the ((0pSgJZc-l)) #anki_note",
+        "string": "Block ref to the ((0pSgJZc-l)) #ankify",
         "create-email": "taylor.j.mitchell@gmail.com",
         "create-time": 1592095530960,
         "uid": "Aula7Lau2",
@@ -40,7 +40,7 @@ ROAM_JSON = r'''
         "edit-email": "taylor.j.mitchell@gmail.com"
       },
       {
-        "string": "Another {1:cloze} {2:are} {c3:with} {different} styled clozes #anki_note",
+        "string": "Another {1:cloze} {2:are} {c3:with} {different} styled clozes #ankify",
         "create-email": "taylor.j.mitchell@gmail.com",
         "create-time": 1592095650325,
         "uid": "dphNyyeO3",
@@ -48,7 +48,7 @@ ROAM_JSON = r'''
         "edit-email": "taylor.j.mitchell@gmail.com"
       },
       {
-        "string": "one with an attribute:: some question #anki_note",
+        "string": "one with an attribute:: some question #ankify",
         "create-email": "taylor.j.mitchell@gmail.com",
         "create-time": 1592095746604,
         "children": [
@@ -73,7 +73,7 @@ ROAM_JSON = r'''
     "title": "test page for [[ankify_roam]]",
     "children": [
       {
-        "string": "{{[[TODO]]}} has some blocks with [[page]] [links]([[temp]]) #[[anki_note]]",
+        "string": "{{[[TODO]]}} has some blocks with [[page]] [links]([[temp]]) #[[ankify]]",
         "create-email": "taylor.j.mitchell@gmail.com",
         "create-time": 1591572843972,
         "children": [
@@ -91,7 +91,7 @@ ROAM_JSON = r'''
         "edit-email": "taylor.j.mitchell@gmail.com"
       },
       {
-        "string": "It's got some queries: {{query:{and:[[TODO]][[test page for [[ankify_roam]]]]}}} #[[anki_note]]",
+        "string": "It's got some queries: {{query:{and:[[TODO]][[test page for [[ankify_roam]]]]}}} #[[ankify]]",
         "create-email": "taylor.j.mitchell@gmail.com",
         "create-time": 1591572883456,
         "uid": "_xUQrzbZY",
@@ -99,7 +99,7 @@ ROAM_JSON = r'''
         "edit-email": "taylor.j.mitchell@gmail.com"
       },
       {
-        "string": "Some block refs: ((5xB8JO-xg)) #temp #[[anki_note]]",
+        "string": "Some block refs: ((5xB8JO-xg)) #temp #[[ankify]]",
         "create-email": "taylor.j.mitchell@gmail.com",
         "create-time": 1591572908104,
         "children": [
@@ -117,7 +117,7 @@ ROAM_JSON = r'''
         "edit-email": "taylor.j.mitchell@gmail.com"
       },
       {
-        "string": "some with code `here` on the front `print(foo)` and the backside #[[anki_note]]",
+        "string": "some with code `here` on the front `print(foo)` and the backside #[[ankify]]",
         "create-email": "taylor.j.mitchell@gmail.com",
         "create-time": 1591962799845,
         "children": [
@@ -135,7 +135,7 @@ ROAM_JSON = r'''
         "edit-email": "taylor.j.mitchell@gmail.com"
       },
       {
-        "string": "with [[{]]this[[}]] one work #anki_note",
+        "string": "with [[{]]this[[}]] one work #ankify",
         "create-email": "taylor.j.mitchell@gmail.com",
         "create-time": 1591967203873,
         "uid": "2OcweAzXl",
