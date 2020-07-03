@@ -56,10 +56,10 @@ def main():
                         help='default deck to add notes to')
     parser_add.add_argument('--note-basic', default=default_args['note_basic'], 
                         type=str, action='store', 
-                        help='default model to assign basic cards')
+                        help='default note type to assign basic flashcards')
     parser_add.add_argument('--note-cloze', default=default_args['note_cloze'],
                         type=str, action='store', 
-                        help='default model to assign cloze cards')
+                        help='default note type to assign cloze flashcards')
     parser_add.add_argument('--pageref-cloze', default=default_args['pageref_cloze'],
                         type=str, action='store', 
                         choices=["inside", "outside", "base_only"],
