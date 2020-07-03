@@ -25,7 +25,7 @@ A command-line tool which brings flashcards created in [Roam](https://roamresear
 ## Installation
 
 ```
-pip install ankify-roam
+pip install ankify_roam
 ```
 
 ## Requirements
