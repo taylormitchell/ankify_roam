@@ -110,7 +110,7 @@ class Page:
                 child_block_objects.append(Block.from_dict(block, roam_db))
             except Exception as e:
                 logger.exception(f"Unknown problem parsing block '{block}' :(. Skipping")
-        return cls(page['title'], child_block_objects, page['edit-time'], page['edit-email'])
+        return cls(page['title'], child_block_objects, page.get('edit-time',''), page.get('edit-email',''))
 
 
 class Block:
@@ -158,8 +158,8 @@ class Block:
                 logger.error(f"Unknown problem parsing block '{child_block['uid']}' :(. Skipping")
                 logger.debug(e, exc_info=1)
         children = BlockChildren(child_block_objects)
-        return cls(content, children, block['uid'], block.get('create-time'),
-                   block.get('create-email'), block.get('edit-time'), block.get('edit-email'), roam_db)
+        return cls(content, children, block['uid'], block.get('create-time',''),
+                   block.get('create-email',''), block.get('edit-time',''), block.get('edit-email',''), roam_db)
 
     @classmethod
     def from_string(cls, string, *args, **kwargs):
