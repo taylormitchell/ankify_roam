@@ -171,6 +171,19 @@ As mentioned in the [options](#Change-the-default-deck-and-note-types) section, 
 
 If you are going to make your own note types, I'd suggest you create [clones](https://docs.ankiweb.net/#/editing?id=adding-a-note-type) of the 'Roam Basic' and 'Roam Cloze' note types and then just edit the style of those clones (see [here](https://www.youtube.com/watch?v=F1j1Zx0mXME&yt:cc=on) for a tutorial).
 
+### Create links back to original Roam blocks 
+
+If you edit the card types in Anki, you can add hyperlinks that allow you to click through to the original roam source. Eg if you add
+
+```
+<p>
+<a href="https://roamresearch.com/#/app/YOURDATABASENAME/page/{{uid}}">*</a>
+``` 
+
+To both card types, you will get a small "*" which when clicked links back to Roam.
+Note however that this is a little slow as Roam will reload in a new tab- you need a local scripting tool such as Keyboard Maestro to work around this. 
+
+
 ### CSS ideas for your Anki cards
 
 Hide all Roam tags (eg. the #ankify tag)
@@ -219,6 +232,21 @@ Now the block shown above will look like this:
 <img src="images/page_link_clozes_better.png" width=600px>
 
 Note: Just like the regular cloze markup, the page links can also include cloze ids eg. [[{c1:]]Paris[[}]] 
+
+## Using with Roam To Git 
+It is possible to set up automatic updates of Anki using [Roam To Git](https://github.com/MatthieuBizien/roam-to-git). 
+
+Follow the instructions on the Roam to Git page for setting up an automatically updating repository on GitHub. Clone that repository to your local machine: 
+```git clone https://github.com/YOURNAME/notes```
+
+Now you can run 
+
+```ankify_roam add /PATH_TO_YOUR_REPO/notes/json/YOURDBNAME.json``` 
+
+And further, you can add the git update to crontab:  
+```echo "15 * * * * 'cd PATH_TO_YOUR_REPO;git pull;PATH_TO_ANKIFY/ankify_roam add PATH_TO_YOUR_REPO/json/YOURDBNAME.json '" | crontab ```  
+
+Now you'll have git Roam to Git cloning your notes from Roam on the hour, and fifteen minutes later any updates/new items will be pulled in Anki, as long as it is running.
 
 
 ## Problems
