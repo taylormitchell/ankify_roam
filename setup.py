@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="ankify_roam", 
-    version="0.0.5",
+    version="0.0.6",
     author="Taylor Mitchell",
     author_email="taylor.j.mitchell@gmail.com",
     description="A command-line tool which brings flashcards created in Roam to Anki",
