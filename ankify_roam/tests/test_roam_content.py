@@ -507,6 +507,9 @@ class TestButton(unittest.TestCase):
         a = Button.from_string("{{text: with more text}}")
         self.assertEqual(a.name, "text")
         self.assertEqual(a.text, " with more text")
+        a = Button.from_string("{{text: with a colon ':' in the text part}}")
+        self.assertEqual(a.name, "text")
+        self.assertEqual(a.text, " with a colon ':' in the text part")
 
         string = "\n".join(["{{te","xt}}"])
         self.assertRaises(ValueError, Button.from_string, string)

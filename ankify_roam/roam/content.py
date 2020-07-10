@@ -462,7 +462,7 @@ class Button(BlockContentItem):
         super().from_string(string, validate)
         contents = string[2:-2]
         if ":" in contents:
-            m = re.search(r"(.*):(.*)", contents)
+            m = re.search(r"([^:]*):(.*)", contents)
             name, text = m.groups()
         else:
             name, text = contents, ""
