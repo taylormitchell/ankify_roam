@@ -309,7 +309,7 @@ class TestAlias(unittest.TestCase):
 
         # Alias to roam block
         class RoamGraphProxy:
-            def get(self, uid):
+            def query_by_uid(self, uid):
                 return Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag")
         a = Alias("text", BlockRef("y3LFc4rFK", roam_db=RoamGraphProxy())).to_html()
         b = '<a title="block: {{[[TODO]]}} some block with a [[page]] ref and a #tag" class="rm-alias rm-alias-block">text</a>'
@@ -655,7 +655,7 @@ class TestPageTag(unittest.TestCase):
 class TestBlockRef(unittest.TestCase):
     def setUp(self):
         class RoamGraphProxy:
-            def get(self, uid):
+            def query_by_uid(self, uid):
                 blocks = {
                     "mZPhN5wFj": Block.from_string("some block"),
                     "LWGXbhfz_": Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag") 

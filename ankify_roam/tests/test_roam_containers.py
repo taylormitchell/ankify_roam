@@ -49,12 +49,12 @@ class TestRoamGraph(unittest.TestCase):
         self.roam_db = RoamGraph(pages)
 
     def test_get_tags(self):
-        block = self.roam_db.get("L7EuhRiXa")
+        block = self.roam_db.query_by_uid("L7EuhRiXa")
         a = set(block.get_tags())
         b = set(["temp","test page for [[ankify_roam]]"])
         self.assertSetEqual(a,b)
 
-        block = self.roam_db.get("YlgtAqOYv")
+        block = self.roam_db.query_by_uid("YlgtAqOYv")
         a = set(block.get_tags())
         b = set(["TODO","page","temp","test page for [[ankify_roam]]"])
         self.assertSetEqual(a,b)
