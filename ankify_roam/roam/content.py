@@ -316,7 +316,8 @@ class Alias(BlockContentItem):
         if re.match("^\[\[.*\]\]$", destination):
             destination = PageRef.from_string(destination)
         elif re.match("^\(\(.*\)\)$", destination):
-            destination = BlockRef.from_string(destination)
+            roam_db = kwargs.get("roam_db", None)
+            destination = BlockRef.from_string(destination, roam_db=roam_db)
         else:
             # TODO: should this be a Url object?
             destination = String(destination)
