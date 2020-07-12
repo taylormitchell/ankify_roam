@@ -1,0 +1,26 @@
+.parent {
+    display: inline-block;
+    font-size: 10px;
+}
+.parent::after {
+    content: "›";
+    padding-left: 5px;
+    padding-right: 5px;
+}
+.front-side>:not(.parent).block {
+    padding-top: 10px;
+ }
+
+.back-side.list {
+    display: inline-block;
+    text-align: left;
+}
+
+.back-side.list>.block::before {
+    content: "•";
+    margin-right: 10px;
+}
+
+.back-side.list>.block {
+    margin-left: calc(20px * var(--data-lvl));
+}

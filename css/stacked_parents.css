@@ -1,0 +1,12 @@
+.front-side, .back-side.list {
+    display: inline-block;
+    text-align: left;
+}
+
+.front-side.block::before {
+    content: "•";
+    margin-right: 10px;
+}
+.front-side.block {
+    margin-left: calc(20px * var(--data-lvl));
+}
