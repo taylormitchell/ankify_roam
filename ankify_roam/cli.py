@@ -1,6 +1,7 @@
 import inspect
 import argparse
 import logging
+from ankify_roam import __version__
 from ankify_roam import anki
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
 from ankify_roam.ankifiers import RoamGraphAnkifier
@@ -32,6 +33,9 @@ def init(overwrite=False):
 
 def main():
     parser = argparse.ArgumentParser(description='Import flashcards from Roam to Anki')
+    parser.add_argument('--version', action='version',
+                        version='%(prog)s {version}'.format(version=__version__))
+
     subparsers = parser.add_subparsers(help='sub-command help')
 
     # initialize

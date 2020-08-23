@@ -1,11 +1,12 @@
 import setuptools
+import ankify_roam
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="ankify_roam", 
-    version="0.0.6",
+    version=ankify_roam.__version__,
     author="Taylor Mitchell",
     author_email="taylor.j.mitchell@gmail.com",
     description="A command-line tool which brings flashcards created in Roam to Anki",
