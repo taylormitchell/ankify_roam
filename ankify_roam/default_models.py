@@ -1,3 +1,5 @@
+import textwrap 
+
 _css_basic = """
     .card {
      font-family: arial;
@@ -10,19 +12,19 @@ _css_basic = """
 
 _css_cloze = """
     .card {
-     font-family: arial;
-     font-size: 20px;
-     text-align: center;
-     color: black;
-     background-color: white;
+        font-family: arial;
+        font-size: 20px;
+        text-align: center;
+        color: black;
+        background-color: white;
     }
 
     .cloze {
-     font-weight: bold;
-     color: blue;
+        font-weight: bold;
+        color: blue;
     }
     .nightMode .cloze {
-     color: lightblue;
+        color: lightblue;
     }
 """
 
@@ -154,7 +156,7 @@ _css_hide_parents = """
 ROAM_BASIC = {
     "modelName": "Roam Basic",
     "inOrderFields": ["Front", "Back", "Extra", "uid"],
-    "css": _css_basic+_css_roam,
+    "css": textwrap.dedent(_css_basic+_css_roam+_css_hide_parents),
     "cardTemplates": [
         {
             "Name": "Card 1",
@@ -167,7 +169,7 @@ ROAM_BASIC = {
 ROAM_CLOZE = {
     "modelName": "Roam Cloze",
     "inOrderFields": ["Text", "Extra", "uid"],
-    "css": _css_cloze+_css_roam,
+    "css": textwrap.dedent(_css_cloze+_css_roam+_css_hide_parents),
     "cardTemplates": [
         {
             "Name": "Cloze",
