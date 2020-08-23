@@ -180,7 +180,9 @@ If you are going to make your own note types, I'd suggest you create [clones](ht
 
 ### Show parent blocks as breadcrumbs
 
-When your Roam blocks are imported to roam, their parent blocks are included with the block. By default, these blocks are hidden, but you can display them with some changes to the css:
+When your Roam blocks are imported to roam, their parent blocks are included with the block. By default, these blocks are hidden, but you can display them with some changes to the css. Follow the steps below to show the parent blocks as breadcrumbs above your flashcard:
+
+<img src="images/breadcrumbs.png">
 
 Remove this css from your 'Roam Basic' and 'Roam Cloze' note types:
 ```css
