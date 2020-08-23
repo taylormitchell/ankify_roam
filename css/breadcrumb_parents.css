@@ -10,17 +10,3 @@
 .front-side>:not(.parent).block {
     padding-top: 10px;
  }
-
-.back-side.list {
-    display: inline-block;
-    text-align: left;
-}
-
-.back-side.list>.block::before {
-    content: "•";
-    margin-right: 10px;
-}
-
-.back-side.list>.block {
-    margin-left: calc(20px * var(--data-lvl));
-}

@@ -1,4 +1,4 @@
-.front-side, .back-side.list {
+.front-side {
     display: inline-block;
     text-align: left;
 }

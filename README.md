@@ -4,28 +4,35 @@ A command-line tool which brings flashcards created in [Roam](https://roamresear
 
 <img src="images/anki_roam_screenshot.png">
 
+## Main Features
 
-## Content
+- Create front/back and cloze deletion flashcards in Roam and import to Anki.
+- Supports block references, images, and aliases.
+- [Include parent blocks as breadcrumbs](#Show-parent-blocks-as-breadcrumbs) on your Anki cards 
+- Make edits in Roam to flashcards you've already imported and sync the changes to Anki. 
+- Uses similar HTML syntax to Roam so you can style your Anki cards just like you do Roam.
+- [Add color to or hide cloze deletion markup in Roam](#Add-color-or-hide-cloze-deletions-in-Roam).
+
+## Contents
 1. [Main Features](#Main-Features)
 1. [Installation](#Installation)
 1. [Requirements](#Requirements)
 1. [Basic Usage](#Basic-Usage)
 1. [Options](#Options)
 1. [Customize Anki and Roam](#Customize-Anki-and-Roam)
+1. [Sync Automatically](#Sync-Automatically)
 1. [Problems](#Problems)
 
-## Main Features
-
-- Create front/back and cloze deletion flashcards in Roam and import to Anki.
-- Hide or change the color of the cloze deletion markup in Roam.
-- Supports block references, images, and aliases.
-- Make edits in Roam to flashcards you've already imported and sync the changes to Anki. 
-- Uses similar HTML syntax to Roam so you can style your Anki cards just like you do Roam.
 
 ## Installation
 
 ```
-pip install ankify_roam
+pip install git+https://github.com/taylormitchell/ankify_roam.git
+```
+
+or the following to install the development branch  
+```
+pip install git+https://github.com/taylormitchell/ankify_roam.git@dev
 ```
 
 ## Requirements
@@ -171,6 +178,35 @@ As mentioned in the [options](#Change-the-default-deck-and-note-types) section, 
 
 If you are going to make your own note types, I'd suggest you create [clones](https://docs.ankiweb.net/#/editing?id=adding-a-note-type) of the 'Roam Basic' and 'Roam Cloze' note types and then just edit the style of those clones (see [here](https://www.youtube.com/watch?v=F1j1Zx0mXME&yt:cc=on) for a tutorial).
 
+### Show parent blocks as breadcrumbs
+
+When your Roam blocks are imported to roam, their parent blocks are included with the block. By default, these blocks are hidden, but you can display them with some changes to the css:
+
+Remove this css from your 'Roam Basic' and 'Roam Cloze' note types:
+```css
+.parent {
+    display: none;
+}
+```
+
+Then add [this css](css/breadcrumb_parents.css) to display the parent blocks as breadcrumbs:
+```css
+.parent {
+    display: inline-block;
+    font-size: 10px;
+}
+.parent::after {
+    content: "›";
+    padding-left: 5px;
+    padding-right: 5px;
+}
+.front-side>:not(.parent).block {
+    padding-top: 10px;
+}
+```
+
+
+
 ### Create links back to original Roam blocks 
 
 If you edit the card types in Anki, you can add hyperlinks that allow you to click through to the original roam source. Eg if you add
@@ -187,21 +223,21 @@ Note however that this is a little slow as Roam will reload in a new tab- you ne
 ### CSS ideas for your Anki cards
 
 Hide all Roam tags (eg. the #ankify tag)
-```
+```css
 .rm-page-ref-tag {
     display: none;
 }
 ```
 
 Hide page reference brackets.
-```
+```css
 .rm-page-ref-brackets {
     display: none;
 }
 ```
 
 When a block has multiple children, they're added as bullet points on the backside of a card. If you'd prefer not to show the bullets, similar to the "View as Document" option in Roam, use the following CSS:
-```
+```css
 li {
     list-style-type: none;
 }
@@ -233,7 +269,7 @@ Now the block shown above will look like this:
 
 Note: Just like the regular cloze markup, the page links can also include cloze ids eg. [[{c1:]]Paris[[}]] 
 
-## Using with Roam To Git 
+## Sync Automatically 
 It is possible to set up automatic updates of Anki using [Roam To Git](https://github.com/MatthieuBizien/roam-to-git). 
 
 Follow the instructions on the Roam to Git page for setting up an automatically updating repository on GitHub. Clone that repository to your local machine: 

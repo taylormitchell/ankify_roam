@@ -116,24 +116,10 @@ _css_breadcrumb_parents = """
     .front-side>:not(.parent).block {
         padding-top: 10px;
      }
-
-    .back-side.list {
-        display: inline-block;
-        text-align: left;
-    }
-
-    .back-side.list>.block::before {
-        content: "•";
-        margin-right: 10px;
-    }
-
-    .back-side.list>.block {
-        margin-left: calc(20px * var(--data-lvl));
-    }
 """
 
 _css_stacked_parents = """
-    .front-side, .back-side.list {
+    .front-side {
         display: inline-block;
         text-align: left;
     }
