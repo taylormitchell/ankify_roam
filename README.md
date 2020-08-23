@@ -184,7 +184,13 @@ When your Roam blocks are imported to roam, their parent blocks are included wit
 
 <img src="images/breadcrumbs.png">
 
-Remove this css from your 'Roam Basic' and 'Roam Cloze' note types:
+If you have Anki notes added using ankify_roam <=0.0.5, you'll need to update the css on your 'Roam Basic' and 'Roam Cloze' note types and re-add your blocks from Roam first. You can do that by [installing the latest version of ankify_roam](#Installation) and then running the following commands: 
+```bash
+ankify_roam init --overwrite # update note type css
+ankify_roam add my_roam.json # update flashcards to include parent blocks
+``` 
+
+Now remove the default css which hides the parent blocks from your 'Roam Basic' and 'Roam Cloze' note types:
 ```css
 .parent {
     display: none;
@@ -206,8 +212,6 @@ Then add [this css](css/breadcrumb_parents.css) to display the parent blocks as 
     padding-top: 10px;
 }
 ```
-
-
 
 ### Create links back to original Roam blocks 
 
