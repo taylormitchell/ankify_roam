@@ -59,7 +59,9 @@ class RoamGraphAnkifier:
     def ankify(self, roam_graph):
         self.check_conn_and_params()
         logger.info("Fetching blocks to ankify")
-        blocks_to_ankify = roam_graph.query(lambda b: self.is_block_to_ankify(b))
+        blocks_to_ankify = roam_graph.query_many(
+            lambda b: self.is_block_to_ankify(b),
+            include_parents=True)
 
         logger.info(f"Ankifying {len(blocks_to_ankify)} blocks")
         block_ankifier = BlockAnkifier(self.deck, self.note_basic, self.note_cloze, 
@@ -150,40 +152,63 @@ class BlockAnkifier:
             return "basic"
 
     def _block_to_fields(self, block, field_names, flashcard_type, **kwargs):
+        # Convert block content to html
+        htmls = []
         if flashcard_type=="cloze":
-            htmls = [block.to_html(**kwargs)]
+            htmls.append(self.front_to_html(block, **kwargs))
         else:
-            htmls = self.basic_to_htmls(block, **kwargs)
-        fields = {fn: re.sub("[%s]" % ASCII_NON_PRINTABLE, "", html)
-                  for fn, html in zip_longest(field_names, htmls, fillvalue="")}
+            htmls.append(self.front_to_html(block, proc_cloze=False, **kwargs))
+            htmls.append(self.back_to_html(block, proc_cloze=False, **kwargs))
+        htmls = [re.sub("[%s]" % ASCII_NON_PRINTABLE, "", html) for html in htmls]
+
+        # Assign to content to field names
+        fields = {fn: html for fn, html in zip_longest(field_names, htmls, fillvalue="")}
         if "uid" in field_names:
             fields["uid"] = block.uid
+
         return fields
 
 
-    def basic_to_htmls(self, block, **kwargs):
-        htmls = [block.to_html(**kwargs)]
-        children = block.children
-        if len(children)==0: 
-            htmls.append("")
-        elif len(children)==1:
-            htmls.append(children[0].to_html(proc_cloze=False, **kwargs))
-        else:
-            html = self._listify(children, proc_cloze=False, **kwargs)
-            #TODO: should this be a config?
-            htmls.append('<div class="centered-children">' + html + '</div>')
-        return htmls
+    def front_to_html(self, block, **kwargs):
+        # Convert content to html
+        page_html = roam.content.PageRef(block.parent_page).to_html(**kwargs)
+        parents_html = [p.to_html(**kwargs) for p in block.parent_blocks]
+        block_html = block.to_html(**kwargs)
 
-    def _listify(self, blocks, **kwargs):
-        if blocks is None:
-            return ""
-        html = ""
-        for block in blocks:
-            content = block.to_html(**kwargs) + \
-                      self._listify(block.get("children"))
-            html += "<li>" + content + "</li>"
-        html = "<ul>" + html + "</ul>"
+        # Wrap in div blocks
+        level = 0
+        div_parents = []
+        for p in parents_html:
+            div_parents.append(
+                f'<div class="block parent" style="--data-lvl:{level}">{p}</div>')
+            level += 1
+        div_block = f'<div class="block" style="--data-lvl:{level}">{block_html}</div>'
+        div_parent = '<div class="page-title parent">%s</div>' %page_html
+
+        # Combine
+        html = "".join([div_parent]+div_parents+[div_block])
+        html = f'<div class="front-side">{html}</div>'
+
         return html
 
+    def back_to_html(self, block, **kwargs):
+        children = block.get("children",[])
+        if len(children)>2:
+            html = '<div class="back-side list">%s</div>'
+        else:
+            html = '<div class="back-side">%s</div>'
 
+        html = html % self._listify(children, **kwargs)
+
+        return html
+
+    def _listify(self, blocks, level=0, **kwargs):
+        if not blocks:
+            return ""
+        divs = ""
+        for block in blocks:
+            div = f'<div class="block" style="--data-level:{level}">%s</div>'
+            divs += div % block.to_html(**kwargs)
+            divs += self._listify(block.get("children"), level=level+1)
+        return divs
         

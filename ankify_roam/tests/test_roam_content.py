@@ -309,7 +309,7 @@ class TestAlias(unittest.TestCase):
 
         # Alias to roam block
         class RoamGraphProxy:
-            def get(self, uid):
+            def query_by_uid(self, uid):
                 return Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag")
         a = Alias("text", BlockRef("y3LFc4rFK", roam_db=RoamGraphProxy())).to_html()
         b = '<a title="block: {{[[TODO]]}} some block with a [[page]] ref and a #tag" class="rm-alias rm-alias-block">text</a>'
@@ -507,6 +507,9 @@ class TestButton(unittest.TestCase):
         a = Button.from_string("{{text: with more text}}")
         self.assertEqual(a.name, "text")
         self.assertEqual(a.text, " with more text")
+        a = Button.from_string("{{text: with a colon ':' in the text part}}")
+        self.assertEqual(a.name, "text")
+        self.assertEqual(a.text, " with a colon ':' in the text part")
 
         string = "\n".join(["{{te","xt}}"])
         self.assertRaises(ValueError, Button.from_string, string)
@@ -652,7 +655,7 @@ class TestPageTag(unittest.TestCase):
 class TestBlockRef(unittest.TestCase):
     def setUp(self):
         class RoamGraphProxy:
-            def get(self, uid):
+            def query_by_uid(self, uid):
                 blocks = {
                     "mZPhN5wFj": Block.from_string("some block"),
                     "LWGXbhfz_": Block.from_string("{{[[TODO]]}} some block with a [[page]] ref and a #tag") 

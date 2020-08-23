@@ -49,24 +49,25 @@ class RoamGraph:
         filename = sorted(roam_exports)[-1]
         return cls.from_zip(os.path.join(path,filename))
 
-    def query(self, condition, blocks=None):
-        if blocks is None: blocks=self.pages
-        res = []
-        for block in blocks:
-            if type(block)==Block and condition(block):
-                res.append(block)
-            res += self.query(condition, block.children)
-        return res
+    def get_page(self, title):
+        for page in self.pages:
+            if page.title==title:
+                return page
 
-    def get(self, uid, default=None, blocks=None):
-        if blocks is None: blocks = self.pages
-        for block in blocks:
-            if block.get("uid") == uid:
-                return block
-            block = self.get(uid, default, block.get('children',[]))
+    def query_many(self, condition, include_parents=True):
+        blocks = []
+        for page in self.pages:
+            blocks += page.query_many(condition, include_parents=include_parents)
+        return blocks
+
+    def query_by_uid(self, uid, include_parents=True):
+        for page in self.pages:
+            block = page.query_by_uid(uid, include_parents=include_parents)
             if block:
                 return block
-        return default
+
+    def query_by_tag(self, tag, include_parents=True):
+        return query_many(lambda b: tag in b.get_tags())
 
     def _apply_tag_inheritance(self, blocks, parent_tags=[]):
         for block in blocks:
@@ -78,15 +79,6 @@ class RoamGraph:
     def apply_tag_inheritance(self):
         for page in self.pages:
             self._apply_tag_inheritance(page.get("children",[]), parent_tags=page.get_tags())
-
-    def get_blocks_by_tag(self, tag, objs=None, inherit=True):
-        if objs is None: objs=self.pages
-        blocks = []
-        for obj in objs:
-            if type(obj)==Block and tag in obj.get_tags(inherit=inherit):
-                blocks.append(obj)
-            blocks += self.get_blocks_by_tag(tag, obj.get("children",[]), inherit=inherit)
-        return blocks
 
 
 class Page:
@@ -102,6 +94,36 @@ class Page:
     def get(self, key, default=None):
         return getattr(self, key) if hasattr(self, key) else default
 
+    def query_by_uid(self, uid, default=None, blocks=None, parent_blocks=[], include_parents=True):
+        if blocks is None: blocks = self.get('children',[])
+        for block in blocks:
+            if block.get("uid") == uid:
+                if include_parents: 
+                    block.parent_page = self.title
+                    block.parent_blocks = parent_blocks
+                return block
+            block = self.query_by_uid(uid, default=default, blocks=block.get('children',[]),
+                parent_blocks=parent_blocks+[block.content])
+            if block:
+                return block
+        return default
+
+    def query_many(self, condition, blocks=None, parent_blocks=[], include_parents=True):
+        if blocks is None: blocks=self.get('children',[])
+        res = []
+        for block in blocks:
+            if condition(block):
+                if include_parents: 
+                    block.parent_page = self.title
+                    block.parent_blocks = parent_blocks
+                res.append(block)
+            res += self.query_many(
+                condition, 
+                include_parents=include_parents,
+                blocks=block.children, 
+                parent_blocks=parent_blocks+[block.content] if include_parents else None)
+        return res
+
     @classmethod
     def from_dict(cls, page, roam_db):
         child_block_objects = []
@@ -115,7 +137,8 @@ class Page:
 
 class Block:
     def __init__(self, content=None, children=None, uid="", create_time="", 
-                 create_email="",  edit_time="", edit_email="", roam_db=None):
+                 create_email="",  edit_time="", edit_email="", roam_db=None, 
+                 parent_blocks=None, parent_page=None):
         self.content = content or BlockContent()
         self.children = children or BlockChildren()
         self.uid = uid
@@ -126,6 +149,8 @@ class Block:
         self.roam_db = roam_db
         self.parent_tags = []
         self.objects = []
+        self.parent_blocks = parent_blocks
+        self.parent_page = parent_page
 
     def set_parent_tags(self, parent_tags):
         self.parent_tags = parent_tags

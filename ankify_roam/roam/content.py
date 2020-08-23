@@ -273,6 +273,8 @@ class Cloze(BlockContentItem):
         return "<%s(id=%s, string='%s')>" % (
             self.__class__.__name__, self._id, self.string)
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.text == other.text
 
 class Image(BlockContentItem):
     def __init__(self, src, alt="", string=None):
@@ -298,6 +300,8 @@ class Image(BlockContentItem):
     def to_html(self, *arg, **kwargs):
         return f'<img src="{self.src}" alt="{self.alt}" draggable="false" class="rm-inline-img">'
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.src==other.src and self.alt==other.alt
 
 class Alias(BlockContentItem):
     def __init__(self, alias, destination, string=None):
@@ -312,7 +316,8 @@ class Alias(BlockContentItem):
         if re.match("^\[\[.*\]\]$", destination):
             destination = PageRef.from_string(destination)
         elif re.match("^\(\(.*\)\)$", destination):
-            destination = BlockRef.from_string(destination)
+            roam_db = kwargs.get("roam_db", None)
+            destination = BlockRef.from_string(destination, roam_db=roam_db)
         else:
             # TODO: should this be a Url object?
             destination = String(destination)
@@ -348,6 +353,8 @@ class Alias(BlockContentItem):
 
         return  "|".join([re_template % pat for pat in destination_pats])
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.alias==other.alias and other.destination==other.destination
 
 class CodeBlock(BlockContentItem):
     def __init__(self, code, language=None, string=None):
@@ -385,6 +392,8 @@ class CodeBlock(BlockContentItem):
         code = self.code.replace("\n","<br>")
         return f'<pre>{code}</pre>'
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.language==other.language and self.code==other.code
 
 class Checkbox(BlockContentItem):
     def __init__(self, checked=False):
@@ -410,6 +419,9 @@ class Checkbox(BlockContentItem):
             return '<span><label class="check-container"><input type="checkbox" checked=""><span class="checkmark"></span></label></span>'
         else:
             return '<span><label class="check-container"><input type="checkbox"><span class="checkmark"></span></label></span>'
+
+    def __eq__(self, other):
+        return type(self)==type(other) and self.checked==other.checked
 
 
 class View(BlockContentItem):
@@ -450,6 +462,9 @@ class View(BlockContentItem):
             return self.string
         return "{{%s:%s}}" % (self.name.to_string(), self.text)
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.name==other.name and self.text==other.text
+
 
 class Button(BlockContentItem):
     def __init__(self, name, text="", string=None):
@@ -485,6 +500,8 @@ class Button(BlockContentItem):
     def create_pattern(cls, string=None):
         return "{{.(?:(?<!{{).)*}}" 
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.name==other.name and self.text==other.text
 
 class PageRef(BlockContentItem):
     def __init__(self, title, uid="", string=None):
@@ -571,6 +588,8 @@ class PageRef(BlockContentItem):
 
         return pages
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.title==other.title
 
 class PageTag(BlockContentItem):
     def __init__(self, title, string=None):
@@ -617,6 +636,8 @@ class PageTag(BlockContentItem):
 
         return "|".join(pats)
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.title == other.title
 
 class BlockRef(BlockContentItem):
     def __init__(self, uid, roam_db=None, string=None):
@@ -652,7 +673,10 @@ class BlockRef(BlockContentItem):
         return "\(\([\w\d\-_]{9}\)\)"
 
     def get_referenced_block(self):
-        return self.roam_db.get(self.uid)
+        return self.roam_db.query_by_uid(self.uid)
+
+    def __eq__(self, other):
+        return type(self)==type(other) and self.uid==other.uid
 
 
 class Url(BlockContentItem):
@@ -670,6 +694,8 @@ class Url(BlockContentItem):
     def to_html(self, *arg, **kwargs):
         return f'<span><a href="{self.text}">{self.text}</a></span>'
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.text==other.text
 
 class String(BlockContentItem):
     def __init__(self, string):
@@ -693,6 +719,8 @@ class String(BlockContentItem):
     def to_string(self):
         return self.string
 
+    def __eq__(self, other):
+        return type(self)==type(other) and self.string==other.string
 
 class Attribute(BlockContentItem):
     def __init__(self, title, string=None):
@@ -725,3 +753,6 @@ class Attribute(BlockContentItem):
         if self.string:
             return self.string
         return self.title+"::"
+
+    def __eq__(self, other):
+        return type(self)==type(other) and self.title==other.title
