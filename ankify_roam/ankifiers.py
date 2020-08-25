@@ -172,7 +172,9 @@ class BlockAnkifier:
     def front_to_html(self, block, **kwargs):
         # Convert content to html
         page_html = roam.content.PageRef(block.parent_page).to_html(**kwargs)
-        parents_html = [p.to_html(**kwargs) for p in block.parent_blocks]
+        parents_kwargs = kwargs.copy()
+        parents_kwargs["proc_cloze"] = False # never convert cloze markup in parents to anki clozes
+        parents_html = [p.to_html(**parents_kwargs) for p in block.parent_blocks]
         block_html = block.to_html(**kwargs)
 
         # Wrap in div blocks
