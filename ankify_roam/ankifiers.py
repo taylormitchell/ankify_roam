@@ -209,7 +209,7 @@ class BlockAnkifier:
             return ""
         divs = ""
         for block in blocks:
-            div = f'<div class="block" style="--data-level:{level}">%s</div>'
+            div = f'<div class="block" style="--data-lvl:{level}">%s</div>'
             divs += div % block.to_html(**kwargs)
             divs += self._listify(block.get("children"), level=level+1)
         return divs
