@@ -78,3 +78,16 @@ pre {
 .back-side.list>.block {
     margin-left: calc(20px * var(--data-lvl));
 }
+
+.parent {
+    display: inline-block;
+    font-size: 10px;
+}
+.parent::after {
+    content: "›";
+    padding-left: 5px;
+    padding-right: 5px;
+}
+.front-side>:not(.parent).block {
+    padding-top: 10px;
+ }

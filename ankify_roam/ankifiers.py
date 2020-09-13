@@ -8,7 +8,7 @@ import string
 from itertools import zip_longest
 from ankify_roam import roam
 from ankify_roam import anki
-from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE 
+from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE, _css_hide_parents
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,13 +17,14 @@ ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128)
                                if chr(i) not in string.printable])
 
 class RoamGraphAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify=""):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="", show_parents=False):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
         self.pageref_cloze = pageref_cloze
         self.tag_ankify = tag_ankify
         self.tag_dont_ankify = tag_dont_ankify
+        self.show_parents = show_parents
         
     def check_conn_and_params(self):
         if not anki.connection_open():
@@ -65,7 +66,7 @@ class RoamGraphAnkifier:
 
         logger.info(f"Ankifying {len(blocks_to_ankify)} blocks")
         block_ankifier = BlockAnkifier(self.deck, self.note_basic, self.note_cloze, 
-                                       self.pageref_cloze, self.tag_ankify)
+                                       self.pageref_cloze, self.tag_ankify, self.show_parents)
         num_added = 0
         num_updated = 0
         for block in blocks_to_ankify:
@@ -88,12 +89,13 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify"):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", show_parents=False):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
         self.pageref_cloze = pageref_cloze
         self.tag_ankify = tag_ankify
+        self.show_parents = show_parents
         self.field_names = {}
 
     def ankify(self, block, **kwargs):
@@ -103,6 +105,7 @@ class BlockAnkifier:
             self.field_names[modelName] = anki.get_field_names(modelName)
         flashcard_type = self._get_flashcard_type(modelName)
         kwargs["pageref_cloze"] = self._get_pageref_cloze(block)
+        kwargs["show_parents"] = self._get_show_parents(block)
         fields = self._block_to_fields(block, self.field_names[modelName], flashcard_type, **kwargs)
         tags = self.ankify_tags(block.get_tags())
         return {
@@ -151,6 +154,13 @@ class BlockAnkifier:
         else:
             return "basic"
 
+    def _get_show_parents(self, block):
+        pat = f"[[{self.tag_ankify}]]:show-parents"
+        for tag in block.get_tags():
+            if tag == pat:
+                return True
+        return self.show_parents
+
     def _block_to_fields(self, block, field_names, flashcard_type, **kwargs):
         # Convert block content to html
         htmls = []
@@ -190,6 +200,8 @@ class BlockAnkifier:
         # Combine
         html = "".join([div_parent]+div_parents+[div_block])
         html = f'<div class="front-side">{html}</div>'
+        if not kwargs.get("show_parents", False):
+            html = f'<style>{_css_hide_parents}</style>{html}'
 
         return html
 
