@@ -142,7 +142,7 @@ _css_hide_parents = """
 ROAM_BASIC = {
     "modelName": "Roam Basic",
     "inOrderFields": ["Front", "Back", "Extra", "uid"],
-    "css": textwrap.dedent(_css_basic+_css_roam+_css_hide_parents),
+    "css": textwrap.dedent(_css_basic+_css_roam+_css_breadcrumb_parents),
     "cardTemplates": [
         {
             "Name": "Card 1",
@@ -155,7 +155,7 @@ ROAM_BASIC = {
 ROAM_CLOZE = {
     "modelName": "Roam Cloze",
     "inOrderFields": ["Text", "Extra", "uid"],
-    "css": textwrap.dedent(_css_cloze+_css_roam+_css_hide_parents),
+    "css": textwrap.dedent(_css_cloze+_css_roam+_css_breadcrumb_parents),
     "cardTemplates": [
         {
             "Name": "Cloze",

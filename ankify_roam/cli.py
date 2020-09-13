@@ -74,6 +74,9 @@ def main():
     parser_add.add_argument('--tag-dont-ankify', default=default_args['tag_dont_ankify'],
                         type=str, action='store', 
                         help='Roam tag used to identify blocks not to ankify')
+    parser_add.add_argument('--show-parents', action="store_true",
+                        help='Whether to display block parents on the flashcard')
+
     parser_add.set_defaults(func=add)
 
     args = vars(parser.parse_args())
