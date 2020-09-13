@@ -101,6 +101,10 @@ _css_roam = """
     .back-side.list>.block {
         margin-left: calc(20px * var(--data-lvl));
     }
+
+    [data-tag="ankify"], [data-tag^="[[ankify]]:"]{
+      display:none;
+    }
 """
 
 _css_breadcrumb_parents = """

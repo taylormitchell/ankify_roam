@@ -87,6 +87,10 @@ pre {
     margin-left: calc(20px * var(--data-lvl));
 }
 
+[data-tag="ankify"], [data-tag^="[[ankify]]:"]{
+  display:none;
+}
+
 .parent {
     display: inline-block;
     font-size: 10px;
