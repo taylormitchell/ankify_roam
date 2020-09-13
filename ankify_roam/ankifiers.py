@@ -155,10 +155,18 @@ class BlockAnkifier:
             return "basic"
 
     def _get_show_parents(self, block):
-        pat = f"[[{self.tag_ankify}]]:show-parents"
+        pat = f"^\[\[{self.tag_ankify}\]\]:show-parents=(.+)$"
         for tag in block.get_tags():
-            if tag == pat:
+            m = re.match(pat, tag)
+            if m is None: 
+                continue
+            value = m.group(1)
+            if value=="False":
+                return False
+            elif value=="True":
                 return True
+            else:
+                break
         return self.show_parents
 
     def _block_to_fields(self, block, field_names, flashcard_type, **kwargs):
