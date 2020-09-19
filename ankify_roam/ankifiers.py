@@ -165,6 +165,8 @@ class BlockAnkifier:
                 return False
             elif value=="True":
                 return True
+            elif re.match("^([1-9]?\d+|0)$", value):
+                return int(value)
             else:
                 break
         return self.show_parents
@@ -189,27 +191,40 @@ class BlockAnkifier:
 
     def front_to_html(self, block, **kwargs):
         # Convert content to html
-        page_html = roam.content.PageRef(block.parent_page).to_html(**kwargs)
+        page_title_html = roam.content.PageRef(block.parent_page).to_html(**kwargs)
         parents_kwargs = kwargs.copy()
         parents_kwargs["proc_cloze"] = False # never convert cloze markup in parents to anki clozes
-        parents_html = [p.to_html(**parents_kwargs) for p in block.parent_blocks]
-        block_html = block.to_html(**kwargs)
+        parent_blocks_html = [p.to_html(**parents_kwargs) for p in block.parent_blocks]
+        question_html = block.to_html(**kwargs)
 
         # Wrap in div blocks
-        level = 0
-        div_parents = []
-        for p in parents_html:
-            div_parents.append(
-                f'<div class="block parent" style="--data-lvl:{level}">{p}</div>')
-            level += 1
-        div_block = f'<div class="block" style="--data-lvl:{level}">{block_html}</div>'
-        div_parent = '<div class="page-title parent">%s</div>' %page_html
+        page_title_html = f'<div class="page-title parent">{page_title_html}</div>'
+        for i, p in enumerate(parent_blocks_html):
+            parent_blocks_html[i] = \
+                f'<div class="block parent" data-lvl={i} style="--data-lvl:{i}">{p}</div>'
+        question_html = f'<div class="block" data-lvl={i+1} style="--data-lvl:{i+1}">{question_html}</div>'
 
         # Combine
-        html = "".join([div_parent]+div_parents+[div_block])
+        html = "".join([page_title_html]+parent_blocks_html+[question_html])
         html = f'<div class="front-side">{html}</div>'
-        if not kwargs.get("show_parents", False):
+
+        # Add style
+        show_parents = kwargs.get("show_parents", self.show_parents)
+        if show_parents is True:
+            pass 
+        elif show_parents is False:
             html = f'<style>{_css_hide_parents}</style>{html}'
+        elif type(show_parents)==int:
+            num_parents_hide = 1 + len(parent_blocks_html) - show_parents
+            if num_parents_hide <= 0:
+                pass
+            else:
+                selector = ".page-title,"
+                selector += ",".join([f'[data-lvl="{i}"]' for i in range(num_parents_hide-1)])
+                selector += "{display: none;}"
+                html = f"<style>{selector}</style>{html}"
+        else:
+            raise ValueError("Invalid show_parents value")
 
         return html
 
