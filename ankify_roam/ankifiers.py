@@ -214,7 +214,6 @@ class BlockAnkifier:
         return html
 
     def back_to_html(self, block, **kwargs):
-        import pdb; pdb.set_trace()
         children = block.get("children",[])
         if len(children)>=2:
             html = '<div class="back-side list">%s</div>'
