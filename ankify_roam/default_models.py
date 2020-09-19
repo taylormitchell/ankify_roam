@@ -110,7 +110,7 @@ _css_roam = """
 _css_breadcrumb_parents = """
     .parent {
         display: inline-block;
-        font-size: 10px;
+        font-size: 15px;
     }
     .parent::after {
         content: "›";
