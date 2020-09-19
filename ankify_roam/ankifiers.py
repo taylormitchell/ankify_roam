@@ -199,6 +199,7 @@ class BlockAnkifier:
 
         # Wrap in div blocks
         page_title_html = f'<div class="page-title parent">{page_title_html}</div>'
+        i = 0
         for i, p in enumerate(parent_blocks_html):
             parent_blocks_html[i] = \
                 f'<div class="block parent" data-lvl={i} style="--data-lvl:{i}">{p}</div>'
