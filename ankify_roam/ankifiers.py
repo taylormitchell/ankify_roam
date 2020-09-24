@@ -196,38 +196,34 @@ class BlockAnkifier:
         parents_kwargs["proc_cloze"] = False # never convert cloze markup in parents to anki clozes
         parent_blocks_html = [p.to_html(**parents_kwargs) for p in block.parent_blocks]
         question_html = block.to_html(**kwargs)
+        parents_html = [page_title_html] + parent_blocks_html
 
-        # Wrap in div blocks
-        page_title_html = f'<div class="page-title parent">{page_title_html}</div>'
-        i = 0
-        for i, p in enumerate(parent_blocks_html):
-            parent_blocks_html[i] = \
-                f'<div class="block parent" data-lvl={i} style="--data-lvl:{i}">{p}</div>'
-        question_html = f'<div class="block" data-lvl={i+1} style="--data-lvl:{i+1}">{question_html}</div>'
-
-        # Combine
-        html = "".join([page_title_html]+parent_blocks_html+[question_html])
-        html = f'<div class="front-side">{html}</div>'
-
-        # Add style
+        # Keep select number of parent blocks 
         show_parents = kwargs.get("show_parents", self.show_parents)
         if show_parents is True:
             pass 
         elif show_parents is False:
-            html = f'<style>{_css_hide_parents}</style>{html}'
+            parents_html = []
         elif type(show_parents)==int:
-            num_parents_hide = 1 + len(parent_blocks_html) - show_parents
-            if num_parents_hide <= 0:
-                pass
-            else:
-                selectors = [".page-title"] + [f'[data-lvl="{i}"]' for i in range(len(parent_blocks_html))]
-                selectors = selectors[:num_parents_hide]
-                css = ",".join(selectors) + "{display: none;}"
-                html = f"<style>{css}</style>{html}"
+            parents_html = parents_html[-show_parents:]
         else:
             raise ValueError("Invalid show_parents value")
 
-        return html
+        # Wrap in div blocks
+        if len(parents_html) == len(block.parent_blocks)+1: # all parents
+            parents_html[0] = f'<div class="page-title parent">{parents_html[0]}</div>'
+            parents_html[1:] = [
+                f'<div class="block parent" style="--data-lvl:{i}">{p}</div>'
+                for i, p in enumerate(parents_html[1:])]
+        else:
+            parents_html = [
+                f'<div class="block parent" style="--data-lvl:{i}">{p}</div>'
+                for i, p in enumerate(parents_html)]
+        i = len(parents_html)
+        question_html = f'<div class="block" style="--data-lvl:{i}">{question_html}</div>'
+
+        return f'<div class="front-side">%s</div>' % \
+               "".join(parents_html+[question_html])
 
     def back_to_html(self, block, **kwargs):
         children = block.get("children",[])
