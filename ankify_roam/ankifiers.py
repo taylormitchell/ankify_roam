@@ -17,7 +17,7 @@ ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128)
                                if chr(i) not in string.printable])
 
 class RoamGraphAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="", show_parents=1):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="", show_parents=1, max_depth=None):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -25,6 +25,7 @@ class RoamGraphAnkifier:
         self.tag_ankify = tag_ankify
         self.tag_dont_ankify = tag_dont_ankify
         self.show_parents = show_parents
+        self.max_depth = max_depth
         
     def check_conn_and_params(self):
         if not anki.connection_open():
@@ -65,8 +66,11 @@ class RoamGraphAnkifier:
             include_parents=True)
 
         logger.info(f"Ankifying {len(blocks_to_ankify)} blocks")
-        block_ankifier = BlockAnkifier(self.deck, self.note_basic, self.note_cloze, 
-                                       self.pageref_cloze, self.tag_ankify, self.show_parents)
+
+        block_ankifier_args = inspect.getfullargspec(BlockAnkifier.__init__).args
+        kwargs = {k:v for k,v in vars(self).items() if k in block_ankifier_args}
+        block_ankifier = BlockAnkifier(**kwargs)
+
         num_added = 0
         num_updated = 0
         for block in blocks_to_ankify:
@@ -89,13 +93,14 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", show_parents=1):
+    def __init__(self, deck, note_basic, note_cloze, pageref_cloze, tag_ankify, show_parents, max_depth):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
         self.pageref_cloze = pageref_cloze
         self.tag_ankify = tag_ankify
         self.show_parents = show_parents
+        self.max_depth = max_depth
         self.field_names = {}
 
     def ankify(self, block, **kwargs):
@@ -106,6 +111,7 @@ class BlockAnkifier:
         flashcard_type = self._get_flashcard_type(modelName)
         kwargs["pageref_cloze"] = self._get_pageref_cloze(block)
         kwargs["show_parents"] = self._get_show_parents(block)
+        kwargs["max_depth"] = self._get_max_depth(block)
         fields = self._block_to_fields(block, self.field_names[modelName], flashcard_type, **kwargs)
         tags = self.ankify_tags(block.get_tags())
         return {
@@ -170,6 +176,21 @@ class BlockAnkifier:
             else:
                 break
         return self.show_parents
+
+    def _get_max_depth(self, block):
+        pat = f"^\[\[{self.tag_ankify}\]\]:max-depth=(.+)$"
+        for tag in block.get_tags():
+            m = re.match(pat, tag)
+            if m is None: 
+                continue
+            value = m.group(1)
+            if value=="None":
+                return None
+            elif re.match("^([1-9]?\d+|0)$", value):
+                return int(value)
+            else:
+                break
+        return self.max_depth
 
     def _block_to_fields(self, block, field_names, flashcard_type, **kwargs):
         # Convert block content to html
@@ -236,13 +257,15 @@ class BlockAnkifier:
 
         return html
 
-    def _listify(self, blocks, level=0, **kwargs):
+    def _listify(self, blocks, level=0, max_depth=None, **kwargs):
         if not blocks:
+            return ""
+        if max_depth is not None and level == max_depth:
             return ""
         divs = ""
         for block in blocks:
             div = f'<div class="block" style="--data-lvl:{level}">%s</div>'
             divs += div % block.to_html(**kwargs)
-            divs += self._listify(block.get("children"), level=level+1)
+            divs += self._listify(block.get("children"), level=level+1, max_depth=max_depth)
         return divs
         
