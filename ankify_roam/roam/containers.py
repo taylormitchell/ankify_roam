@@ -26,7 +26,7 @@ class RoamGraph:
 
     @classmethod
     def from_json(cls, path):
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:
             roam_pages = json.load(f)
         return cls(roam_pages)
     
