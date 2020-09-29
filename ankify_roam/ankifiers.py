@@ -126,7 +126,7 @@ class BlockAnkifier:
 
     def _get_note_type(self, block):
         # Search for assigned model
-        pat = f'''^\[\[{self.tag_ankify}\]\]:note=["']?([\w\s]*)["']?$'''
+        pat = f'''^ankify_roam: note=["']?([\w\s]*)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
@@ -138,7 +138,7 @@ class BlockAnkifier:
             return self.note_basic
 
     def _get_deck(self, block):
-        pat = f'''^\[\[{self.tag_ankify}\]\]:deck=["']?(\w+)["']?$'''
+        pat = f'''^ankify_roam: deck=["']?(\w+)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
@@ -146,7 +146,7 @@ class BlockAnkifier:
         return self.deck
 
     def _get_pageref_cloze(self, block):
-        pat = f'''^\[\[{self.tag_ankify}\]\]:pageref-cloze=["']?(\w+)["']?$'''
+        pat = f'''^ankify_roam: pageref-cloze=["']?(\w+)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
@@ -161,7 +161,7 @@ class BlockAnkifier:
             return "basic"
 
     def _get_show_parents(self, block):
-        pat = f"^\[\[{self.tag_ankify}\]\]:show-parents=(.+)$"
+        pat = f"^ankify_roam: show-parents=(.+)$"
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m is None: 
@@ -178,7 +178,7 @@ class BlockAnkifier:
         return self.show_parents
 
     def _get_max_depth(self, block):
-        pat = f"^\[\[{self.tag_ankify}\]\]:max-depth=(.+)$"
+        pat = f"^ankify_roam: max-depth=(.+)$"
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m is None: 
