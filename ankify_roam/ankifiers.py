@@ -138,7 +138,7 @@ class BlockAnkifier:
             return self.note_basic
 
     def _get_deck(self, block):
-        pat = f'''^ankify_roam:\s*deck=["']?(\w+)["']?$'''
+        pat = f'''^ankify_roam:\s*deck=["']?([\w\s:]+)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
