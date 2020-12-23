@@ -143,7 +143,7 @@ ankify_roam add --deck="Biology" my_roam.json
 
 You can also specify the deck and note type on a per-note basis using tags in Roam: 
 
-> - 2+2={4} #[[[[ankify]]:deck="Math"]] #[[[[ankify]]:note="Cloze for math"]]
+> - 2+2={4} #[[ankify_roam: deck="Math"]] #[[ankify_roam: note="Cloze for math"]]
 
 (When a deck or note type is specified using a tag on the block, those will take precedence over the deck and note type specified at the command line.)
 
@@ -164,7 +164,7 @@ ankify_roam add --pageref-cloze=base_only my_roam.json
 
 You can also set this on an individual note:
 
-> - The {[[Design Pattern/Adaptor Pattern]]} specifies... #[[[[ankify]]:pageref-cloze="base_only"]] 
+> - The {[[Design Pattern/Adaptor Pattern]]} specifies... #[[ankify_roam: pageref-cloze="base_only"]] 
 
 ## Customize Anki and Roam
 

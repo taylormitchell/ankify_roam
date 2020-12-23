@@ -117,11 +117,11 @@ class BlockAnkifier:
 
     def _get_note_type(self, block):
         # Search for assigned model
-        pat = f'''^ankify_roam:\s*note=["']?([\w\s]*)["']?$'''
+        pat = f'''^(\[\[)?(ankify_roam|ankify)(\]\])?:\s*note=["']?([\w\s]*)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
-                return m.group(1)
+                return m.groups()[-1]
         # Otherwise infer from cloze markup
         if any([type(obj)==roam.Cloze for obj in block.content]):
             return self.note_cloze
@@ -129,19 +129,19 @@ class BlockAnkifier:
             return self.note_basic
 
     def _get_deck(self, block):
-        pat = f'''^ankify_roam:\s*deck=["']?([\w\s:]+)["']?$'''
+        pat = f'''^(\[\[)?(ankify_roam|ankify)(\]\])?:\s*deck=["']?([\w\s:]+)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
-                return m.group(1)
+                return m.groups()[-1]
         return self.deck
 
     def _get_pageref_cloze(self, block):
-        pat = f'''^ankify_roam:\s*pageref-cloze=["']?(\w+)["']?$'''
+        pat = f'''^(\[\[)?(ankify_roam|ankify)(\]\])?:\s*pageref-cloze=["']?(\w+)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
-                return m.group(1)
+                return m.groups()[-1]
         return self.pageref_cloze
 
     def _get_flashcard_type(self, modelName):
