@@ -126,7 +126,7 @@ class BlockAnkifier:
 
     def _get_note_type(self, block):
         # Search for assigned model
-        pat = f'''^ankify_roam: note=["']?([\w\s]*)["']?$'''
+        pat = f'''^ankify_roam:\s*note=["']?([\w\s]*)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
@@ -138,7 +138,7 @@ class BlockAnkifier:
             return self.note_basic
 
     def _get_deck(self, block):
-        pat = f'''^ankify_roam: deck=["']?(\w+)["']?$'''
+        pat = f'''^ankify_roam:\s*deck=["']?(\w+)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
@@ -146,7 +146,7 @@ class BlockAnkifier:
         return self.deck
 
     def _get_pageref_cloze(self, block):
-        pat = f'''^ankify_roam: pageref-cloze=["']?(\w+)["']?$'''
+        pat = f'''^ankify_roam:\s*pageref-cloze=["']?(\w+)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
