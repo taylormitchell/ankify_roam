@@ -78,3 +78,7 @@ pre {
 .back-side.list>.block {
     margin-left: calc(20px * var(--data-lvl));
 }
+
+.parent {
+    display: none;
+}
