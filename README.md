@@ -1,6 +1,6 @@
 # Ankify Roam
 
-A command-line tool which brings flashcards created in [Roam](https://roamresearch.com/) to [Anki](https://apps.ankiweb.net/).
+A command-line tool which brings flashcards created in [Roam Research](https://roamresearch.com/) to [Anki](https://apps.ankiweb.net/).
 
 <img src="images/anki_roam_screenshot.png">
 
