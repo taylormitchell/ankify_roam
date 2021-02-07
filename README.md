@@ -89,10 +89,28 @@ Open Anki. Make sure you're on the profile you'd like to add the cards to and th
 
 ### 4. Create Roam note types (first time only) 
 
-Run the following to create 2 new note types in Anki: 'Roam Basic' and 'Roam Cloze'. These are the note types which your flashcards in Roam will be added as.
-```
-ankify_roam init
-```
+Create 2 new note types in Anki: 'Roam Basic' and 'Roam Cloze'. These are the note types which your flashcards in Roam will be added as. 
+
+Steps to create a 'Roam Basic' note type:
+- Go to Tools > Manage Note Types and click on "Add"
+- Select the "Add: Basic" option the click "OK"
+- Name it "Roam Basic"
+- With `Roam Basic` selected, click on "Fields..." and add a field called "uid" 
+- With `Roam Basic` selected, Click on "Cards..." 
+- Replace the css in "Styling" with the contents of [roam_basic.css](css/roam_basic.css)
+- Click "Save"
+
+Steps to create a 'Roam Cloze' note type:
+- Go to Tools > Manage Note Types and click on "Add"
+- Select the "Add: Cloze" option the click "OK"
+- Name it "Roam Cloze"
+- With `Roam Cloze` selected, click on "Fields..." and add a field called "uid" 
+- With `Roam Cloze` selected, Click on "Cards..."
+- Replace the css in "Styling" with the contents of [roam_cloze.css](css/roam_cloze.css)
+- Click "Save"
+
+(You can also create your own note types, and have ankify_roam populate those. For details, see [Create custom note types](#create-custom-note-types).)
+
 ### 5. Add the Roam export to Anki
 
 ```
@@ -170,7 +188,7 @@ You can also set this on an individual note:
 
 ### Create custom note types
 
-As mentioned in the [options](#Change-the-default-deck-and-note-types) section, you can import to different note types than the default 'Roam Basic' and 'Roam Cloze' types [provided](#4.-Create-Roam-note-types). Those note types will need to satisfy 2 requirements to be compatible with ankify_roam:   
+As mentioned in the [options](#Change-the-default-deck-and-note-types) section, you can import to different note types than the default 'Roam Basic' and 'Roam Cloze' types [provided](#4.-Create-Roam-note-types-(first-time-only)). Those note types will need to satisfy 2 requirements to be compatible with ankify_roam:   
 
 1. **The first field(s) is for content from Roam (first 2 for Basic and 1 for Cloze)**. When ankify_roam converts a Roam block into an Anki note, it takes the content of the block and places it into the first field of the Anki note. For basic notes, it also takes the content of the block's children and adds them to the second field. The names of these fields doesn't matter, it just matters that they come first in the field order.
 
