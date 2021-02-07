@@ -628,7 +628,7 @@ class PageTag(BlockContentItem):
 
     @classmethod
     def create_pattern(cls, string):
-        pats = ["#[\w\-_@]+"]
+        pats = ["#[\w\-_@\.]+"]
         # Create pattern for page refs which look like tags
         page_ref_pat = PageRef.create_pattern(string)
         if page_ref_pat:
