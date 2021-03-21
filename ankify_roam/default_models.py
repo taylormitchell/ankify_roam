@@ -107,7 +107,6 @@ _css_roam = """
     }
 
     .back-side.list {
-        display: inline-block;
         text-align: left;
     }
 
