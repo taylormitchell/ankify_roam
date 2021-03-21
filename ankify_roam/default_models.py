@@ -64,6 +64,24 @@ _css_roam = """
         cursor: alias;
     }
 
+    .rm-block-text {
+        margin-left: 20px;
+    }
+
+    .rm-block-bullet {
+        float: left;
+    }
+
+    .rm-bullet {
+        display: flex;
+        border-radius: 50%;
+        width: 5px;
+        height: 5px;
+        background-clip: content-box;
+        border: 4px solid transparent;
+        background-color: #394B59;
+    }
+
     .roam-highlight {
         background-color: #fef09f;
         margin: -2px;
@@ -91,11 +109,6 @@ _css_roam = """
     .back-side.list {
         display: inline-block;
         text-align: left;
-    }
-
-    .back-side.list>.block::before {
-        content: "•";
-        margin-right: 10px;
     }
 
     .back-side.list>.block {
