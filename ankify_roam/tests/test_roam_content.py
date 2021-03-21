@@ -757,5 +757,13 @@ class TestAttribute(unittest.TestCase):
         self.assertListEqual(a,b)
 
 
+class TestEmphasis(unittest.TestCase):
+    def test(self):
+        string = '**something** `some code` and `more code` derp and __underlined_stuff__ and ^^highlights^^'
+        html = BlockContent()._all_emphasis_to_html(string)
+        expected = '<b>something</b> <code>some code</code> and <code>more code</code> derp and <em>underlined_stuff</em> and <span class="roam-highlight">highlights</span>'
+        self.assertEqual(html, expected)
+
+
 if __name__=="__main__":
     unittest.main()

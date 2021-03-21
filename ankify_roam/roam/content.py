@@ -53,9 +53,9 @@ class BlockContent(list):
 
     def to_html(self, *args, **kwargs):
         # TODO: implement filters
-        html = "".join([o.to_html(*args, **kwargs) for o in self])
-        html = self._markdown_to_html(html)
-        return html 
+        res = "".join([o.to_html(*args, **kwargs) for o in self])
+        res = self._all_emphasis_to_html(res)
+        return res 
 
     def is_single_pageref(self):
         return len(self)==1 and type(self[0])==PageRef
@@ -64,14 +64,34 @@ class BlockContent(list):
         return [o for o in self if type(o)==String]
 
     @staticmethod
-    def _markdown_to_html(string):
-        # TODO: haven't thought much about how this should work
-        string = re.sub(r"`([^`]+)`", "<code>\g<1></code>", string)
-        string = re.sub(r"\*\*([^\*]+)\*\*", "<b>\g<1></b>", string)
-        string = re.sub(r"\_\_([^_]+)\_\_", "<em>\g<1></em>", string)
-        string = re.sub(r"\^\^([^\^]+)\^\^", 
-            '<span class="roam-highlight">\g<1></span>', string)
+    def _get_emphasis_locs(string, emphasis):
+        emphasis_locs = []
+        emphasis_start = emphasis_end = None 
+        for i,c in enumerate(string):
+            if emphasis_start is None and string[i:i+len(emphasis)] == emphasis:
+                emphasis_start = i
+                continue
+            if emphasis_end is None and string[i:i+len(emphasis)] == emphasis:
+                emphasis_end = i + (len(emphasis)-1)
+                emphasis_locs.append((emphasis_start, emphasis_end))
+                emphasis_start = emphasis_end = None
 
+        return emphasis_locs
+
+    def _emphasis_to_html(self, string, emphasis, html_left, html_right):
+        emphasis_locs = self._get_emphasis_locs(string, emphasis)
+        diff = 0
+        for (i, j) in emphasis_locs:
+            i, j = i + diff, j + diff
+            string = string[:i] + html_left + string[i+len(emphasis):j-len(emphasis)+1] + html_right + string[j+1:]
+            diff = len(html_left+html_right) - len(emphasis+emphasis)
+        return string
+
+    def _all_emphasis_to_html(self, string):
+        string = self._emphasis_to_html(string, emphasis="`", html_left="<code>", html_right="</code>")
+        string = self._emphasis_to_html(string, emphasis="**", html_left="<b>", html_right="</b>")
+        string = self._emphasis_to_html(string, emphasis="__", html_left="<em>", html_right="</em>")
+        string = self._emphasis_to_html(string, emphasis="^^", html_left='<span class="roam-highlight">', html_right='</span>')
         return string
 
     def __repr__(self):
