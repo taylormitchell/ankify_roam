@@ -264,8 +264,12 @@ class BlockAnkifier:
             return ""
         divs = ""
         for block in blocks:
-            div = f'<div class="block" style="--data-lvl:{level}">%s</div>'
-            divs += div % block.to_html(**kwargs)
-            divs += self._listify(block.get("children"), level=level+1, max_depth=max_depth)
+            divs += ''.join([
+                f'<div class="block" style="--data-lvl:{level}">',
+                    f'<div class="rm-block-bullet"><span class="rm-bullet" tabindex="0"></span></div>',
+                    f'<div class="rm-block-text">{block.to_html(**kwargs)}</div>'
+                f'<div>'
+            ])
+            divs += self._listify(block.get("children"), level=level+1)
         return divs
         
