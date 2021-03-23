@@ -611,6 +611,10 @@ class TestPageTag(unittest.TestCase):
         b = string[3:-2]
         self.assertEqual(a, b)
 
+        a = PageTag.from_string("#.ankify").title
+        b = ".ankify"
+        self.assertEqual(a, b)
+
     def test_find_and_replace(self):
         string = "something with [[some]] #[[tags]] in #it"
         a = PageTag.find_and_replace(string)

@@ -87,6 +87,7 @@ pre {
     margin-left: calc(20px * var(--data-lvl));
 }
 
+<<<<<<< HEAD
 [data-tag="ankify"], [data-tag^="[[ankify]]:"]{
   display:none;
 }
@@ -103,3 +104,8 @@ pre {
 .front-side>:not(.parent).block {
     padding-top: 10px;
  }
+=======
+.parent {
+    display: none;
+}
+>>>>>>> master
