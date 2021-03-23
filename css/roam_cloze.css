@@ -1,3 +1,4 @@
+
 .card {
     font-family: arial;
     font-size: 20px;
@@ -87,8 +88,7 @@ pre {
     margin-left: calc(20px * var(--data-lvl));
 }
 
-<<<<<<< HEAD
-[data-tag="ankify"], [data-tag^="[[ankify]]:"]{
+[data-tag="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{
   display:none;
 }
 
@@ -104,8 +104,3 @@ pre {
 .front-side>:not(.parent).block {
     padding-top: 10px;
  }
-=======
-.parent {
-    display: none;
-}
->>>>>>> master

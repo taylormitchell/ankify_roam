@@ -102,7 +102,7 @@ _css_roam = """
         margin-left: calc(20px * var(--data-lvl));
     }
 
-    [data-tag="ankify"], [data-tag^="[[ankify]]:"]{
+    [data-tag="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{
       display:none;
     }
 """
