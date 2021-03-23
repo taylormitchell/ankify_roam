@@ -161,7 +161,7 @@ class BlockAnkifier:
             return "basic"
 
     def _get_show_parents(self, block):
-        pat = f"^ankify_roam: show-parents=(.+)$"
+        pat = f'''^(\[\[)?(ankify_roam|ankify)(\]\])?:\s*show-parents=["']?(.+)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m is None: 
@@ -178,7 +178,7 @@ class BlockAnkifier:
         return self.show_parents
 
     def _get_max_depth(self, block):
-        pat = f"^ankify_roam: max-depth=(.+)$"
+        pat = f'''^(\[\[)?(ankify_roam|ankify)(\]\])?:\s*max-depth=["']?(.+)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m is None: 
