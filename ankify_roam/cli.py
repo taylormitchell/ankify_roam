@@ -1,6 +1,7 @@
 import inspect
 import argparse
 import logging
+import re
 from ankify_roam import __version__
 from ankify_roam import anki
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
@@ -38,7 +39,7 @@ def main():
 
     subparsers = parser.add_subparsers(help='sub-command help')
 
-    # initialize
+    # Arguments for initializer
     parser_init = subparsers.add_parser("init", 
         help="Initialize Anki with Roam specific models",
         description="Initialize Anki with Roam specific models")
@@ -46,7 +47,7 @@ def main():
         help="whether to overwrite the models if they already exist")
     parser_init.set_defaults(func=init)
 
-    # add roam to anki
+    # Arguments for adder
     default_args = util.get_default_args(RoamGraphAnkifier.__init__)
     parser_add = subparsers.add_parser("add", 
         help='Add a Roam export to Anki',
@@ -74,10 +75,36 @@ def main():
     parser_add.add_argument('--tag-dont-ankify', default=default_args['tag_dont_ankify'],
                         type=str, action='store', 
                         help='Roam tag used to identify blocks not to ankify')
+    parser_add.add_argument('--show-parents', default=default_args['show_parents'],
+                        type=str, action='store', 
+                        help='Whether to display block parents on the flashcard')
+    parser_add.add_argument('--max-depth', default=default_args['max_depth'],
+                        type=str, action='store', 
+                        help='Maximum depth of children to ankify')
     parser_add.set_defaults(func=add)
-
     args = vars(parser.parse_args())
     func = args.pop("func")
+
+    # Process argument values
+    if type(args.get("show_parents"))==str:
+        if args["show_parents"]=="False":
+            args["show_parents"] = False
+        elif args["show_parents"]=="True":
+            args["show_parents"] = True
+        elif re.match("^([1-9]?\d+|0)$", args["show_parents"]):
+            args["show_parents"] = int(args["show_parents"])
+        else:
+            raise ValueError("Invalid show-parents value")
+
+    if type(args.get("max_depth"))==str:
+        if args["max_depth"]=="None":
+            args["max_depth"] = None
+        elif re.match("^([1-9]?\d+|0)$", args["max_depth"]):
+            args["max_depth"] = int(args["max_depth"])
+        else:
+            raise ValueError("Invalid max-depth value")
+
+    # Run ankify_roam
     func(**args)
 
 if __name__=="__main__":

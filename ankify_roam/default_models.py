@@ -113,12 +113,16 @@ _css_roam = """
     .back-side.list>.block {
         margin-left: calc(20px * var(--data-lvl));
     }
+
+    [data-tag="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{
+      display:none;
+    }
 """
 
 _css_breadcrumb_parents = """
     .parent {
         display: inline-block;
-        font-size: 10px;
+        font-size: 15px;
     }
     .parent::after {
         content: "›";
@@ -154,7 +158,7 @@ _css_hide_parents = """
 ROAM_BASIC = {
     "modelName": "Roam Basic",
     "inOrderFields": ["Front", "Back", "Extra", "uid"],
-    "css": textwrap.dedent(_css_basic+_css_roam+_css_hide_parents),
+    "css": textwrap.dedent(_css_basic+_css_roam+_css_breadcrumb_parents),
     "cardTemplates": [
         {
             "Name": "Card 1",
@@ -167,7 +171,7 @@ ROAM_BASIC = {
 ROAM_CLOZE = {
     "modelName": "Roam Cloze",
     "inOrderFields": ["Text", "Extra", "uid"],
-    "css": textwrap.dedent(_css_cloze+_css_roam+_css_hide_parents),
+    "css": textwrap.dedent(_css_cloze+_css_roam+_css_breadcrumb_parents),
     "cardTemplates": [
         {
             "Name": "Cloze",

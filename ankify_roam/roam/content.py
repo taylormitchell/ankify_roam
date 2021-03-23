@@ -731,7 +731,9 @@ class String(BlockContentItem):
         return True
 
     def to_html(self, *arg, **kwargs):
-        return self.to_string()
+        s = self.to_string()
+        s = s.replace("\n", "<br>")
+        return s
 
     def get_tags(self):
         return []

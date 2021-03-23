@@ -92,6 +92,19 @@ pre {
     margin-left: calc(20px * var(--data-lvl));
 }
 
-.parent {
-    display: none;
+[data-tag="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{
+  display:none;
 }
+
+.parent {
+    display: inline-block;
+    font-size: 15px;
+}
+.parent::after {
+    content: "›";
+    padding-left: 5px;
+    padding-right: 5px;
+}
+.front-side>:not(.parent).block {
+    padding-top: 10px;
+ }
