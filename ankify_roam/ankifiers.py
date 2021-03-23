@@ -166,7 +166,7 @@ class BlockAnkifier:
             m = re.match(pat, tag)
             if m is None: 
                 continue
-            value = m.group(1)
+            value = m.groups()[-1]
             if value=="False":
                 return False
             elif value=="True":
@@ -183,7 +183,7 @@ class BlockAnkifier:
             m = re.match(pat, tag)
             if m is None: 
                 continue
-            value = m.group(1)
+            value = m.groups()[-1]
             if value=="None":
                 return None
             elif re.match("^([1-9]?\d+|0)$", value):
