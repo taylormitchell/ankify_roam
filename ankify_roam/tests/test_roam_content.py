@@ -758,10 +758,16 @@ class TestAttribute(unittest.TestCase):
 
 
 class TestEmphasis(unittest.TestCase):
-    def test(self):
+    def test_all(self):
         string = '**something** `some code` and `more code` derp and __underlined_stuff__ and ^^highlights^^'
         html = BlockContent()._all_emphasis_to_html(string)
         expected = '<b>something</b> <code>some code</code> and <code>more code</code> derp and <em>underlined_stuff</em> and <span class="roam-highlight">highlights</span>'
+        self.assertEqual(html, expected)
+
+    def test_lots_of_emphasis(self):
+        string = 'something `some code` and `more code` and `even more code`'
+        html = BlockContent()._all_emphasis_to_html(string)
+        expected = 'something <code>some code</code> and <code>more code</code> and <code>even more code</code>'
         self.assertEqual(html, expected)
 
 
