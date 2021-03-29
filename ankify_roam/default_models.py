@@ -173,7 +173,7 @@ ROAM_CLOZE = {
         {
             "Name": "Cloze",
             "Front": "{{cloze:Text}}",
-            "Back": "{{cloze:Text}}<br><br>{{Extra}}"
+            "Back": "{{cloze:Text}}<br>\n{{Back Extra}}"
         }
     ]   
 }

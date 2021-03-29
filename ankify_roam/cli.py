@@ -19,6 +19,7 @@ def add(path, **kwargs):
     roam_graph = RoamGraph.from_path(path)
     ankifier.ankify(roam_graph)
 
+
 def init(overwrite=False):
     modelNames = anki.get_model_names()
     for model in [ROAM_BASIC, ROAM_CLOZE]:
@@ -32,12 +33,31 @@ def init(overwrite=False):
                     f"'{model['modelName']}' already in Anki. "\
                     "If you want to overwrite it, set `overwrite=True`")
 
+
+def update_models():
+    modelNames = anki.get_model_names()
+    for model in [ROAM_BASIC, ROAM_CLOZE]:
+        if model['modelName'] in modelNames:
+            anki.update_model(model)
+            logger.info(f"Updated '{model['modelName']}'")
+        else:
+            logging.info(
+                f"Model '{model['modelName']}' wasn't updated because it's missing from Anki. "\
+                "See the README for instructions on how to add the model.")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Import flashcards from Roam to Anki')
     parser.add_argument('--version', action='version',
                         version='%(prog)s {version}'.format(version=__version__))
 
     subparsers = parser.add_subparsers(help='sub-command help')
+
+    # Arguments for update-model
+    parser_update_model = subparsers.add_parser("update-models", 
+        help="Update Roam specific models in Anki",
+        description="Update Roam specific models in Anki")
+    parser_update_model.set_defaults(func=update_models)
 
     # Arguments for initializer
     parser_init = subparsers.add_parser("init", 
