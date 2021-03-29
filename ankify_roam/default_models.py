@@ -93,13 +93,10 @@ _css_roam = """
         border-radius: 50%;
         width: 5px;
         height: 5px;
+        margin-top: 4px;
         background-clip: content-box;
         border: 4px solid transparent;
         background-color: #394B59;
-    }
-
-    .back-side.list {
-        display: inline-block;
     }
 
     .back-side.list .block {
@@ -126,6 +123,7 @@ _css_breadcrumb_parents = """
     .parent {
         display: inline-block;
         font-size: 15px;
+        opacity: 0.5;
     }
     .parent::after {
         content: "›";
