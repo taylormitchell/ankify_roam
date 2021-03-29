@@ -8,7 +8,7 @@ import string
 from itertools import zip_longest
 from ankify_roam import roam
 from ankify_roam import anki
-from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE, _css_hide_parents
+from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -209,7 +209,6 @@ class BlockAnkifier:
 
         return fields
 
-
     def front_to_html(self, block, **kwargs):
         # Convert content to html
         page_title_html = roam.content.PageRef(block.parent_page).to_html(**kwargs)
@@ -247,15 +246,13 @@ class BlockAnkifier:
                "".join(parents_html+[question_html])
 
     def back_to_html(self, block, **kwargs):
-        children = block.get("children",[])
+        children = block.get("children", [])
         if len(children)>=2:
-            html = '<div class="back-side list">%s</div>'
+            return '<div class="back-side list">%s</div>' % self._listify(children, **kwargs)
+        elif len(children)==1:
+            return '<div class="back-side single">%s</div>' % children[0].to_html(**kwargs)
         else:
-            html = '<div class="back-side">%s</div>'
-
-        html = html % self._listify(children, **kwargs)
-
-        return html
+            return '<div class="back-side"></div>'
 
     def _listify(self, blocks, level=0, max_depth=None, **kwargs):
         if not blocks:
@@ -266,9 +263,9 @@ class BlockAnkifier:
         for block in blocks:
             divs += ''.join([
                 f'<div class="block" style="--data-lvl:{level}">',
-                    f'<div class="rm-block-bullet"><span class="rm-bullet" tabindex="0"></span></div>',
+                    f'<span class="rm-bullet"></span>',
                     f'<div class="rm-block-text">{block.to_html(**kwargs)}</div>'
-                f'<div>'
+                f'</div>'
             ])
             divs += self._listify(block.get("children"), level=level+1)
         return divs

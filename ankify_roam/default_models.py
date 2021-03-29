@@ -2,11 +2,11 @@ import textwrap
 
 _css_basic = """
     .card {
-     font-family: arial;
-     font-size: 20px;
-     text-align: center;
-     color: black;
-     background-color: white;
+        font-family: arial;
+        font-size: 20px;
+        text-align: center;
+        color: black;
+        background-color: white;
     }
 """
 
@@ -23,26 +23,35 @@ _css_cloze = """
         font-weight: bold;
         color: blue;
     }
+
     .nightMode .cloze {
         color: lightblue;
     }
 """
 
 _css_roam = """
+    /* Code */
+
     code {
         border-radius: 5px; 
-        -moz-border-radius: 5px; 
-        -webkit-border-radius: 5px; 
         border: 1px solid #BCBEC0;
         padding: 2px;
         font:12px Monaco,Consolas,"Andale  Mono","DejaVu Sans Mono",monospace;
     }
 
-    .centered-block{
-        display: inline-block;
+    pre code {
+        border-radius: 5px;
+        border: 1px solid #BCBEC0;
+        padding: 10px;
+        font:12px Monaco,Consolas,"Andale  Mono","DejaVu Sans Mono",monospace;
         text-align: left;
-        margin:auto;
+        display: block;
+        margin: 0 0 10px;
+        color: #333;
+        background-color: #f5f5f5;
     }
+
+    /* Roam markup */
 
     .rm-page-ref-brackets {
         color: #a7b6c2;
@@ -64,24 +73,6 @@ _css_roam = """
         cursor: alias;
     }
 
-    .rm-block-text {
-        margin-left: 20px;
-    }
-
-    .rm-block-bullet {
-        float: left;
-    }
-
-    .rm-bullet {
-        display: flex;
-        border-radius: 50%;
-        width: 5px;
-        height: 5px;
-        background-clip: content-box;
-        border: 4px solid transparent;
-        background-color: #394B59;
-    }
-
     .roam-highlight {
         background-color: #fef09f;
         margin: -2px;
@@ -94,25 +85,37 @@ _css_roam = """
         padding: 0 7px;
     }
 
-    pre {
-        text-align: left;
-        border-radius: 5px;
-        border: 1px solid #BCBEC0;
-        display: block;
-        padding: 10px;
-        margin: 0 0 10px;
-        font:12px Monaco,Consolas,"Andale  Mono","DejaVu Sans Mono",monospace;
-        color: #333;
-        background-color: #f5f5f5;
+    /* Roam bullets */
+
+    .rm-bullet {
+        float: left;
+        display: flex;
+        border-radius: 50%;
+        width: 5px;
+        height: 5px;
+        background-clip: content-box;
+        border: 4px solid transparent;
+        background-color: #394B59;
     }
 
     .back-side.list {
+        display: inline-block;
+    }
+
+    .back-side.list .block {
+        margin-left: calc(20px * var(--data-lvl));
+    }
+
+    .back-side.list .rm-block-text {
+        margin-left: 20px;
         text-align: left;
     }
 
-    .back-side.list>.block {
-        margin-left: calc(20px * var(--data-lvl));
+    .back-side.single .rm-bullet {
+        display: none;
     }
+
+    /* ankify_roam markup */
 
     [data-tag="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{
       display:none;
@@ -146,12 +149,6 @@ _css_stacked_parents = """
     }
     .front-side.block {
         margin-left: calc(20px * var(--data-lvl));
-    }
-"""
-
-_css_hide_parents = """
-    .parent {
-        display: none;
     }
 """
 

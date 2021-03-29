@@ -409,8 +409,8 @@ class CodeBlock(BlockContentItem):
             return f'```{self.code}```'
 
     def to_html(self, *args, **kwargs):
-        code = html.escape(self.code).replace("\n","<br>")
-        return f'<pre>{code}</pre>'
+        code = html.escape(self.code)
+        return f'<pre><code>{code}</code></pre>'
 
     def __eq__(self, other):
         return type(self)==type(other) and self.language==other.language and self.code==other.code
