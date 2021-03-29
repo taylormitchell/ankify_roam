@@ -97,7 +97,7 @@ def main():
                         help='Roam tag used to identify blocks not to ankify')
     parser_add.add_argument('--show-parents', default=default_args['show_parents'],
                         type=str, action='store', 
-                        help='Whether to display block parents on the flashcard')
+                        help='Whether to display block parents on the flashcard.')
     parser_add.add_argument('--max-depth', default=default_args['max_depth'],
                         type=str, action='store', 
                         help='Maximum depth of children to ankify')
