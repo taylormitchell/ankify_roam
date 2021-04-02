@@ -20,3 +20,4 @@
     - Use [breadcrumb nagivation](https://www.w3schools.com/howto/howto_css_breadcrumbs.asp) style display for block parents.
     - Hide `#ankify` tag and inline options (e.g. hides `#[[ankify_roam: show-parents=True]]`).
     - Updated css to match the html changes [mentioned above](#Breaking-Changes).
+    - Other minor css improvements.

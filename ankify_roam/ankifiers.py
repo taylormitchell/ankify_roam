@@ -64,7 +64,7 @@ class RoamGraphAnkifier:
             lambda b: self.is_block_to_ankify(b),
             include_parents=True)
 
-        logger.info(f"Found {len(blocks_to_ankify)} blocks to ankify")
+        logger.info(f"Found {len(blocks_to_ankify)} blocks with ankify tag")
 
         block_ankifier_args = inspect.getfullargspec(BlockAnkifier.__init__).args
         kwargs = {k:v for k,v in vars(self).items() if k in block_ankifier_args}
@@ -169,21 +169,21 @@ class BlockAnkifier:
     def _get_show_parents(self, block):
         opt = self._get_option(block, "show-parents")
         if opt:
-            if value=="False":
+            if opt=="False":
                 return False
-            if value=="True":
+            if opt=="True":
                 return True
-            if re.match("^([1-9]?\d+|0)$", value):
-                return int(value)
+            if re.match("^([1-9]?\d+|0)$", opt):
+                return int(opt)
         return self.show_parents
 
     def _get_max_depth(self, block):
         opt = self._get_option(block, "max-depth")
         if opt:
-            if value=="None":
+            if opt=="None":
                 return None
-            if re.match("^([1-9]?\d+|0)$", value):
-                return int(value)
+            if re.match("^([1-9]?\d+|0)$", opt):
+                return int(opt)
         return self.max_depth
 
     def _block_to_fields(self, block, field_names, flashcard_type, **kwargs):
