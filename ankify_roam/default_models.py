@@ -147,11 +147,13 @@ _css_breadcrumb_parents = """
         opacity: 0.5;
         padding-bottom: 10px;
     }
+
     .parent::after {
         content: "›";
         padding-left: 5px;
         padding-right: 5px;
     }
+
     .front-side>:not(.parent).block {
         padding-top: 10px;
      }

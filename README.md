@@ -30,11 +30,6 @@ A command-line tool which brings flashcards created in [Roam Research](https://r
 pip install git+https://github.com/taylormitchell/ankify_roam.git
 ```
 
-or the following to install the development branch  
-```
-pip install git+https://github.com/taylormitchell/ankify_roam.git@dev
-```
-
 ## Requirements
 
 - Python >=3.6
@@ -196,53 +191,6 @@ As mentioned in the [options](#Change-the-default-deck-and-note-types) section, 
 
 If you are going to make your own note types, I'd suggest you create [clones](https://docs.ankiweb.net/#/editing?id=adding-a-note-type) of the 'Roam Basic' and 'Roam Cloze' note types and then just edit the style of those clones (see [here](https://www.youtube.com/watch?v=F1j1Zx0mXME&yt:cc=on) for a tutorial).
 
-### Show parent blocks as breadcrumbs
-
-When your Roam blocks are imported to roam, their parent blocks are included with the block. By default, these blocks are hidden, but you can display them with some changes to the css. Follow the steps below to show the parent blocks as breadcrumbs above your flashcard:
-
-<img src="images/breadcrumbs.png">
-
-If you have Anki notes added using ankify_roam <=0.0.5, you'll need to update the css on your 'Roam Basic' and 'Roam Cloze' note types and re-add your blocks from Roam first. You can do that by [installing the latest version of ankify_roam](#Installation) and then running the following commands: 
-```bash
-ankify_roam init --overwrite # update note type css
-ankify_roam add my_roam.json # update flashcards to include parent blocks
-``` 
-
-Now remove the default css which hides the parent blocks from your 'Roam Basic' and 'Roam Cloze' note types:
-```css
-.parent {
-    display: none;
-}
-```
-
-Then add [this css](css/breadcrumb_parents.css) to display the parent blocks as breadcrumbs:
-```css
-.parent {
-    display: inline-block;
-    font-size: 10px;
-}
-.parent::after {
-    content: "›";
-    padding-left: 5px;
-    padding-right: 5px;
-}
-.front-side>:not(.parent).block {
-    padding-top: 10px;
-}
-```
-
-### Create links back to original Roam blocks 
-
-If you edit the card types in Anki, you can add hyperlinks that allow you to click through to the original roam source. Eg if you add
-
-```
-<p>
-<a href="https://roamresearch.com/#/app/YOURDATABASENAME/page/{{uid}}">*</a>
-``` 
-
-To both card types, you will get a small "*" which when clicked links back to Roam.
-Note however that this is a little slow as Roam will reload in a new tab- you need a local scripting tool such as Keyboard Maestro to work around this. 
-
 
 ### CSS ideas for your Anki cards
 
@@ -262,15 +210,18 @@ Hide page reference brackets.
 
 When a block has multiple children, they're added as bullet points on the backside of a card. If you'd prefer not to show the bullets, similar to the "View as Document" option in Roam, use the following CSS:
 ```css
-li {
+.back-side ul {
     list-style-type: none;
+    text-align: left;
+    margin-left: 0;
+    padding-left: 0;
 }
 ```
 
 
 ### Add color or hide cloze deletions in Roam
 
-You also define cloze deletions using curly bracket in page links:
+You can also define cloze deletions using curly bracket inside square brackets:
 
 <img src="images/page_link_clozes.png" width=600px>
 
