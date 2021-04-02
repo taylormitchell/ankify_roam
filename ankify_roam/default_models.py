@@ -87,33 +87,6 @@ _css_roam = """
         padding: 0 7px;
     }
 
-    /* Roam bullets */
-
-    .rm-bullet {
-        float: left;
-        display: flex;
-        border-radius: 50%;
-        width: 5px;
-        height: 5px;
-        margin-top: 4px;
-        background-clip: content-box;
-        border: 4px solid transparent;
-        background-color: #394B59;
-    }
-
-    .back-side.list .block {
-        margin-left: calc(20px * var(--data-lvl));
-    }
-
-    .back-side.list .rm-block-text {
-        margin-left: 20px;
-        text-align: left;
-    }
-
-    .back-side.single .rm-bullet {
-        display: none;
-    }
-
     /* ankify_roam markup */
 
     [data-tag="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{

@@ -100,7 +100,7 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="", show_parents=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", show_parents=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
