@@ -1,3 +1,4 @@
+import sys
 import inspect
 import argparse
 import logging
@@ -103,7 +104,11 @@ def main():
                         help='Maximum depth of children to ankify')
     parser_add.set_defaults(func=add)
     args = vars(parser.parse_args())
-    func = args.pop("func")
+
+    # If no arguments were given, print the help message and exit
+    if len(args)==0:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
     # Process argument values
     if type(args.get("show_parents"))==str:
@@ -125,6 +130,7 @@ def main():
             raise ValueError("Invalid max-depth value")
 
     # Run ankify_roam
+    func = args.pop("func")
     func(**args)
 
 if __name__=="__main__":
