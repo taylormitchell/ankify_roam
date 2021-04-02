@@ -1,4 +1,6 @@
 import textwrap 
+from ankify_roam import anki
+
 
 _css_basic = """
     .card {
@@ -185,7 +187,7 @@ ROAM_BASIC = {
 
 ROAM_CLOZE = {
     "modelName": "Roam Cloze",
-    "inOrderFields": ["Text", "Extra", "uid"],
+    "inOrderFields": ["Text", "Back Extra", "uid"],
     "css": textwrap.dedent(_css_cloze+_css_roam+_css_breadcrumb_parents),
     "cardTemplates": [
         {
@@ -195,3 +197,17 @@ ROAM_CLOZE = {
         }
     ]   
 }
+
+
+def add_default_models(overwrite=False):
+    res = {}
+    for model in [ROAM_BASIC, ROAM_CLOZE]:
+        modelNames = anki.get_model_names()
+        name = model['modelName']
+        if not name in modelNames:
+            res[name] = anki.create_model(model)
+        elif overwrite:
+            res[name] = anki.update_model(model)
+        else:
+            res[name] = None
+    return res

@@ -5,7 +5,7 @@ import logging
 import re
 from ankify_roam import __version__
 from ankify_roam import anki
-from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
+from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE, add_default_models
 from ankify_roam.ankifiers import RoamGraphAnkifier
 from ankify_roam.roam import RoamGraph
 from ankify_roam import util
@@ -21,52 +21,26 @@ def add(path, **kwargs):
     ankifier.ankify(roam_graph)
 
 
-def init(overwrite=False):
-    modelNames = anki.get_model_names()
-    for model in [ROAM_BASIC, ROAM_CLOZE]:
-        if not model['modelName'] in modelNames:
-            anki.create_model(model)
-        else:
-            if overwrite:
-                anki.update_model(model)
-            else:
-                logging.info(
-                    f"'{model['modelName']}' already in Anki. "\
-                    "If you want to overwrite it, set `overwrite=True`")
-
-
-def update_models():
-    modelNames = anki.get_model_names()
-    for model in [ROAM_BASIC, ROAM_CLOZE]:
-        if model['modelName'] in modelNames:
-            anki.update_model(model)
-            logger.info(f"Updated '{model['modelName']}'")
+def init_models(overwrite=False):
+    models = add_default_models(overwrite=overwrite)
+    for name, model in models.items():
+        if model:
+            logger.info(f"Added '{name}'")
         else:
             logging.info(
-                f"Model '{model['modelName']}' wasn't updated because it's missing from Anki. "\
-                "See the README for instructions on how to add the model.")
+                f"'{name}' already in Anki. "\
+                "If you want to overwrite it, use `ankify_roam init-models --overwrite`")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Import flashcards from Roam to Anki')
+    parser = argparse.ArgumentParser(
+        description='Import flashcards from Roam to Anki',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     parser.add_argument('--version', action='version',
                         version='%(prog)s {version}'.format(version=__version__))
 
     subparsers = parser.add_subparsers(help='sub-command help')
-
-    # Arguments for update-model
-    parser_update_model = subparsers.add_parser("update-models", 
-        help="Update Roam specific models in Anki",
-        description="Update Roam specific models in Anki")
-    parser_update_model.set_defaults(func=update_models)
-
-    # Arguments for initializer
-    parser_init = subparsers.add_parser("init", 
-        help="Initialize Anki with Roam specific models",
-        description="Initialize Anki with Roam specific models")
-    parser_init.add_argument('--overwrite', action="store_true", 
-        help="whether to overwrite the models if they already exist")
-    parser_init.set_defaults(func=init)
 
     # Arguments for adder
     default_args = util.get_default_args(RoamGraphAnkifier.__init__)
@@ -76,33 +50,42 @@ def main():
     parser_add.add_argument('path',
                         metavar='path',
                         type=str,
-                        help='path to the Roam export file or containing directory')
+                        help='path to the Roam export json or containing directory')
     parser_add.add_argument('--deck', default=default_args['deck'],
                         type=str, action='store', 
-                        help='default deck to add notes to')
+                        help='Deck to add notes to (default: "%(default)s")')
     parser_add.add_argument('--note-basic', default=default_args['note_basic'], 
                         type=str, action='store', 
-                        help='default note type to assign basic flashcards')
+                        help='Note type to assign basic flashcards (default: "%(default)s")')
     parser_add.add_argument('--note-cloze', default=default_args['note_cloze'],
                         type=str, action='store', 
-                        help='default note type to assign cloze flashcards')
+                        help='Note type to assign cloze flashcards (default: "%(default)s")')
     parser_add.add_argument('--pageref-cloze', default=default_args['pageref_cloze'],
                         type=str, action='store', 
                         choices=["inside", "outside", "base_only"],
-                        help='where to place clozes around page references')
+                        help='Where to place clozes around page references (default: "%(default)s")')
     parser_add.add_argument('--tag-ankify', default=default_args['tag_ankify'],
                         type=str, action='store', 
-                        help='Roam tag used to identify blocks to ankify')
+                        help='Roam tag used to flag blocks to ankify (default: "%(default)s")')
     parser_add.add_argument('--tag-dont-ankify', default=default_args['tag_dont_ankify'],
                         type=str, action='store', 
-                        help='Roam tag used to identify blocks not to ankify')
+                        help='Roam tag used to flag blocks not to ankify, even if they have the `--tag-ankify` tag (default: "%(default)s")')
     parser_add.add_argument('--show-parents', default=default_args['show_parents'],
                         type=str, action='store', 
-                        help='Whether to display block parents on the flashcard.')
+                        help='Block parents to show on flashcard. "True" shows all parents, "False" shows none, and an integer shows that many parents. (default: "%(default)s")')
     parser_add.add_argument('--max-depth', default=default_args['max_depth'],
                         type=str, action='store', 
-                        help='Maximum depth of children to ankify')
+                        help="Maximum depth of children to ankify e.g. `--max-depth=1` will show the block's children but not grand children. (default: '%(default)s')")
     parser_add.set_defaults(func=add)
+
+    # Arguments for initializer
+    parser_init = subparsers.add_parser("init-models", 
+        help="Initialize Anki with default note types used by ankify_roam",
+        description="Initialize Anki with Roam specific models")
+    parser_init.add_argument('--overwrite', action="store_true", 
+        help="whether to overwrite the models if they already exist")
+    parser_init.set_defaults(func=init_models)
+
     args = vars(parser.parse_args())
 
     # If no arguments were given, print the help message and exit
