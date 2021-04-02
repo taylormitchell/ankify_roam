@@ -683,7 +683,7 @@ class BlockRef(BlockContentItem):
 
     def to_html(self, *arg, **kwargs):
         block = self.get_referenced_block()
-        text = block.to_html() if block else html.escape(self.to_string)
+        text = block.to_html() if block else html.escape(self.to_string())
         return '<div class="rm-block-ref"><span>%s</span></div>' % text
 
     def get_tags(self):

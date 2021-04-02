@@ -60,12 +60,11 @@ class RoamGraphAnkifier:
 
     def ankify(self, roam_graph):
         self.check_conn_and_params()
-        logger.info("Fetching blocks to ankify")
         blocks_to_ankify = roam_graph.query_many(
             lambda b: self.is_block_to_ankify(b),
             include_parents=True)
 
-        logger.info(f"Ankifying {len(blocks_to_ankify)} blocks")
+        logger.info(f"Found {len(blocks_to_ankify)} blocks to ankify")
 
         block_ankifier_args = inspect.getfullargspec(BlockAnkifier.__init__).args
         kwargs = {k:v for k,v in vars(self).items() if k in block_ankifier_args}
@@ -73,23 +72,31 @@ class RoamGraphAnkifier:
 
         num_added = 0
         num_updated = 0
+        num_no_change = 0
+        num_failed = 0
         for block in blocks_to_ankify:
             try:
-                anki_note = block_ankifier.ankify(block)
+                ankified_note = block_ankifier.ankify(block)
             except:
                 logger.exception(f"Failed ankifying {block} during conversion to anki note")
+                num_failed += 1
                 continue
             try:
-                note_id = anki.get_note_id(anki_note)
+                note_id = anki.get_note_id(ankified_note)
                 if note_id:
-                    anki.update_note(anki_note, note_id)
-                    num_updated += 1
+                    existing_fields = {k: v['value'] for k,v in anki.get_note(note_id)['fields'].items()}
+                    if existing_fields == ankified_note['fields']:
+                        num_no_change += 1
+                    else:
+                        anki.update_note(ankified_note, note_id)
+                        num_updated += 1
                 else:
-                    anki.add_note(anki_note)
+                    anki.add_note(ankified_note)
                     num_added += 1
             except:
                 logger.exception(f"Failed ankifying {block} during upload to anki")
-        logger.info(f"Added {num_added} new notes and updated {num_updated} existing notes")
+                num_failed += 1
+        logger.info(f"Results: {num_added} notes added, {num_updated} updated, {num_no_change} unchanged, {num_failed} failed")
 
 
 class BlockAnkifier:
@@ -229,44 +236,38 @@ class BlockAnkifier:
         else:
             raise ValueError("Invalid show_parents value")
 
-        # Wrap in div blocks
+        # Put into html list
         if len(parents_html) == len(block.parent_blocks)+1: # all parents
-            parents_html[0] = f'<div class="page-title parent">{parents_html[0]}</div>'
-            parents_html[1:] = [
-                f'<div class="block parent" style="--data-lvl:{i}">{p}</div>'
-                for i, p in enumerate(parents_html[1:])]
+            list_html = self._listify_front(parents_html + [question_html], cls='page-title parent')
+            return f'<div class="front-side">{list_html}</div>'
+        elif len(parents_html) > 0:
+            list_html = self._listify_front(parents_html + [question_html])
+            return f'<div class="front-side">{list_html}</div>'
         else:
-            parents_html = [
-                f'<div class="block parent" style="--data-lvl:{i}">{p}</div>'
-                for i, p in enumerate(parents_html)]
-        i = len(parents_html)
-        question_html = f'<div class="block" style="--data-lvl:{i}">{question_html}</div>'
+            return f'<div class="front-side">{question_html}</div>'
 
-        return f'<div class="front-side">%s</div>' % \
-               "".join(parents_html+[question_html])
+    def _listify_front(self, block_htmls, cls='block parent'):
+        if len(block_htmls)==1:
+            return '<ul><li class="block">' + block_htmls[0] + '<li></ul>'
+        return f'<ul><li class="{cls}">' + block_htmls[0] + '<li>' + self._listify_front(block_htmls[1:]) + '</ul>'
 
     def back_to_html(self, block, **kwargs):
         children = block.get("children", [])
         if len(children)>=2:
-            return '<div class="back-side list">%s</div>' % self._listify(children, **kwargs)
+            return f'<div class="back-side list">{self._listify_back(children, **kwargs)}</div>'
         elif len(children)==1:
-            return '<div class="back-side single">%s</div>' % children[0].to_html(**kwargs)
+            return f'<div class="back-side">{children[0].to_html(**kwargs)}</div>'
         else:
             return '<div class="back-side"></div>'
 
-    def _listify(self, blocks, level=0, max_depth=None, **kwargs):
+    def _listify_back(self, blocks, level=0, max_depth=None, **kwargs):
         if not blocks:
             return ""
         if max_depth is not None and level == max_depth:
             return ""
-        divs = ""
+        html_list = "" 
         for block in blocks:
-            divs += ''.join([
-                f'<div class="block" style="--data-lvl:{level}">',
-                    f'<span class="rm-bullet"></span>',
-                    f'<div class="rm-block-text">{block.to_html(**kwargs)}</div>'
-                f'</div>'
-            ])
-            divs += self._listify(block.get("children"), level=level+1)
-        return divs
+            html_list += f'<li>{block.to_html(**kwargs)}</li>'
+            html_list += f'{self._listify_back(block.get("children"), level=level+1)}'
+        return f'<ul>{html_list}</ul>'
         

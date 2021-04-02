@@ -117,6 +117,25 @@ _css_roam = """
     [data-tag="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{
       display:none;
     }
+
+    .front-side ul {
+        display: inline;
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .back-side ul {
+        text-align: left;
+        list-style-type: disc;
+    }
+
+    .back-side.single ul {
+        text-align: center;
+        margin: 0;
+        padding: 0;
+        list-style-type: none;
+    }
 """
 
 _css_breadcrumb_parents = """
@@ -124,6 +143,7 @@ _css_breadcrumb_parents = """
         display: inline-block;
         font-size: 15px;
         opacity: 0.5;
+        padding-bottom: 10px;
     }
     .parent::after {
         content: "›";
