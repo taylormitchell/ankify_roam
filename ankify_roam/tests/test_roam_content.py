@@ -378,7 +378,7 @@ class TestCodeBlock(unittest.TestCase):
 
     def test_to_html(self):
         a = CodeBlock("def foo(x+y):\n    return x+y", "clojure").to_html()
-        b = "<pre>def foo(x+y):<br>    return x+y</pre>"
+        b = "<pre><code>def foo(x+y):\n    return x+y</code></pre>"
         self.assertEqual(a, b)
 
     def test_get_tags(self): 

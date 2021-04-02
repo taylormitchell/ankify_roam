@@ -1,4 +1,5 @@
 import unittest
+import re
 import json
 import logging
 import subprocess
@@ -6,8 +7,9 @@ import os
 import psutil
 from ankify_roam import roam, anki
 from ankify_roam.tests.roam_export import ROAM_JSON
-from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
-from ankify_roam.ankifiers import RoamGraphAnkifier
+from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE, add_default_models
+from ankify_roam.ankifiers import RoamGraphAnkifier, BlockAnkifier
+from ankify_roam.roam import Block, BlockContent
 from ankify_roam import util
 
 class AnkiAppTest:
@@ -15,7 +17,7 @@ class AnkiAppTest:
     def get_process():
         # source: https://psutil.readthedocs.io/en/latest/#find-process-by-name
         for p in psutil.process_iter(['name']):
-            if p.info['name'] == "Anki":
+            if p.info['name'] in ["Anki", "AnkiMac"]:
                 return p
 
     @classmethod
@@ -43,7 +45,6 @@ class AnkiAppTest:
     @classmethod
     def setup(cls):
         args = util.get_default_args(RoamGraphAnkifier.__init__)
-        import pdb; pdb.set_trace()
         if args["deck"] not in anki.get_deck_names():
             anki.create_deck(args["deck"])
         for model in [ROAM_BASIC, ROAM_CLOZE]:
@@ -51,17 +52,17 @@ class AnkiAppTest:
                 anki.create_model(model)
 
 
-
 class TestRoamGraphAnkifier(unittest.TestCase):
     def setUp(self):
         if not AnkiAppTest.is_open():
             AnkiAppTest.open()
         self.profile="test"
-        self.deck="__test__"
+        self.deck="test"
         if not anki.load_profile(self.profile):
             raise ValueError("You need an anki profile called 'test' to run the Ankifier tests on")
         anki.delete_deck(self.deck)
         anki.create_deck(self.deck)
+        add_default_models(overwrite=True)
 
     def test_ankify(self):
         pages = json.loads(ROAM_JSON)
@@ -130,6 +131,148 @@ class TestCheckConnAndParams(unittest.TestCase):
         self.assertEqual(
             f"note_cloze must be a cloze note type and '{ankifier.note_cloze}' isn't.", 
             str(cm.exception))
+
+
+class TestBlockAnkifier(unittest.TestCase):
+    def test_get_option(self):
+        ankifier = BlockAnkifier()
+
+        block = Block.from_string("a block #[[[[ankify_roam]]:note='Roam Basic']]")
+        self.assertEqual(ankifier._get_option(block, 'note'), "Roam Basic")
+
+        block = Block.from_string("a block #[[[[ankify]]:note='Roam Basic']]")
+        self.assertEqual(ankifier._get_option(block, 'note'), "Roam Basic")
+
+        block = Block.from_string("a block #[[ankify: note='Roam Basic']]")
+        self.assertEqual(ankifier._get_option(block, 'note'), "Roam Basic")
+
+        block = Block.from_string("a block #[[ankify: note=Roam Basic]]")
+        self.assertEqual(ankifier._get_option(block, 'note'), "Roam Basic")
+
+    def test_front_to_html(self):
+        block_parent = Block.from_string("parent block")
+        block = Block.from_string("ankified block")
+        block.parent_blocks = [block_parent]
+        block.parent_page = "Page title"
+
+        ankifier = BlockAnkifier(show_parents=False)
+        self.assertEqual(
+            '<div class="front-side">ankified block</div>', 
+            ankifier.front_to_html(block)
+        )
+
+        # No parents
+        ankifier = BlockAnkifier(show_parents=False)
+        expected = '<div class="front-side">ankified block</div>'
+        self.assertEqual(ankifier.front_to_html(block), expected)
+
+        # One parent
+        ankifier = BlockAnkifier(show_parents=1)
+        expected = remove_html_whitespace("""
+        <div class="front-side">
+            <ul>
+                <li class="block parent">parent block</li>
+                <ul>
+                    <li class="block">ankified block</li>
+                </ul>
+            </ul>
+        </div>
+        """)
+        self.assertEqual(ankifier.front_to_html(block), expected)
+
+        # All parents
+        ankifier = BlockAnkifier(show_parents=True)
+        expected = remove_html_whitespace("""
+        <div class="front-side">
+            <ul>
+                <li class="page-title parent">
+                    <span data-link-title="Page title">
+                    <span class="rm-page-ref-brackets">[[</span>
+                    <span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">Page title</span>
+                    <span class="rm-page-ref-brackets">]]</span></span>
+                </li>
+                <ul>
+                    <li class="block parent">parent block</li>
+                    <ul>
+                        <li class="block">ankified block</li>
+                    </ul>
+                </ul>
+            </ul>
+        </div>
+        """)
+        self.assertEqual(ankifier.front_to_html(block), expected)
+
+    def test_back_to_html(self):
+        block = Block.from_string("block with children")
+        child1 = Block.from_string("child 1")
+        grandchild1 = Block.from_string("grandchild 1")
+        child2 = Block.from_string("child 2")
+        child1.children = [grandchild1]
+
+        # one child
+        block.children = [child1]
+        ankifier = BlockAnkifier()
+        expected = '<div class="back-side">child 1</div>'
+        self.assertEqual(ankifier.back_to_html(block), expected)
+
+        # multiple children
+        block.children = [child1, child2]
+        ankifier = BlockAnkifier()
+        expected = remove_html_whitespace("""
+        <div class="back-side list">
+            <ul>
+                <li>child 1</li>
+                <ul>
+                    <li>grandchild 1</li>
+                </ul>
+                <li>child 2</li>
+            </ul>
+        </div>
+        """)
+        self.assertEqual(ankifier.back_to_html(block), expected)
+
+        # max depth
+        block.children = [child1, child2]
+        ankifier = BlockAnkifier(max_depth=1)
+        expected = remove_html_whitespace("""
+        <div class="back-side list">
+            <ul>
+                <li>child 1</li>
+                <li>child 2</li>
+            </ul>
+        </div>
+        """)
+        self.assertEqual(ankifier.back_to_html(block), expected)
+
+    def test_ankify(self):
+        block = Block(
+            content=BlockContent.from_string("question"),
+            children=[Block.from_string("answer")],
+            parent_blocks=[],
+            parent_page="page"
+        )
+        ankifier = BlockAnkifier(
+            deck="my deck",
+            note_basic="my basic",
+            field_names = {"my basic": ["Front", "Back"]}
+        )
+        expected = {
+            "deckName": "my deck",
+            "modelName": "my basic",
+            "fields": {
+                "Front": '<div class="front-side">question</div>', 
+                "Back": '<div class="back-side">answer</div>'
+            },
+            "tags": []
+        }
+        self.assertEqual(expected, ankifier.ankify(block))
+
+
+def remove_html_whitespace(html_string):
+    html_string = re.sub(">\s*\n?\s*<", "><", html_string)
+    html_string = re.sub("^\s*\n?\s*", "", html_string)
+    html_string = re.sub("\s*\n?\s*$", "", html_string)
+    return html_string
 
 
 if __name__=="__main__":

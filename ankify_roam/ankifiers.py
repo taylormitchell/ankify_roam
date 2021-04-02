@@ -17,7 +17,7 @@ ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128)
                                if chr(i) not in string.printable])
 
 class RoamGraphAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="", show_parents=False, max_depth=None):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", show_parents=False, max_depth=None):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -100,7 +100,7 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="", show_parents=False, max_depth=None):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="", show_parents=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -108,7 +108,8 @@ class BlockAnkifier:
         self.tag_ankify = tag_ankify
         self.show_parents = show_parents
         self.max_depth = max_depth
-        self.field_names = {}
+        self.option_keys = option_keys
+        self.field_names = field_names 
 
     def ankify(self, block, **kwargs):
         modelName = self._get_note_type(block)
@@ -131,13 +132,19 @@ class BlockAnkifier:
     def ankify_tags(self, roam_tags):
         return [re.sub(r"\s+","_",tag) for tag in roam_tags]
 
-    def _get_note_type(self, block):
-        # Search for assigned model
-        pat = f'''^(\[\[)?(ankify_roam|ankify)(\]\])?:\s*note=["']?([\w\s]*)["']?$'''
+    def _get_option(self, block, option):
+        pat = f'''^(\[\[)?({"|".join(self.option_keys)})(\]\])?:\s*{option}\s?=\s?["']?([\w\s]*)["']?$'''
         for tag in block.get_tags():
             m = re.match(pat, tag)
             if m:
                 return m.groups()[-1]
+        return None
+
+    def _get_note_type(self, block):
+        # Search for assigned model
+        opt = self._get_option(block, "note")
+        if opt:
+            return opt
         # Otherwise infer from cloze markup
         if any([type(obj)==roam.Cloze for obj in block.content]):
             return self.note_cloze
@@ -145,20 +152,12 @@ class BlockAnkifier:
             return self.note_basic
 
     def _get_deck(self, block):
-        pat = f'''^(\[\[)?(ankify_roam|ankify)(\]\])?:\s*deck=["']?([\w\s:]+)["']?$'''
-        for tag in block.get_tags():
-            m = re.match(pat, tag)
-            if m:
-                return m.groups()[-1]
-        return self.deck
+        opt = self._get_option(block, "deck")
+        return opt or self.deck
 
     def _get_pageref_cloze(self, block):
-        pat = f'''^(\[\[)?(ankify_roam|ankify)(\]\])?:\s*pageref-cloze=["']?(\w+)["']?$'''
-        for tag in block.get_tags():
-            m = re.match(pat, tag)
-            if m:
-                return m.groups()[-1]
-        return self.pageref_cloze
+        opt = self._get_option(block, "pageref-cloze")
+        return opt or self.pageref_cloze
 
     def _get_flashcard_type(self, modelName):
         # Infer from blocks assigned model name 
@@ -168,35 +167,23 @@ class BlockAnkifier:
             return "basic"
 
     def _get_show_parents(self, block):
-        pat = f'''^(\[\[)?(ankify_roam|ankify)(\]\])?:\s*show-parents=["']?(.+)["']?$'''
-        for tag in block.get_tags():
-            m = re.match(pat, tag)
-            if m is None: 
-                continue
-            value = m.groups()[-1]
+        opt = self._get_option(block, "show-parents")
+        if opt:
             if value=="False":
                 return False
-            elif value=="True":
+            if value=="True":
                 return True
-            elif re.match("^([1-9]?\d+|0)$", value):
+            if re.match("^([1-9]?\d+|0)$", value):
                 return int(value)
-            else:
-                break
         return self.show_parents
 
     def _get_max_depth(self, block):
-        pat = f'''^(\[\[)?(ankify_roam|ankify)(\]\])?:\s*max-depth=["']?(.+)["']?$'''
-        for tag in block.get_tags():
-            m = re.match(pat, tag)
-            if m is None: 
-                continue
-            value = m.groups()[-1]
+        opt = self._get_option(block, "max-depth")
+        if opt:
             if value=="None":
                 return None
-            elif re.match("^([1-9]?\d+|0)$", value):
+            if re.match("^([1-9]?\d+|0)$", value):
                 return int(value)
-            else:
-                break
         return self.max_depth
 
     def _block_to_fields(self, block, field_names, flashcard_type, **kwargs):
@@ -248,8 +235,8 @@ class BlockAnkifier:
 
     def _listify_front(self, block_htmls, cls='block parent'):
         if len(block_htmls)==1:
-            return '<ul><li class="block">' + block_htmls[0] + '<li></ul>'
-        return f'<ul><li class="{cls}">' + block_htmls[0] + '<li>' + self._listify_front(block_htmls[1:]) + '</ul>'
+            return '<ul><li class="block">' + block_htmls[0] + '</li></ul>'
+        return f'<ul><li class="{cls}">' + block_htmls[0] + '</li>' + self._listify_front(block_htmls[1:]) + '</ul>'
 
     def back_to_html(self, block, **kwargs):
         children = block.get("children", [])
@@ -260,10 +247,10 @@ class BlockAnkifier:
         else:
             return '<div class="back-side"></div>'
 
-    def _listify_back(self, blocks, level=0, max_depth=None, **kwargs):
+    def _listify_back(self, blocks, level=0, **kwargs):
         if not blocks:
             return ""
-        if max_depth is not None and level == max_depth:
+        if self.max_depth is not None and level == self.max_depth:
             return ""
         html_list = "" 
         for block in blocks:
