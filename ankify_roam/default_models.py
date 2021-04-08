@@ -93,6 +93,11 @@ _css_roam = """
       display:none;
     }
 
+    /* Align bullet to top of content*/
+    li > * {
+        vertical-align: text-top;
+    }
+
     .front-side ul {
         display: inline;
         list-style-type: none;
