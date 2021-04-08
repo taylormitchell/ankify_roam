@@ -1,5 +1,4 @@
 import inspect
-import anki
 
 
 def get_default_args(func):

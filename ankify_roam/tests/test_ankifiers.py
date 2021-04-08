@@ -150,51 +150,64 @@ class TestBlockAnkifier(unittest.TestCase):
         self.assertEqual(ankifier._get_option(block, 'note'), "Roam Basic")
 
     def test_front_to_html(self):
-        block_parent = Block.from_string("parent block")
+        """
+        - [[Page title]]
+          - grandparent block
+            - parent block
+              - ankified block
+        """
         block = Block.from_string("ankified block")
-        block.parent_blocks = [block_parent]
         block.parent_page = "Page title"
+        block.parent_blocks = [Block.from_string("grandparent block"), Block.from_string("parent block")]
 
-        ankifier = BlockAnkifier(show_parents=False)
-        self.assertEqual(
-            '<div class="front-side">ankified block</div>', 
-            ankifier.front_to_html(block)
-        )
-
-        # No parents
-        ankifier = BlockAnkifier(show_parents=False)
+        # No parent blocks or page
+        ankifier = BlockAnkifier(num_parents=0, include_page=False)
         expected = '<div class="front-side">ankified block</div>'
         self.assertEqual(ankifier.front_to_html(block), expected)
 
-        # One parent
-        ankifier = BlockAnkifier(show_parents=1)
-        expected = remove_html_whitespace("""
-        <div class="front-side">
-            <ul>
-                <li class="block parent">parent block</li>
-                <ul>
-                    <li class="block">ankified block</li>
-                </ul>
-            </ul>
-        </div>
-        """)
-        self.assertEqual(ankifier.front_to_html(block), expected)
-
-        # All parents
-        ankifier = BlockAnkifier(show_parents=True)
+        # All parent blocks and page
+        ankifier = BlockAnkifier(num_parents="all", include_page=True)
         expected = remove_html_whitespace("""
         <div class="front-side">
             <ul>
                 <li class="page-title parent">
                     <span data-link-title="Page title">
                     <span class="rm-page-ref-brackets">[[</span>
-                    <span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">Page title</span>
+                    <span class="rm-page-ref rm-page-ref-link-color">Page title</span>
                     <span class="rm-page-ref-brackets">]]</span></span>
                 </li>
                 <ul>
-                    <li class="block parent">parent block</li>
+                    <li class="block parent">grandparent block</li>
                     <ul>
-                        <li class="block">ankified block</li>
+                        <li class="block parent">parent block</li>
+                        <ul>
+                            <li class="block">ankified block</li>
+                        </ul>
+                    </ul>
+                </ul>
+            </ul>
+        </div>
+        """)
+        self.assertEqual(ankifier.front_to_html(block), expected)
+
+        # Some parent blocks and page
+        ankifier = BlockAnkifier(num_parents=1, include_page=True)
+        expected = remove_html_whitespace("""
+        <div class="front-side">
+            <ul>
+                <li class="page-title parent">
+                    <span data-link-title="Page title">
+                    <span class="rm-page-ref-brackets">[[</span>
+                    <span class="rm-page-ref rm-page-ref-link-color">Page title</span>
+                    <span class="rm-page-ref-brackets">]]</span></span>
+                </li>
+                <ul>
+                    <li class="block parent"><span class="ellipsis">...</span></li>
+                    <ul>
+                        <li class="block parent">parent block</li>
+                        <ul>
+                            <li class="block">ankified block</li>
+                        </ul>
                     </ul>
                 </ul>
             </ul>

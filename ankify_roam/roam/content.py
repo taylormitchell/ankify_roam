@@ -576,7 +576,7 @@ class PageRef(BlockContentItem):
         return \
             f'<span data-link-title="{html.escape(self.title)}"{uid_attr}>'\
             f'<span class="rm-page-ref-brackets">[[</span>'\
-            f'<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">{html.escape(title)}</span>'\
+            f'<span class="rm-page-ref rm-page-ref-link-color">{html.escape(title)}</span>'\
             f'<span class="rm-page-ref-brackets">]]</span>'\
             f'</span>'
 
@@ -644,7 +644,7 @@ class PageTag(BlockContentItem):
 
     def to_html(self, *arg, **kwargs):
         return \
-            f'<span tabindex="-1" data-tag="{html.escape(self.title)}" '\
+            f'<span data-tag="{html.escape(self.title)}" '\
             f'class="rm-page-ref rm-page-ref-tag">#{html.escape(self.title)}</span>'
 
     @classmethod
@@ -765,7 +765,7 @@ class Attribute(BlockContentItem):
         return "^(?:(?<!:)[^:])+::"
 
     def to_html(self, *arg, **kwargs):
-        return '<span><strong tabindex="-1" style="cursor: pointer;">%s:</strong></span>' % html.escape(self.title)
+        return '<span><strong>%s:</strong></span>' % html.escape(self.title)
 
     def get_tags(self):
         return [self.title]

@@ -17,14 +17,15 @@ ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128)
                                if chr(i) not in string.printable])
 
 class RoamGraphAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", show_parents=False, max_depth=None):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", num_parents=0, include_page=False, max_depth=None):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
         self.pageref_cloze = pageref_cloze
         self.tag_ankify = tag_ankify
         self.tag_dont_ankify = tag_dont_ankify
-        self.show_parents = show_parents
+        self.num_parents = num_parents
+        self.include_page = include_page
         self.max_depth = max_depth
         
     def check_conn_and_params(self):
@@ -100,13 +101,14 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", show_parents=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
         self.pageref_cloze = pageref_cloze
         self.tag_ankify = tag_ankify
-        self.show_parents = show_parents
+        self.num_parents = num_parents
+        self.include_page = include_page
         self.max_depth = max_depth
         self.option_keys = option_keys
         self.field_names = field_names 
@@ -118,7 +120,7 @@ class BlockAnkifier:
             self.field_names[modelName] = anki.get_field_names(modelName)
         flashcard_type = self._get_flashcard_type(modelName)
         kwargs["pageref_cloze"] = self._get_pageref_cloze(block)
-        kwargs["show_parents"] = self._get_show_parents(block)
+        kwargs["num_parents"] = self._get_num_parents(block)
         kwargs["max_depth"] = self._get_max_depth(block)
         fields = self._block_to_fields(block, self.field_names[modelName], flashcard_type, **kwargs)
         tags = self.ankify_tags(block.get_tags())
@@ -166,16 +168,25 @@ class BlockAnkifier:
         else:
             return "basic"
 
-    def _get_show_parents(self, block):
-        opt = self._get_option(block, "show-parents")
+    def _get_num_parents(self, block):
+        num_parents = self._get_option(block, "num-parents")
+        if num_parents:
+            if num_parents == "all":
+                return num_parents
+            try:
+                return int(num_parents)
+            except ValueError:
+                pass
+        return self.num_parents
+
+    def _get_include_page(self, block):
+        opt = self._get_option(block, "include-page")
         if opt:
-            if opt=="False":
-                return False
-            if opt=="True":
+            if opt == 'True':
                 return True
-            if re.match("^([1-9]?\d+|0)$", opt):
-                return int(opt)
-        return self.show_parents
+            if opt == 'False':
+                return False
+        return self.include_page
 
     def _get_max_depth(self, block):
         opt = self._get_option(block, "max-depth")
@@ -210,18 +221,23 @@ class BlockAnkifier:
         parents_kwargs["proc_cloze"] = False # never convert cloze markup in parents to anki clozes
         parent_blocks_html = [p.to_html(**parents_kwargs) for p in block.parent_blocks]
         question_html = block.to_html(**kwargs)
-        parents_html = [page_title_html] + parent_blocks_html
 
-        # Keep select number of parent blocks 
-        show_parents = kwargs.get("show_parents", self.show_parents)
-        if show_parents is True:
-            pass 
-        elif show_parents is False:
-            parents_html = []
-        elif type(show_parents)==int:
-            parents_html = parents_html[-show_parents:]
-        else:
-            raise ValueError("Invalid show_parents value")
+        # Select parents to include 
+        num_parents = kwargs.get("num_parents", self.num_parents)
+        include_page = kwargs.get("show_title", self.include_page)
+        if num_parents == "all":
+            num_parents = len(parent_blocks_html)
+        parents_html = parent_blocks_html[-num_parents:] if num_parents > 0 else []
+        if include_page:
+            # No parent blocks
+            if len(parents_html) == 0:
+                parents_html = [page_title_html]
+            # Some but not all parent blocks
+            elif num_parents < len(parent_blocks_html):
+                parents_html = [page_title_html] + ['<span class="ellipsis">...</span>'] + parents_html
+            # All parent blocks
+            else:
+                parents_html = [page_title_html] + parents_html
 
         # Put into html list
         if len(parents_html) == len(block.parent_blocks)+1: # all parents

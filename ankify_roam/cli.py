@@ -70,9 +70,12 @@ def main():
     parser_add.add_argument('--tag-dont-ankify', default=default_args['tag_dont_ankify'],
                         type=str, action='store', 
                         help='Roam tag used to flag blocks not to ankify, even if they have the `--tag-ankify` tag (default: "%(default)s")')
-    parser_add.add_argument('--show-parents', default=default_args['show_parents'],
+    parser_add.add_argument('--num-parents', default=default_args['num_parents'],
                         type=str, action='store', 
-                        help='Block parents to show on flashcard. "True" shows all parents, "False" shows none, and an integer shows that many parents. (default: "%(default)s")')
+                        help='Number of parents blocks to include on anki notes (pass "*" to select all) (default: "%(default)s")')
+    parser_add.add_argument('--include-page', default=default_args['num_parents'],
+                        action='store_true', 
+                        help='Whether to include page titles on anki notes (default: "%(default)s")')
     parser_add.add_argument('--max-depth', default=default_args['max_depth'],
                         type=str, action='store', 
                         help="Maximum depth of children to ankify e.g. `--max-depth=1` will show the block's children but not grand children. (default: '%(default)s')")
@@ -93,23 +96,19 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    # Process argument values
-    if type(args.get("show_parents"))==str:
-        if args["show_parents"]=="False":
-            args["show_parents"] = False
-        elif args["show_parents"]=="True":
-            args["show_parents"] = True
-        elif re.match("^([1-9]?\d+|0)$", args["show_parents"]):
-            args["show_parents"] = int(args["show_parents"])
-        else:
-            raise ValueError("Invalid show-parents value")
+    if args.get("num_parents"):
+        try:
+            args["num_parents"] = int(args["num_parents"])
+        except ValueError:
+            if args["num_parents"] != "all":
+                raise ValueError("Invalid max-depth value")
 
-    if type(args.get("max_depth"))==str:
+    if args.get("max_depth"):
         if args["max_depth"]=="None":
             args["max_depth"] = None
-        elif re.match("^([1-9]?\d+|0)$", args["max_depth"]):
+        try:
             args["max_depth"] = int(args["max_depth"])
-        else:
+        except ValueError:
             raise ValueError("Invalid max-depth value")
 
     # Run ankify_roam
