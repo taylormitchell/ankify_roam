@@ -121,6 +121,7 @@ class BlockAnkifier:
         flashcard_type = self._get_flashcard_type(modelName)
         kwargs["pageref_cloze"] = self._get_pageref_cloze(block)
         kwargs["num_parents"] = self._get_num_parents(block)
+        kwargs["include_page"] = self._get_include_page(block)
         kwargs["max_depth"] = self._get_max_depth(block)
         fields = self._block_to_fields(block, self.field_names[modelName], flashcard_type, **kwargs)
         tags = self.ankify_tags(block.get_tags())
@@ -224,20 +225,19 @@ class BlockAnkifier:
 
         # Select parents to include 
         num_parents = kwargs.get("num_parents", self.num_parents)
-        include_page = kwargs.get("show_title", self.include_page)
-        if num_parents == "all":
-            num_parents = len(parent_blocks_html)
-        parents_html = parent_blocks_html[-num_parents:] if num_parents > 0 else []
-        if include_page:
-            # No parent blocks
-            if len(parents_html) == 0:
-                parents_html = [page_title_html]
-            # Some but not all parent blocks
-            elif num_parents < len(parent_blocks_html):
-                parents_html = [page_title_html] + ['<span class="ellipsis">...</span>'] + parents_html
-            # All parent blocks
+        include_page = kwargs.get("include_page", self.include_page)
+        # All parents
+        if (num_parents == "all") or (num_parents == len(block.parent_blocks) + 1) or ((num_parents == len(block.parent_blocks)) and include_page):
+            parents_html = [page_title_html] + parent_blocks_html
+        # No parents
+        elif num_parents == 0:
+            parents_html = [page_title_html] if include_page else []
+        # Some parents
+        else:
+            if include_page:
+                parents_html = [page_title_html] + ['<span class="ellipsis">...</span>'] + parent_blocks_html[-num_parents:]
             else:
-                parents_html = [page_title_html] + parents_html
+                parents_html = parent_blocks_html[-num_parents:]
 
         # Put into html list
         if len(parents_html) == len(block.parent_blocks)+1: # all parents
