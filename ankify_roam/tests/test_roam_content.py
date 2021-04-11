@@ -150,7 +150,7 @@ class TestCloze(unittest.TestCase):
             '{{c1::'\
             '<span data-link-title="page">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
-            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">page</span>'\
+            '<span class="rm-page-ref rm-page-ref-link-color">page</span>'\
             '<span class="rm-page-ref-brackets">]]</span></span>'\
             '}}'
         self.assertEqual(a, b)
@@ -158,26 +158,26 @@ class TestCloze(unittest.TestCase):
         b = \
             '<span data-link-title="page">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
-            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">{{c1::page}}</span>'\
+            '<span class="rm-page-ref rm-page-ref-link-color">{{c1::page}}</span>'\
             '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
         a = Cloze(1,"[[namespace/base]]").to_html(pageref_cloze="base_only")
         b = \
             '<span data-link-title="namespace/base">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
-            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">namespace/{{c1::base}}</span>'\
+            '<span class="rm-page-ref rm-page-ref-link-color">namespace/{{c1::base}}</span>'\
             '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
 
         a = Cloze.from_string("[[{c2:]]something[[}]]").to_html(proc_cloze=False)
         b = '<span data-link-title="{c2:">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
-            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">{c2:</span>'\
+            '<span class="rm-page-ref rm-page-ref-link-color">{c2:</span>'\
             '<span class="rm-page-ref-brackets">]]</span></span>'\
             'something'\
             '<span data-link-title="}">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
-            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">}</span>'\
+            '<span class="rm-page-ref rm-page-ref-link-color">}</span>'\
             '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
 
@@ -378,7 +378,7 @@ class TestCodeBlock(unittest.TestCase):
 
     def test_to_html(self):
         a = CodeBlock("def foo(x+y):\n    return x+y", "clojure").to_html()
-        b = "<pre>def foo(x+y):<br>    return x+y</pre>"
+        b = "<pre><code>def foo(x+y):\n    return x+y</code></pre>"
         self.assertEqual(a, b)
 
     def test_get_tags(self): 
@@ -580,13 +580,13 @@ class TestPageRef(unittest.TestCase):
         a = PageRef("page", "PMXeggRpU").to_html()
         b = '<span data-link-title="page" data-link-uid="PMXeggRpU">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
-            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">page</span>'\
+            '<span class="rm-page-ref rm-page-ref-link-color">page</span>'\
             '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
         a = PageRef("page").to_html()
         b = '<span data-link-title="page">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
-            '<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">page</span>'\
+            '<span class="rm-page-ref rm-page-ref-link-color">page</span>'\
             '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
 
@@ -638,16 +638,16 @@ class TestPageTag(unittest.TestCase):
 
     def test_to_html(self):
         a = PageTag("tag").to_html()
-        b = '<span tabindex="-1" data-tag="tag" class="rm-page-ref rm-page-ref-tag">#tag</span>'
+        b = '<span data-tag="tag" class="rm-page-ref rm-page-ref-tag">#tag</span>'
         self.assertEqual(a, b)
         a = PageTag.from_string("#[[tag]]").to_html()
-        b = '<span tabindex="-1" data-tag="tag" class="rm-page-ref rm-page-ref-tag">#tag</span>'
+        b = '<span data-tag="tag" class="rm-page-ref rm-page-ref-tag">#tag</span>'
         self.assertEqual(a, b)
         a = PageTag.from_string("#[[[[tag]]:((cdYtyouxk))]]").to_html()
-        b = '<span tabindex="-1" data-tag="[[tag]]:((cdYtyouxk))" class="rm-page-ref rm-page-ref-tag">#[[tag]]:((cdYtyouxk))</span>'
+        b = '<span data-tag="[[tag]]:((cdYtyouxk))" class="rm-page-ref rm-page-ref-tag">#[[tag]]:((cdYtyouxk))</span>'
         self.assertEqual(a, b)
         a = PageTag.from_string("#[[[[source]]:[[some book]]]]").to_html()
-        b = '<span tabindex="-1" data-tag="[[source]]:[[some book]]" class="rm-page-ref rm-page-ref-tag">#[[source]]:[[some book]]</span>'
+        b = '<span data-tag="[[source]]:[[some book]]" class="rm-page-ref rm-page-ref-tag">#[[source]]:[[some book]]</span>'
         self.assertEqual(a, b)
 
     def test_get_tags(self):
@@ -699,10 +699,10 @@ class TestBlockRef(unittest.TestCase):
         b = '<div class="rm-block-ref"><span><span><label class="check-container">'\
             '<input type="checkbox"><span class="checkmark"></span></label></span>'\
             ' some block with a <span data-link-title="page">'\
-            '<span class="rm-page-ref-brackets">[[</span><span tabindex="-1" '\
+            '<span class="rm-page-ref-brackets">[[</span><span '\
             'class="rm-page-ref rm-page-ref-link-color">page</span><span '\
             'class="rm-page-ref-brackets">]]</span></span> ref and a <span '\
-            'tabindex="-1" data-tag="tag" class="rm-page-ref rm-page-ref-tag">'\
+            'data-tag="tag" class="rm-page-ref rm-page-ref-tag">'\
             '#tag</span></span></div>'
         self.assertEqual(a, b)
 
@@ -748,13 +748,27 @@ class TestAttribute(unittest.TestCase):
 
     def test_to_html(self):
         a = Attribute("attribute").to_html()
-        b = '<span><strong tabindex="-1" style="cursor: pointer;">attribute:</strong></span>'
+        b = '<span><strong>attribute:</strong></span>'
         self.assertEqual(a,b)
 
     def test_get_tags(self):
         a = Attribute("attr").get_tags()
         b = ["attr"]
         self.assertListEqual(a,b)
+
+
+class TestEmphasis(unittest.TestCase):
+    def test_all(self):
+        string = '**something** `some code` and `more code` derp and __underlined_stuff__ and ^^highlights^^'
+        html = BlockContent()._all_emphasis_to_html(string)
+        expected = '<b>something</b> <code>some code</code> and <code>more code</code> derp and <em>underlined_stuff</em> and <span class="roam-highlight">highlights</span>'
+        self.assertEqual(html, expected)
+
+    def test_lots_of_emphasis(self):
+        string = 'something `some code` and `more code` and `even more code`'
+        html = BlockContent()._all_emphasis_to_html(string)
+        expected = 'something <code>some code</code> and <code>more code</code> and <code>even more code</code>'
+        self.assertEqual(html, expected)
 
 
 if __name__=="__main__":

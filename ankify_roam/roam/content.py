@@ -3,6 +3,7 @@ import re
 import logging
 from functools import reduce
 from itertools import zip_longest
+import html
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +54,9 @@ class BlockContent(list):
 
     def to_html(self, *args, **kwargs):
         # TODO: implement filters
-        html = "".join([o.to_html(*args, **kwargs) for o in self])
-        html = self._markdown_to_html(html)
-        return html 
+        res = "".join([o.to_html(*args, **kwargs) for o in self])
+        res = self._all_emphasis_to_html(res)
+        return res 
 
     def is_single_pageref(self):
         return len(self)==1 and type(self[0])==PageRef
@@ -64,14 +65,34 @@ class BlockContent(list):
         return [o for o in self if type(o)==String]
 
     @staticmethod
-    def _markdown_to_html(string):
-        # TODO: haven't thought much about how this should work
-        string = re.sub(r"`([^`]+)`", "<code>\g<1></code>", string)
-        string = re.sub(r"\*\*([^\*]+)\*\*", "<b>\g<1></b>", string)
-        string = re.sub(r"\_\_([^_]+)\_\_", "<em>\g<1></em>", string)
-        string = re.sub(r"\^\^([^\^]+)\^\^", 
-            '<span class="roam-highlight">\g<1></span>', string)
+    def _get_emphasis_locs(string, emphasis):
+        emphasis_locs = []
+        emphasis_start = emphasis_end = None 
+        for i,c in enumerate(string):
+            if emphasis_start is None and string[i:i+len(emphasis)] == emphasis:
+                emphasis_start = i
+                continue
+            if emphasis_end is None and string[i:i+len(emphasis)] == emphasis:
+                emphasis_end = i + (len(emphasis)-1)
+                emphasis_locs.append((emphasis_start, emphasis_end))
+                emphasis_start = emphasis_end = None
 
+        return emphasis_locs
+
+    def _emphasis_to_html(self, string, emphasis, html_left, html_right):
+        emphasis_locs = self._get_emphasis_locs(string, emphasis)
+        diff = 0
+        for (i, j) in emphasis_locs:
+            i, j = i + diff, j + diff
+            string = string[:i] + html_left + string[i+len(emphasis):j-len(emphasis)+1] + html_right + string[j+1:]
+            diff += len(html_left+html_right) - len(emphasis+emphasis)
+        return string
+
+    def _all_emphasis_to_html(self, string):
+        string = self._emphasis_to_html(string, emphasis="`", html_left="<code>", html_right="</code>")
+        string = self._emphasis_to_html(string, emphasis="**", html_left="<b>", html_right="</b>")
+        string = self._emphasis_to_html(string, emphasis="__", html_left="<em>", html_right="</em>")
+        string = self._emphasis_to_html(string, emphasis="^^", html_left='<span class="roam-highlight">', html_right='</span>')
         return string
 
     def __repr__(self):
@@ -231,8 +252,7 @@ class Cloze(BlockContentItem):
         if not proc_cloze:
             if self.string:
                 sections = self.split_string(self.string)
-                htmls = [BlockContent.from_string(s).to_html() for s in sections]
-                return "".join(htmls)
+                return "".join([BlockContent.from_string(s).to_html() for s in sections])
             else:
                 content = BlockContent.from_string(self.text).to_html()
                 return Cloze(self.id, content).to_string()
@@ -298,7 +318,7 @@ class Image(BlockContentItem):
         return f"![{self.alt}]({self.src})" 
 
     def to_html(self, *arg, **kwargs):
-        return f'<img src="{self.src}" alt="{self.alt}" draggable="false" class="rm-inline-img">'
+        return f'<img src="{html.escape(self.src)}" alt="{html.escape(self.alt)}" draggable="false" class="rm-inline-img">'
 
     def __eq__(self, other):
         return type(self)==type(other) and self.src==other.src and self.alt==other.alt
@@ -331,13 +351,13 @@ class Alias(BlockContentItem):
     def to_html(self, *arg, **kwargs):
         if type(self.destination)==PageRef:
             return '<a title="page: %s" class="rm-alias rm-alias-page">%s</a>' % (
-                self.destination.title, self.alias)
+                html.escape(self.destination.title), html.escape(self.alias))
         elif type(self.destination)==BlockRef:
             return '<a title="block: %s" class="rm-alias rm-alias-block">%s</a>' % (
-                self.destination.to_string(expand=True), self.alias)
+                html.escape(self.destination.to_string(expand=True)), html.escape(self.alias))
         else:
             return '<a title="url: {0}" class="rm-alias rm-alias-external" href="{0}">{1}</a>'.format(
-                self.destination.to_string(), self.alias)
+                html.escape(self.destination.to_string()), html.escape(self.alias))
 
     def get_tags(self):
         return self.destination.get_tags()
@@ -389,8 +409,8 @@ class CodeBlock(BlockContentItem):
             return f'```{self.code}```'
 
     def to_html(self, *args, **kwargs):
-        code = self.code.replace("\n","<br>")
-        return f'<pre>{code}</pre>'
+        code = html.escape(self.code)
+        return f'<pre><code>{code}</code></pre>'
 
     def __eq__(self, other):
         return type(self)==type(other) and self.language==other.language and self.code==other.code
@@ -443,7 +463,7 @@ class View(BlockContentItem):
         return cls(name, text, string)
 
     def to_html(self, *arg, **kwargs):
-        return self.text
+        return html.escape(self.text)
 
     def get_tags(self):
         return self.name.get_tags()
@@ -494,7 +514,7 @@ class Button(BlockContentItem):
             return "{{%s}}" % self.name
 
     def to_html(self, *arg, **kwargs):
-        return '<button class="bp3-button bp3-small dont-focus-block">%s</button>' % self.name
+        return '<button class="bp3-button bp3-small dont-focus-block">%s</button>' % html.escape(self.name)
 
     @classmethod
     def create_pattern(cls, string=None):
@@ -554,9 +574,9 @@ class PageRef(BlockContentItem):
         if not title: title=self.title
         uid_attr = f' data-link-uid="{self.uid}"' if self.uid else ''
         return \
-            f'<span data-link-title="{self.title}"{uid_attr}>'\
+            f'<span data-link-title="{html.escape(self.title)}"{uid_attr}>'\
             f'<span class="rm-page-ref-brackets">[[</span>'\
-            f'<span tabindex="-1" class="rm-page-ref rm-page-ref-link-color">{title}</span>'\
+            f'<span class="rm-page-ref rm-page-ref-link-color">{html.escape(title)}</span>'\
             f'<span class="rm-page-ref-brackets">]]</span>'\
             f'</span>'
 
@@ -623,8 +643,9 @@ class PageTag(BlockContentItem):
         return "#"+self.title
 
     def to_html(self, *arg, **kwargs):
-        return f'<span tabindex="-1" data-tag="{self.title}" '\
-               f'class="rm-page-ref rm-page-ref-tag">#{self.title}</span>'
+        return \
+            f'<span data-tag="{html.escape(self.title)}" '\
+            f'class="rm-page-ref rm-page-ref-tag">#{html.escape(self.title)}</span>'
 
     @classmethod
     def create_pattern(cls, string):
@@ -662,7 +683,7 @@ class BlockRef(BlockContentItem):
 
     def to_html(self, *arg, **kwargs):
         block = self.get_referenced_block()
-        text = block.to_html() if block else self.to_string
+        text = block.to_html() if block else html.escape(self.to_string())
         return '<div class="rm-block-ref"><span>%s</span></div>' % text
 
     def get_tags(self):
@@ -692,7 +713,7 @@ class Url(BlockContentItem):
         return self.text
 
     def to_html(self, *arg, **kwargs):
-        return f'<span><a href="{self.text}">{self.text}</a></span>'
+        return f'<span><a href="{html.escape(self.text)}">{html.escape(self.text)}</a></span>'
 
     def __eq__(self, other):
         return type(self)==type(other) and self.text==other.text
@@ -711,7 +732,7 @@ class String(BlockContentItem):
         return True
 
     def to_html(self, *arg, **kwargs):
-        return self.to_string()
+        return html.escape(self.to_string()).replace("\n", "<br>")
 
     def get_tags(self):
         return []
@@ -744,7 +765,7 @@ class Attribute(BlockContentItem):
         return "^(?:(?<!:)[^:])+::"
 
     def to_html(self, *arg, **kwargs):
-        return '<span><strong tabindex="-1" style="cursor: pointer;">%s:</strong></span>' % self.title
+        return '<span><strong>%s:</strong></span>' % html.escape(self.title)
 
     def get_tags(self):
         return [self.title]
