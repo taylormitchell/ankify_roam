@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (TBD)
+## 0.1.0 (2021-04-11)
 
 ### Breaking Changes
 - To improve the display of lists, the html structure of anki fields was changed. This requires users to update the css of their note types accordingly. If you use the default `Roam Basic` and `Roam Cloze` note types, then you can update their css using `ankify_roam init-models --overwrite`. Otherwise, use [roam_basic.css](css/roam_basic.css) and [roam_cloze.css](css/roam_cloze.css) as starting points to manually update your note type css.
