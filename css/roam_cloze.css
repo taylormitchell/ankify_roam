@@ -105,7 +105,6 @@ li > * {
     display: inline-block;
     font-size: 15px;
     opacity: 0.5;
-    padding-bottom: 10px;
 }
 
 .parent::after {
@@ -114,6 +113,6 @@ li > * {
     padding-right: 5px;
 }
 
-.front-side>:not(.parent).block {
-    padding-top: 10px;
+.front-side :not(.parent).block {
+    padding-top: 20px;
  }

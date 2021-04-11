@@ -123,7 +123,6 @@ _css_breadcrumb_parents = """
         display: inline-block;
         font-size: 15px;
         opacity: 0.5;
-        padding-bottom: 10px;
     }
 
     .parent::after {
@@ -132,8 +131,8 @@ _css_breadcrumb_parents = """
         padding-right: 5px;
     }
 
-    .front-side>:not(.parent).block {
-        padding-top: 10px;
+    .front-side :not(.parent).block {
+        padding-top: 20px;
      }
 """
 
