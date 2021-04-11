@@ -11,9 +11,10 @@
 - Display of in-block newlines.
 
 ### New Features
-- Added `--show-parents` option. This option controls the number of parent blocks to include with your card. Set `--show-parents=1` to include only the parent directly above, `--show-parents=2` to include parent and grandparent, etc. You can also show all parents by setting `--show-parents=True` or no parents by setting `--show-parents=False`. By default, show-parents is set to `False`.  
-- Added `--max-depth` option. Set `--max-depth=1` to only includes blocks children but not grandchildren, `max-depth=2` to only include children and grandchildren but not great-grandchildren, etc. By default, `max-depth=None` which includes all levels of children.
-- Added clozify.js, a [[roam/js]] script. Once added to your Roam, selecting text and press `cmd-shift-z` will wrap the text in roam-style cloze markup (e.g. [[{]]list this[[}]]) and add an #ankify tag to the block.  
+- Added `--num-parents` option. This option controls the number of parent blocks to include with your card. Set `--num-parents=1` to include only the parent directly above, `--num-parents=2` to include parent and grandparent, etc. Run `ankify_roam add --help` for details.
+- Added `--include-page` option. This option controls whether to include the page title with your cards.
+- Added `--max-depth` option. Set `--max-depth=1` to only includes blocks children but not grandchildren, `max-depth=2` to only include children and grandchildren but not great-grandchildren, etc. 
+- Added clozify.js, a [[roam/js]] script. Once added to your Roam, selecting text and pressing `cmd-shift-z` will wrap the text in roam-style cloze markup (e.g. [[{]]list this[[}]]) and add an #ankify tag to the block.  
 
 ### Improvements
 - CSS changes to `Roam Basic` and `Roam Cloze` note types:
