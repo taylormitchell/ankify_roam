@@ -177,10 +177,11 @@ class BlockContentItem:
 
 
 class Cloze(BlockContentItem):
-    def __init__(self, id, text, string=None):
+    def __init__(self, id, text, string=None, hint=None):
         self._id = id
         self.text = text
         self.string = string
+        self.hint = hint
 
     @property
     def id(self):
@@ -190,9 +191,19 @@ class Cloze(BlockContentItem):
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
         open, text, close = cls.split_string(string)
+        # Get cloze id
         m = re.search("\d+", open)
         id = int(m.group()) if m else None
-        return cls(id, text, string)
+        # Get hint
+        match_in_text = re.search("::", text)
+        match_in_cloze = re.search("::([^}]*)", close)
+        if match_in_text:
+            text, hint = text[:match_in_text.start()], text[match_in_text.end():]
+        elif match_in_cloze:
+            hint = match_in_cloze.groups()[0]
+        else:
+            hint = None
+        return cls(id, text, string, hint)
 
     @classmethod
     def find_and_replace(cls, string, *args, **kwargs):
@@ -220,7 +231,7 @@ class Cloze(BlockContentItem):
     @classmethod
     def _create_patterns(cls, string=None):
         pats = [    
-            ("\[\[{c?\d*[:|]?\]\]","[^{}]+","\[\[}\]\]"),
+            ("\[\[{c?\d*[:|]?\]\]","[^{}]+","\[\[(?:::[^}]*)?}\]\]"),
             ("(?<!{){c?\d+[:|]","[^{}]+","}(?!})"),
             ("(?<!{){","[^{}]+","}(?!})")]
         return pats
@@ -234,9 +245,9 @@ class Cloze(BlockContentItem):
             style (string): {'anki','roam'}
         """
         if style=="anki":
-            return "{{c%s::%s}}" % (self.id, self.text)
+            return "{{c%s::%s%s}}" % (self.id, self.text, "::"+self.hint if self.hint else "")
         elif style=="roam":
-            return "{c%s:%s}" % (self.id, self.text)
+            return "{c%s:%s%s}" % (self.id, self.text, "::"+self.hint if self.hint else "")
         else:
             raise ValueError(f"style='{style}' is an invalid. "\
                               "Must be 'anki' or 'roam'")
@@ -259,18 +270,18 @@ class Cloze(BlockContentItem):
 
         roam_objects = BlockContent.from_string(self.text)
         if not roam_objects.is_single_pageref():
-            return Cloze(self.id, roam_objects.to_html()).to_string()
+            return Cloze(self.id, roam_objects.to_html(), hint=self.hint).to_string()
 
         # Fancy options to move around the cloze when it's only around a PageRef
         pageref = roam_objects[0]
         if pageref_cloze=="outside":
             text = pageref.to_html()
-            return Cloze(self.id, text).to_string()
+            return Cloze(self.id, text, hint=self.hint).to_string()
         elif pageref_cloze=="inside":
-            clozed_title = Cloze(self.id, pageref.title).to_string()
+            clozed_title = Cloze(self.id, pageref.title, hint=self.hint).to_string()
             return pageref.to_html(title=clozed_title)
         elif pageref_cloze=="base_only":
-            clozed_base = Cloze(self.id, pageref.get_basename()).to_string()
+            clozed_base = Cloze(self.id, pageref.get_basename(), hint=self.hint).to_string()
             namespace = pageref.get_namespace()
             if namespace:
                 clozed_base = namespace + "/" + clozed_base
