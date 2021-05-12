@@ -584,10 +584,20 @@ class PageRef(BlockContentItem):
     def to_html(self, title=None, *args, **kwargs):
         if not title: title=self.title
         uid_attr = f' data-link-uid="{self.uid}"' if self.uid else ''
+        title = html.escape(title)
+        title_split = title.split("/")
+        if len(title_split) == 1:
+            title_html = title
+        else:
+            namespace, name = "/".join(title_split[:-1]) + "/", title_split[-1]
+            title_html = \
+                f'<span class="rm-page-ref-namespace">{namespace}</span>'\
+                f'<span class="rm-page-ref-name">{name}</span>'\
+
         return \
             f'<span data-link-title="{html.escape(self.title)}"{uid_attr}>'\
             f'<span class="rm-page-ref-brackets">[[</span>'\
-            f'<span class="rm-page-ref rm-page-ref-link-color">{html.escape(title)}</span>'\
+            f'<span class="rm-page-ref rm-page-ref-link-color">{title_html}</span>'\
             f'<span class="rm-page-ref-brackets">]]</span>'\
             f'</span>'
 
