@@ -307,6 +307,9 @@ class TestAlias(unittest.TestCase):
         string = "[something](www.google.com) and something)"
         self.assertRaises(ValueError, Alias.from_string, string)
 
+        string = "[[Promise]](exclude)"
+        self.assertRaises(ValueError, Alias.from_string, string)
+
     def test_find_and_replace(self):
         a = Alias.find_and_replace("something [link]([[page]]) to something")
         b = [String("something "),Alias("link",PageRef("page")),String(" to something")]

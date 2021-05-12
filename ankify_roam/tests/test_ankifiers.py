@@ -170,16 +170,16 @@ class TestBlockAnkifier(unittest.TestCase):
         expected = remove_html_whitespace("""
         <div class="front-side">
             <ul>
-                <li class="page-title parent">
+                <li class="page-title parent parent-3 parent-top">
                     <span data-link-title="Page title">
                     <span class="rm-page-ref-brackets">[[</span>
                     <span class="rm-page-ref rm-page-ref-link-color">Page title</span>
                     <span class="rm-page-ref-brackets">]]</span></span>
                 </li>
                 <ul>
-                    <li class="block parent">grandparent block</li>
+                    <li class="block parent parent-2">grandparent block</li>
                     <ul>
-                        <li class="block parent">parent block</li>
+                        <li class="block parent parent-1">parent block</li>
                         <ul>
                             <li class="block">ankified block</li>
                         </ul>
@@ -195,16 +195,16 @@ class TestBlockAnkifier(unittest.TestCase):
         expected = remove_html_whitespace("""
         <div class="front-side">
             <ul>
-                <li class="page-title parent">
+                <li class="page-title parent parent-3 parent-top">
                     <span data-link-title="Page title">
                     <span class="rm-page-ref-brackets">[[</span>
                     <span class="rm-page-ref rm-page-ref-link-color">Page title</span>
                     <span class="rm-page-ref-brackets">]]</span></span>
                 </li>
                 <ul>
-                    <li class="block parent"><span class="ellipsis">...</span></li>
+                    <li class="block parent parent-2"><span class="ellipsis">...</span></li>
                     <ul>
-                        <li class="block parent">parent block</li>
+                        <li class="block parent parent-1">parent block</li>
                         <ul>
                             <li class="block">ankified block</li>
                         </ul>

@@ -343,7 +343,7 @@ class Alias(BlockContentItem):
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
-        alias, destination = re.search(r"^\[([^\[]+)\]\(([\W\w]+)\)$", string).groups()
+        alias, destination = re.search(r"^\[([^\[\]]+)\]\(([\W\w]+)\)$", string).groups()
         if re.match("^\[\[.*\]\]$", destination):
             destination = PageRef.from_string(destination)
         elif re.match("^\(\(.*\)\)$", destination):
@@ -375,7 +375,7 @@ class Alias(BlockContentItem):
     
     @classmethod
     def create_pattern(cls, string=None):
-        re_template = r"\[[^\[]+\]\(%s\)"
+        re_template = r"\[[^\[\]]+\]\(%s\)"
         destination_pats = []
         for o in [PageRef, BlockRef]:
             dest_pat = o.create_pattern(string)
@@ -582,18 +582,25 @@ class PageRef(BlockContentItem):
         return f"[[{self.title}]]"
 
     def to_html(self, title=None, *args, **kwargs):
-        if not title: title=self.title
-        uid_attr = f' data-link-uid="{self.uid}"' if self.uid else ''
-        title = html.escape(title)
-        title_split = title.split("/")
-        if len(title_split) == 1:
-            title_html = title
-        else:
-            namespace, name = "/".join(title_split[:-1]) + "/", title_split[-1]
-            title_html = \
-                f'<span class="rm-page-ref-namespace">{namespace}</span>'\
-                f'<span class="rm-page-ref-name">{name}</span>'\
+        #if not title: title=self.title
 
+        # Page ref is just a string
+        if title:
+            title_html = title
+        elif set([type(o) for o in self._title]) == set([String]): 
+            title = html.escape(self._title.to_string())
+            title_split = title.split("/")
+            if len(title_split) == 1:
+                title_html = title
+            else:
+                namespace, name = "/".join(title_split[:-1]) + "/", title_split[-1]
+                title_html = \
+                    f'<span class="rm-page-ref-namespace">{namespace}</span>'\
+                    f'<span class="rm-page-ref-name">{name}</span>'
+        else:
+            title_html = "".join([o.to_html() for o in self._title])
+
+        uid_attr = f' data-link-uid="{self.uid}"' if self.uid else ''
         return \
             f'<span data-link-title="{html.escape(self.title)}"{uid_attr}>'\
             f'<span class="rm-page-ref-brackets">[[</span>'\
