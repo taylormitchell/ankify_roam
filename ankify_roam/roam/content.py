@@ -21,6 +21,7 @@ class BlockContent(list):
     @classmethod
     def find_and_replace(cls, string, *args, **kwargs):
         roam_object_types_in_parse_order = [
+            BlockQuote,
             CodeBlock,
             Cloze, 
             Image,
@@ -176,6 +177,35 @@ class BlockContentItem:
         return self.to_string()==b.to_string()
 
 
+class BlockQuote(BlockContentItem):
+    def __init__(self, block_content, prefix="> "):
+        self.block_content = block_content
+        self.prefix = prefix
+
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
+        super().from_string(string, validate)
+        prefix, quote = re.match("^(>\s?)([\w\W]*)$", string).groups()
+        block_content = BlockContent.from_string(quote, **kwargs)
+        return cls(block_content, prefix=prefix)
+
+    def to_string(self):
+        return self.prefix + self.block_content.to_string()
+
+    def to_html(self, *args, **kwargs):
+        return '<blockquote class="rm-bq">' + self.block_content.to_html(*args, **kwargs) + '</blockquote>'
+
+    def get_tags(self):
+        return self.block_content.get_tags()
+    
+    @classmethod
+    def create_pattern(cls, string=None):
+        return "^>[\w\W]*$"
+
+    def __eq__(self, other):
+        return type(self)==type(other) and self.block_content.to_string()==other.block_content.to_string() 
+
+
 class Cloze(BlockContentItem):
     def __init__(self, id, text, string=None, hint=None):
         self._id = id
@@ -306,6 +336,7 @@ class Cloze(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.text == other.text
+
 
 class Image(BlockContentItem):
     def __init__(self, src, alt="", string=None):

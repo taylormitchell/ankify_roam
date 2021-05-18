@@ -62,6 +62,18 @@ pre code {
     padding: 0 7px;
 }
 
+.rm-bq {
+    background-color: #F5F8FA;
+    border-left: 5px solid #30404D;
+    font-size: 14px;
+    margin: 0 0 10px;
+    word-wrap: break-word;
+}
+
+blockquote {
+    padding: 10px 20px;
+}
+
 /* ankify_roam markup */
 
 [data-tag="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{

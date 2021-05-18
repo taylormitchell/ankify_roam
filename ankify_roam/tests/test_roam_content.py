@@ -71,6 +71,13 @@ class TestBlockContent(unittest.TestCase):
         self.assertListEqual(tags, ["page refs","some","tags"])
 
 
+class TestBlockQuote(unittest.TestCase):
+    def test_from_string(self):
+        string = "> here's a quote"
+        block_quote = BlockQuote.from_string(string)
+        self.assertEqual(block_quote.block_content.to_string(), "here's a quote")
+
+
 class TestCloze(unittest.TestCase):
     def setUp(self):
         self.maxDiff = 1000
