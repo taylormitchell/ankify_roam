@@ -260,9 +260,10 @@ class BlockAnkifier:
 
     def back_to_html(self, block, **kwargs):
         children = block.get("children", [])
-        if len(children)>=2:
+        num_descendants = block.num_descendants()
+        if num_descendants >= 2:
             return f'<div class="back-side list">{self._listify_back(children, **kwargs)}</div>'
-        elif len(children)==1:
+        elif num_descendants == 1:
             return f'<div class="back-side">{children[0].to_html(**kwargs)}</div>'
         else:
             return '<div class="back-side"></div>'
