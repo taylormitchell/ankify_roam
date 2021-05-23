@@ -220,7 +220,6 @@ class TestBlockAnkifier(unittest.TestCase):
         child1 = Block.from_string("child 1")
         grandchild1 = Block.from_string("grandchild 1")
         child2 = Block.from_string("child 2")
-        child1.children = [grandchild1]
 
         # one child
         block.children = [child1]
@@ -229,6 +228,7 @@ class TestBlockAnkifier(unittest.TestCase):
         self.assertEqual(ankifier.back_to_html(block), expected)
 
         # multiple children
+        child1.children = [grandchild1]
         block.children = [child1, child2]
         ankifier = BlockAnkifier()
         expected = remove_html_whitespace("""
