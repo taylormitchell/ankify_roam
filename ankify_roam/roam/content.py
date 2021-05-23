@@ -21,6 +21,7 @@ class BlockContent(list):
     @classmethod
     def find_and_replace(cls, string, *args, **kwargs):
         roam_object_types_in_parse_order = [
+            BlockQuote,
             CodeBlock,
             Cloze, 
             Image,
@@ -99,6 +100,16 @@ class BlockContent(list):
         return "<%s(%s)>" % (
             self.__class__.__name__, repr(list(self)))
 
+    def get_contents(self, recursive=False):
+        if not recursive:
+            return list(self)
+        else:
+            items = []
+            for item in self:
+                items += [item]
+                items += item.get_contents()
+            return items
+
 
 class BlockContentItem:
     @classmethod
@@ -126,6 +137,9 @@ class BlockContentItem:
         return self.string
 
     def get_tags(self):
+        return []
+
+    def get_contents(self):
         return []
     
     @classmethod
@@ -168,6 +182,7 @@ class BlockContentItem:
 
         return BlockContent(roam_objects)
 
+
     def __repr__(self):
         return "<%s(string='%s')>" % (
             self.__class__.__name__, self.to_string())
@@ -176,11 +191,44 @@ class BlockContentItem:
         return self.to_string()==b.to_string()
 
 
+class BlockQuote(BlockContentItem):
+    def __init__(self, block_content, prefix="> "):
+        self.block_content = block_content
+        self.prefix = prefix
+
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
+        super().from_string(string, validate)
+        prefix, quote = re.match("^(>\s?)([\w\W]*)$", string).groups()
+        block_content = BlockContent.from_string(quote, **kwargs)
+        return cls(block_content, prefix=prefix)
+
+    def to_string(self):
+        return self.prefix + self.block_content.to_string()
+
+    def to_html(self, *args, **kwargs):
+        return '<blockquote class="rm-bq">' + self.block_content.to_html(*args, **kwargs) + '</blockquote>'
+
+    def get_tags(self):
+        return self.block_content.get_tags()
+
+    def get_contents(self):
+        return self.block_content.get_contents()
+    
+    @classmethod
+    def create_pattern(cls, string=None):
+        return "^>[\w\W]*$"
+
+    def __eq__(self, other):
+        return type(self)==type(other) and self.block_content.to_string()==other.block_content.to_string() 
+
+
 class Cloze(BlockContentItem):
-    def __init__(self, id, text, string=None):
+    def __init__(self, id, text, string=None, hint=None):
         self._id = id
         self.text = text
         self.string = string
+        self.hint = hint
 
     @property
     def id(self):
@@ -190,9 +238,19 @@ class Cloze(BlockContentItem):
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
         open, text, close = cls.split_string(string)
+        # Get cloze id
         m = re.search("\d+", open)
         id = int(m.group()) if m else None
-        return cls(id, text, string)
+        # Get hint
+        match_in_text = re.search("::", text)
+        match_in_cloze = re.search("::([^}]*)", close)
+        if match_in_text:
+            text, hint = text[:match_in_text.start()], text[match_in_text.end():]
+        elif match_in_cloze:
+            hint = match_in_cloze.groups()[0]
+        else:
+            hint = None
+        return cls(id, text, string, hint)
 
     @classmethod
     def find_and_replace(cls, string, *args, **kwargs):
@@ -220,7 +278,7 @@ class Cloze(BlockContentItem):
     @classmethod
     def _create_patterns(cls, string=None):
         pats = [    
-            ("\[\[{c?\d*[:|]?\]\]","[^{}]+","\[\[}\]\]"),
+            ("\[\[{c?\d*[:|]?\]\]","[^{}]+","\[\[(?:::[^}]*)?}\]\]"),
             ("(?<!{){c?\d+[:|]","[^{}]+","}(?!})"),
             ("(?<!{){","[^{}]+","}(?!})")]
         return pats
@@ -234,9 +292,9 @@ class Cloze(BlockContentItem):
             style (string): {'anki','roam'}
         """
         if style=="anki":
-            return "{{c%s::%s}}" % (self.id, self.text)
+            return "{{c%s::%s%s}}" % (self.id, self.text, "::"+self.hint if self.hint else "")
         elif style=="roam":
-            return "{c%s:%s}" % (self.id, self.text)
+            return "{c%s:%s%s}" % (self.id, self.text, "::"+self.hint if self.hint else "")
         else:
             raise ValueError(f"style='{style}' is an invalid. "\
                               "Must be 'anki' or 'roam'")
@@ -259,18 +317,18 @@ class Cloze(BlockContentItem):
 
         roam_objects = BlockContent.from_string(self.text)
         if not roam_objects.is_single_pageref():
-            return Cloze(self.id, roam_objects.to_html()).to_string()
+            return Cloze(self.id, roam_objects.to_html(), hint=self.hint).to_string()
 
         # Fancy options to move around the cloze when it's only around a PageRef
         pageref = roam_objects[0]
         if pageref_cloze=="outside":
             text = pageref.to_html()
-            return Cloze(self.id, text).to_string()
+            return Cloze(self.id, text, hint=self.hint).to_string()
         elif pageref_cloze=="inside":
-            clozed_title = Cloze(self.id, pageref.title).to_string()
+            clozed_title = Cloze(self.id, pageref.title, hint=self.hint).to_string()
             return pageref.to_html(title=clozed_title)
         elif pageref_cloze=="base_only":
-            clozed_base = Cloze(self.id, pageref.get_basename()).to_string()
+            clozed_base = Cloze(self.id, pageref.get_basename(), hint=self.hint).to_string()
             namespace = pageref.get_namespace()
             if namespace:
                 clozed_base = namespace + "/" + clozed_base
@@ -295,6 +353,7 @@ class Cloze(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.text == other.text
+
 
 class Image(BlockContentItem):
     def __init__(self, src, alt="", string=None):
@@ -323,6 +382,7 @@ class Image(BlockContentItem):
     def __eq__(self, other):
         return type(self)==type(other) and self.src==other.src and self.alt==other.alt
 
+
 class Alias(BlockContentItem):
     def __init__(self, alias, destination, string=None):
         self.alias = alias
@@ -332,7 +392,7 @@ class Alias(BlockContentItem):
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
-        alias, destination = re.search(r"^\[([^\[]+)\]\(([\W\w]+)\)$", string).groups()
+        alias, destination = re.search(r"^\[([^\[\]]+)\]\(([\W\w]+)\)$", string).groups()
         if re.match("^\[\[.*\]\]$", destination):
             destination = PageRef.from_string(destination)
         elif re.match("^\(\(.*\)\)$", destination):
@@ -361,10 +421,13 @@ class Alias(BlockContentItem):
 
     def get_tags(self):
         return self.destination.get_tags()
+
+    def get_contents(self):
+        return self.destination.get_contents()
     
     @classmethod
     def create_pattern(cls, string=None):
-        re_template = r"\[[^\[]+\]\(%s\)"
+        re_template = r"\[[^\[\]]+\]\(%s\)"
         destination_pats = []
         for o in [PageRef, BlockRef]:
             dest_pat = o.create_pattern(string)
@@ -375,6 +438,7 @@ class Alias(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.alias==other.alias and other.destination==other.destination
+
 
 class CodeBlock(BlockContentItem):
     def __init__(self, code, language=None, string=None):
@@ -414,6 +478,7 @@ class CodeBlock(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.language==other.language and self.code==other.code
+
 
 class Checkbox(BlockContentItem):
     def __init__(self, checked=False):
@@ -468,6 +533,9 @@ class View(BlockContentItem):
     def get_tags(self):
         return self.name.get_tags()
 
+    def get_contents(self):
+        return self.name.get_contents()
+
     @classmethod
     def create_pattern(cls, strings=None):
         re_template = "{{%s:.*}}"
@@ -506,6 +574,9 @@ class Button(BlockContentItem):
     def get_tags(self):
         return BlockContent.from_string(self.text).get_tags()
 
+    def get_contents(self):
+        return BlockContent.from_string(self.text).get_contents()
+
     def to_string(self):
         if self.string: return self.string
         if self.text:
@@ -522,6 +593,7 @@ class Button(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.name==other.name and self.text==other.text
+
 
 class PageRef(BlockContentItem):
     def __init__(self, title, uid="", string=None):
@@ -560,6 +632,12 @@ class PageRef(BlockContentItem):
         tags_in_title = list(set(reduce(lambda x,y: x+y, tags_in_title)))
         return [self.title] + tags_in_title
 
+    def get_contents(self):
+        items = []
+        for item in self._title:
+            items += item.get_contents()
+        return items
+
     def get_namespace(self):
         return os.path.split(self.title)[0]
 
@@ -571,12 +649,29 @@ class PageRef(BlockContentItem):
         return f"[[{self.title}]]"
 
     def to_html(self, title=None, *args, **kwargs):
-        if not title: title=self.title
+        #if not title: title=self.title
+
+        # Page ref is just a string
+        if title:
+            title_html = title
+        elif set([type(o) for o in self._title]) == set([String]): 
+            title = html.escape(self._title.to_string())
+            title_split = title.split("/")
+            if len(title_split) == 1:
+                title_html = title
+            else:
+                namespace, name = "/".join(title_split[:-1]) + "/", title_split[-1]
+                title_html = \
+                    f'<span class="rm-page-ref-namespace">{namespace}</span>'\
+                    f'<span class="rm-page-ref-name">{name}</span>'
+        else:
+            title_html = "".join([o.to_html() for o in self._title])
+
         uid_attr = f' data-link-uid="{self.uid}"' if self.uid else ''
         return \
             f'<span data-link-title="{html.escape(self.title)}"{uid_attr}>'\
             f'<span class="rm-page-ref-brackets">[[</span>'\
-            f'<span class="rm-page-ref rm-page-ref-link-color">{html.escape(title)}</span>'\
+            f'<span class="rm-page-ref rm-page-ref-link-color">{title_html}</span>'\
             f'<span class="rm-page-ref-brackets">]]</span>'\
             f'</span>'
 
@@ -611,6 +706,7 @@ class PageRef(BlockContentItem):
     def __eq__(self, other):
         return type(self)==type(other) and self.title==other.title
 
+
 class PageTag(BlockContentItem):
     def __init__(self, title, string=None):
         """
@@ -637,6 +733,12 @@ class PageTag(BlockContentItem):
         tags_in_title = list(set(reduce(lambda x,y: x+y, tags_in_title)))
         return [self.title] + tags_in_title
 
+    def get_contents(self):
+        items = []
+        for item in self._title:
+            items += item.get_contents()
+        return items
+
     def to_string(self):
         if self.string:
             return self.string
@@ -659,6 +761,7 @@ class PageTag(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.title == other.title
+
 
 class BlockRef(BlockContentItem):
     def __init__(self, uid, roam_db=None, string=None):
@@ -718,6 +821,7 @@ class Url(BlockContentItem):
     def __eq__(self, other):
         return type(self)==type(other) and self.text==other.text
 
+
 class String(BlockContentItem):
     def __init__(self, string):
         self.string = string
@@ -742,6 +846,7 @@ class String(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.string==other.string
+
 
 class Attribute(BlockContentItem):
     def __init__(self, title, string=None):

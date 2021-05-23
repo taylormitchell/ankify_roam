@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 (202-05-23)
+
+### New Features
+- Added support for hints e.g. "Javascript is {synchronous::asynchronous/synchronous}" in Roam becomes "Javascript is {{c1::synchronous::asynchronous/synchronous}}" in Anki
+- Added support for block quotes
+
+### Fixes
+- Blocks with one child but many descendants now include all descendants 
+
 ## 0.1.0 (2021-04-11)
 
 ### Breaking Changes

@@ -149,7 +149,7 @@ class BlockAnkifier:
         if opt:
             return opt
         # Otherwise infer from cloze markup
-        if any([type(obj)==roam.Cloze for obj in block.content]):
+        if any([type(obj)==roam.Cloze for obj in block.get_contents(recursive=True)]):
             return self.note_cloze
         else:
             return self.note_basic
@@ -241,7 +241,7 @@ class BlockAnkifier:
 
         # Put into html list
         if len(parents_html) == len(block.parent_blocks)+1: # all parents
-            list_html = self._listify_front(parents_html + [question_html], cls='page-title parent')
+            list_html = self._listify_front(parents_html + [question_html], cls='page-title')
             return f'<div class="front-side">{list_html}</div>'
         elif len(parents_html) > 0:
             list_html = self._listify_front(parents_html + [question_html])
@@ -249,16 +249,21 @@ class BlockAnkifier:
         else:
             return f'<div class="front-side">{question_html}</div>'
 
-    def _listify_front(self, block_htmls, cls='block parent'):
+    def _listify_front(self, block_htmls, cls='block', depth=0):
         if len(block_htmls)==1:
             return '<ul><li class="block">' + block_htmls[0] + '</li></ul>'
-        return f'<ul><li class="{cls}">' + block_htmls[0] + '</li>' + self._listify_front(block_htmls[1:]) + '</ul>'
+        cls += f" parent parent-{len(block_htmls)-1}"
+        if depth == 0: cls += " parent-top"
+        return f'<ul><li class="{cls}">' + block_htmls[0] + '</li>' + \
+            self._listify_front(block_htmls[1:], 'block', depth+1) + '</ul>'
+        
 
     def back_to_html(self, block, **kwargs):
         children = block.get("children", [])
-        if len(children)>=2:
+        num_descendants = block.num_descendants()
+        if num_descendants >= 2:
             return f'<div class="back-side list">{self._listify_back(children, **kwargs)}</div>'
-        elif len(children)==1:
+        elif num_descendants == 1:
             return f'<div class="back-side">{children[0].to_html(**kwargs)}</div>'
         else:
             return '<div class="back-side"></div>'

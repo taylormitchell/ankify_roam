@@ -72,7 +72,7 @@ def main():
                         help='Roam tag used to flag blocks not to ankify, even if they have the `--tag-ankify` tag (default: "%(default)s")')
     parser_add.add_argument('--num-parents', default=default_args['num_parents'],
                         type=str, action='store', 
-                        help='Number of parents blocks to include on anki notes (pass "*" to select all) (default: "%(default)s")')
+                        help='Number of parents blocks to include on anki notes (pass "all" to select all) (default: "%(default)s")')
     parser_add.add_argument('--include-page', default=default_args['num_parents'],
                         action='store_true', 
                         help='Whether to include page titles on anki notes')

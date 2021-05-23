@@ -124,6 +124,13 @@ class Page:
                 parent_blocks=parent_blocks+[block.content] if include_parents else None)
         return res
 
+    def num_descendants(self):
+        count = 0
+        for block in self.children:
+            count += 1
+            count += block.num_descendants()
+        return count
+
     @classmethod
     def from_dict(cls, page, roam_db):
         child_block_objects = []
@@ -152,6 +159,7 @@ class Block:
         self.parent_blocks = parent_blocks
         self.parent_page = parent_page
 
+
     def set_parent_tags(self, parent_tags):
         self.parent_tags = parent_tags
 
@@ -165,11 +173,21 @@ class Block:
         else:
             return list(set(self.content.get_tags()))
 
+    def get_contents(self, recursive=False):
+        return self.content.get_contents(recursive=recursive)
+
     def to_string(self):
         return self.content.to_string()
 
     def to_html(self, *args, **kwargs):
         return self.content.to_html(*args, **kwargs)
+
+    def num_descendants(self):
+        count = 0
+        for block in self.children:
+            count += 1
+            count += block.num_descendants()
+        return count
 
     @classmethod
     def from_dict(cls, block, roam_db):

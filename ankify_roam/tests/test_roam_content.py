@@ -71,6 +71,13 @@ class TestBlockContent(unittest.TestCase):
         self.assertListEqual(tags, ["page refs","some","tags"])
 
 
+class TestBlockQuote(unittest.TestCase):
+    def test_from_string(self):
+        string = "> here's a quote"
+        block_quote = BlockQuote.from_string(string)
+        self.assertEqual(block_quote.block_content.to_string(), "here's a quote")
+
+
 class TestCloze(unittest.TestCase):
     def setUp(self):
         self.maxDiff = 1000
@@ -132,6 +139,24 @@ class TestCloze(unittest.TestCase):
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.text, "\n".join(["te","xt"]))
 
+        string = "[[{c1:]]text[[::hint}]]"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.id, 1)
+        self.assertEqual(cloze.text, "text")
+
+    def test_hint(self):
+        string = "{text::hint}"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.hint, "hint")
+
+        string = "[[{]]text[[::hint in page ref}]]"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.hint, "hint in page ref")
+
+        string = "{text::hint with double colons :: in it}"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.hint, "hint with double colons :: in it")
+
     def test_find_and_replace(self):
         a = Cloze.find_and_replace("Something with a {cloze}")
         b = [String("Something with a "), Cloze(1, "cloze")]
@@ -141,6 +166,7 @@ class TestCloze(unittest.TestCase):
         self.assertTrue(Cloze(1, "text").to_string(), "{{c1::text}}")
         self.assertTrue(Cloze(1, "text").to_string(style="anki"), "{{c1::text}}")
         self.assertTrue(Cloze(1, "text").to_string(style="roam"), "{c1:text}")
+        self.assertTrue(Cloze(1, "text", hint="hint").to_string(style="anki"), "{{c1::text::hint}}")
         self.assertRaises(ValueError, Cloze(1, "text").to_string, "derp")
 
     def test_to_html(self):
@@ -286,6 +312,9 @@ class TestAlias(unittest.TestCase):
         self.assertRaises(ValueError, Alias.from_string, string)
 
         string = "[something](www.google.com) and something)"
+        self.assertRaises(ValueError, Alias.from_string, string)
+
+        string = "[[Promise]](exclude)"
         self.assertRaises(ValueError, Alias.from_string, string)
 
     def test_find_and_replace(self):

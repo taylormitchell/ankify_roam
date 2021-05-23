@@ -32,7 +32,11 @@ _css_cloze = """
 """
 
 _css_roam = """
-    /* Code */
+    /*
+    +---------------+
+    | HTML elements | 
+    +---------------+ 
+    */
 
     code {
         border-radius: 5px; 
@@ -41,6 +45,7 @@ _css_roam = """
         font:12px Monaco,Consolas,"Andale  Mono","DejaVu Sans Mono",monospace;
     }
 
+    /* Code blocks */
     pre code {
         border-radius: 5px;
         border: 1px solid #BCBEC0;
@@ -53,7 +58,23 @@ _css_roam = """
         background-color: #f5f5f5;
     }
 
-    /* Roam markup */
+    blockquote {
+        padding: 10px 20px;
+        background-color: #F5F8FA;
+        border-left: 5px solid #30404D;
+        margin: 0 0 10px;
+        word-wrap: break-word;
+    }
+
+    li > * {
+        vertical-align: text-top;
+    }
+
+    /*
+    +------+ 
+    | Roam | 
+    +------+
+    */
 
     .rm-page-ref-brackets {
         color: #a7b6c2;
@@ -87,17 +108,31 @@ _css_roam = """
         padding: 0 7px;
     }
 
-    /* ankify_roam markup */
+    .rm-page-ref-brackets {
+        display: none !important;
+    }
+
+    .rm-page-ref-namespace {
+        display: none;
+    }
 
     [data-tag="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{
-      display:none;
+      display:none !important;
     }
 
-    /* Align bullet to top of content*/
-    li > * {
-        vertical-align: text-top;
+    /*
+    +------------+ 
+    | Front side | 
+    +------------+ 
+    */
+
+    .front-side {
+        max-width: 500px;
+        text-align: left;
+        margin: auto;
     }
 
+    /* No bullets or indentation */
     .front-side ul {
         display: inline;
         list-style-type: none;
@@ -105,16 +140,59 @@ _css_roam = """
         padding: 0;
     }
 
+    /* Parents as breadcrumbs */
+    .parent {
+        display: inline-block;
+        font-size: 15px;
+        color: grey;
+        opacity: 0.5;
+    }
+    .parent .rm-page-ref,
+    .parent .rm-alias {
+        display: inline-block;
+        font-size: 15px;
+        color: grey;
+        opacity: 0.5;
+    }
+    .parent::after {
+        content: "›";
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
+    /* Make top parent large and above the rest */
+    .parent.parent-top
+    {
+        font-size: 25px;
+        display: block;
+        color: grey;
+        opacity: 0.8;
+    }
+    .parent.parent-top .rm-page-ref,
+    .parent.parent-top .rm-alias {
+        font-size: 25px;
+        color: grey;
+        opacity: 0.8;
+    }
+    .parent.parent-top::after {
+        display: none;
+    }
+
+    /* Separate parents from question */
+    .front-side :not(.parent).block {
+        padding-top: 20px;
+    }
+
+    /*
+    +-----------+ 
+    | Back side | 
+    +-----------+ 
+    */
+
+    /* Show children as indented bulleted list */
     .back-side ul {
         text-align: left;
         list-style-type: disc;
-    }
-
-    .back-side.single ul {
-        text-align: center;
-        margin: 0;
-        padding: 0;
-        list-style-type: none;
     }
 """
 
@@ -154,7 +232,7 @@ _css_stacked_parents = """
 ROAM_BASIC = {
     "modelName": "Roam Basic",
     "inOrderFields": ["Front", "Back", "Extra", "uid"],
-    "css": textwrap.dedent(_css_basic+_css_roam+_css_breadcrumb_parents),
+    "css": textwrap.dedent(_css_basic+_css_roam),
     "cardTemplates": [
         {
             "Name": "Card 1",
@@ -167,7 +245,7 @@ ROAM_BASIC = {
 ROAM_CLOZE = {
     "modelName": "Roam Cloze",
     "inOrderFields": ["Text", "Back Extra", "uid"],
-    "css": textwrap.dedent(_css_cloze+_css_roam+_css_breadcrumb_parents),
+    "css": textwrap.dedent(_css_cloze+_css_roam),
     "cardTemplates": [
         {
             "Name": "Cloze",
