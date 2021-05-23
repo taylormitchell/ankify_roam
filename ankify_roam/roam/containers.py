@@ -173,6 +173,9 @@ class Block:
         else:
             return list(set(self.content.get_tags()))
 
+    def get_contents(self, recursive=False):
+        return self.content.get_contents(recursive=recursive)
+
     def to_string(self):
         return self.content.to_string()
 

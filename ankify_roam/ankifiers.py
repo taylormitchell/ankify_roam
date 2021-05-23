@@ -149,7 +149,7 @@ class BlockAnkifier:
         if opt:
             return opt
         # Otherwise infer from cloze markup
-        if any([type(obj)==roam.Cloze for obj in block.content]):
+        if any([type(obj)==roam.Cloze for obj in block.get_contents(recursive=True)]):
             return self.note_cloze
         else:
             return self.note_basic

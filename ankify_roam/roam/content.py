@@ -100,6 +100,16 @@ class BlockContent(list):
         return "<%s(%s)>" % (
             self.__class__.__name__, repr(list(self)))
 
+    def get_contents(self, recursive=False):
+        if not recursive:
+            return list(self)
+        else:
+            items = []
+            for item in self:
+                items += [item]
+                items += item.get_contents()
+            return items
+
 
 class BlockContentItem:
     @classmethod
@@ -127,6 +137,9 @@ class BlockContentItem:
         return self.string
 
     def get_tags(self):
+        return []
+
+    def get_contents(self):
         return []
     
     @classmethod
@@ -169,6 +182,7 @@ class BlockContentItem:
 
         return BlockContent(roam_objects)
 
+
     def __repr__(self):
         return "<%s(string='%s')>" % (
             self.__class__.__name__, self.to_string())
@@ -197,6 +211,9 @@ class BlockQuote(BlockContentItem):
 
     def get_tags(self):
         return self.block_content.get_tags()
+
+    def get_contents(self):
+        return self.block_content.get_contents()
     
     @classmethod
     def create_pattern(cls, string=None):
@@ -365,6 +382,7 @@ class Image(BlockContentItem):
     def __eq__(self, other):
         return type(self)==type(other) and self.src==other.src and self.alt==other.alt
 
+
 class Alias(BlockContentItem):
     def __init__(self, alias, destination, string=None):
         self.alias = alias
@@ -403,6 +421,9 @@ class Alias(BlockContentItem):
 
     def get_tags(self):
         return self.destination.get_tags()
+
+    def get_contents(self):
+        return self.destination.get_contents()
     
     @classmethod
     def create_pattern(cls, string=None):
@@ -417,6 +438,7 @@ class Alias(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.alias==other.alias and other.destination==other.destination
+
 
 class CodeBlock(BlockContentItem):
     def __init__(self, code, language=None, string=None):
@@ -456,6 +478,7 @@ class CodeBlock(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.language==other.language and self.code==other.code
+
 
 class Checkbox(BlockContentItem):
     def __init__(self, checked=False):
@@ -510,6 +533,9 @@ class View(BlockContentItem):
     def get_tags(self):
         return self.name.get_tags()
 
+    def get_contents(self):
+        return self.name.get_contents()
+
     @classmethod
     def create_pattern(cls, strings=None):
         re_template = "{{%s:.*}}"
@@ -548,6 +574,9 @@ class Button(BlockContentItem):
     def get_tags(self):
         return BlockContent.from_string(self.text).get_tags()
 
+    def get_contents(self):
+        return BlockContent.from_string(self.text).get_contents()
+
     def to_string(self):
         if self.string: return self.string
         if self.text:
@@ -564,6 +593,7 @@ class Button(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.name==other.name and self.text==other.text
+
 
 class PageRef(BlockContentItem):
     def __init__(self, title, uid="", string=None):
@@ -601,6 +631,12 @@ class PageRef(BlockContentItem):
         tags_in_title = [o.get_tags() for o in self._title]
         tags_in_title = list(set(reduce(lambda x,y: x+y, tags_in_title)))
         return [self.title] + tags_in_title
+
+    def get_contents(self):
+        items = []
+        for item in self._title:
+            items += item.get_contents()
+        return items
 
     def get_namespace(self):
         return os.path.split(self.title)[0]
@@ -670,6 +706,7 @@ class PageRef(BlockContentItem):
     def __eq__(self, other):
         return type(self)==type(other) and self.title==other.title
 
+
 class PageTag(BlockContentItem):
     def __init__(self, title, string=None):
         """
@@ -696,6 +733,12 @@ class PageTag(BlockContentItem):
         tags_in_title = list(set(reduce(lambda x,y: x+y, tags_in_title)))
         return [self.title] + tags_in_title
 
+    def get_contents(self):
+        items = []
+        for item in self._title:
+            items += item.get_contents()
+        return items
+
     def to_string(self):
         if self.string:
             return self.string
@@ -718,6 +761,7 @@ class PageTag(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.title == other.title
+
 
 class BlockRef(BlockContentItem):
     def __init__(self, uid, roam_db=None, string=None):
@@ -777,6 +821,7 @@ class Url(BlockContentItem):
     def __eq__(self, other):
         return type(self)==type(other) and self.text==other.text
 
+
 class String(BlockContentItem):
     def __init__(self, string):
         self.string = string
@@ -801,6 +846,7 @@ class String(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.string==other.string
+
 
 class Attribute(BlockContentItem):
     def __init__(self, title, string=None):
