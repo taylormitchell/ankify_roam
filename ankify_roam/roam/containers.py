@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class RoamGraph:
     def __init__(self, pages):
         self.pages = [Page.from_dict(p, self) for p in pages]
-        self.apply_tag_inheritance()
+        self.propagate_parents()
 
     @classmethod
     def from_path(cls, path):
@@ -54,35 +54,28 @@ class RoamGraph:
             if page.title==title:
                 return page
 
-    def query_many(self, condition, include_parents=True):
+    def query_many(self, condition):
         blocks = []
         for page in self.pages:
-            blocks += page.query_many(condition, include_parents=include_parents)
+            blocks += page.query_many(condition)
         return blocks
 
-    def query_by_uid(self, uid, include_parents=True):
+    def query_by_uid(self, uid):
         for page in self.pages:
-            block = page.query_by_uid(uid, include_parents=include_parents)
+            block = page.query_by_uid(uid)
             if block:
                 return block
 
-    def query_by_tag(self, tag, include_parents=True):
-        return query_many(lambda b: tag in b.get_tags())
+    def query_by_tag(self, tag):
+        return self.query_many(lambda b: tag in b.get_tags())
 
-    def _apply_tag_inheritance(self, blocks, parent_tags=[]):
-        for block in blocks:
-            if type(block)==Block:
-                block.set_parent_tags(parent_tags)
-            if block.get("children"):
-                self._apply_tag_inheritance(block.get("children"), parent_tags=block.get_tags())
-
-    def apply_tag_inheritance(self):
+    def propagate_parents(self):
         for page in self.pages:
-            self._apply_tag_inheritance(page.get("children",[]), parent_tags=page.get_tags())
+            page.propagate_parents()
 
 
 class Page:
-    def __init__(self, title, children, edit_time, edit_email):
+    def __init__(self, title, children=[], edit_time=None, edit_email=None):
         self.title = title
         self.children = children
         self.edit_time = edit_time
@@ -94,34 +87,23 @@ class Page:
     def get(self, key, default=None):
         return getattr(self, key) if hasattr(self, key) else default
 
-    def query_by_uid(self, uid, default=None, blocks=None, parent_blocks=[], include_parents=True):
+    def query_by_uid(self, uid, default=None, blocks=None):
         if blocks is None: blocks = self.get('children',[])
         for block in blocks:
             if block.get("uid") == uid:
-                if include_parents: 
-                    block.parent_page = self.title
-                    block.parent_blocks = parent_blocks
                 return block
-            block = self.query_by_uid(uid, default=default, blocks=block.get('children',[]),
-                parent_blocks=parent_blocks+[block.content])
+            block = self.query_by_uid(uid, default=default, blocks=block.get('children',[]))
             if block:
                 return block
         return default
 
-    def query_many(self, condition, blocks=None, parent_blocks=[], include_parents=True):
+    def query_many(self, condition, blocks=None):
         if blocks is None: blocks=self.get('children',[])
         res = []
         for block in blocks:
             if condition(block):
-                if include_parents: 
-                    block.parent_page = self.title
-                    block.parent_blocks = parent_blocks
                 res.append(block)
-            res += self.query_many(
-                condition, 
-                include_parents=include_parents,
-                blocks=block.children, 
-                parent_blocks=parent_blocks+[block.content] if include_parents else None)
+            res += self.query_many(condition, blocks=block.children)
         return res
 
     def num_descendants(self):
@@ -130,6 +112,10 @@ class Page:
             count += 1
             count += block.num_descendants()
         return count
+
+    def propagate_parents(self):
+        for block in self.children:
+            block.propagate_parents(parent=self)
 
     @classmethod
     def from_dict(cls, page, roam_db):
@@ -145,7 +131,7 @@ class Page:
 class Block:
     def __init__(self, content=None, children=None, uid="", create_time="", 
                  create_email="",  edit_time="", edit_email="", roam_db=None, 
-                 parent_blocks=None, parent_page=None):
+                 parent=None):
         self.content = content or BlockContent()
         self.children = children or BlockChildren()
         self.uid = uid
@@ -156,22 +142,52 @@ class Block:
         self.roam_db = roam_db
         self.parent_tags = []
         self.objects = []
-        self.parent_blocks = parent_blocks
-        self.parent_page = parent_page
+        self.parent = parent
 
+    @property
+    def parent_blocks(self):
+        if isinstance(self.parent, Block):
+            return [self.parent] + self.parent.parent_blocks
+        return []
 
-    def set_parent_tags(self, parent_tags):
-        self.parent_tags = parent_tags
+    @property
+    def parent_page(self):
+        if self.parent is None:
+            return None
+        elif isinstance(self.parent, Page):
+            return self.parent
+        else: 
+            return self.parent_blocks[-1].parent
 
     def get(self, key, default=None):
         if not default: default=BlockChildren()
         return getattr(self, key) if hasattr(self, key) else default
 
-    def get_tags(self, inherit=True):
+    def get_tags(self, inherit=True, drop_duplicates=False):
+        """Return a list of tags on the block
+
+        The list of tags are ordered such that tags inside the block come first, ordered
+        from left to right. If inherit is True, then the tags of it's parent come next, and 
+        it's grandparent next, and so on.
+
+        Args:
+            inherit: Whether to include parent tags
+            drop_duplicates: Drop duplicate tags (keep first)
+
+        Returns:
+            list of string: Tags on the block
+        """
+        tags = self.content.get_tags()
         if inherit:
-            return list(set(self.parent_tags + self.content.get_tags()))
-        else:
-            return list(set(self.content.get_tags()))
+            if isinstance(self.parent, Page):
+                tags += self.parent.get_tags()
+            elif isinstance(self.parent, Block):
+                tags += self.parent.get_tags(inherit=True)
+            else:
+                pass
+        if drop_duplicates:
+            tags = list(dict.fromkeys(tags)) # This preserves order
+        return tags
 
     def get_contents(self, recursive=False):
         return self.content.get_contents(recursive=recursive)
@@ -189,8 +205,13 @@ class Block:
             count += block.num_descendants()
         return count
 
+    def propagate_parents(self, parent=None):
+        self.parent = parent
+        for block in self.children:
+            block.propagate_parents(parent=self)
+
     @classmethod
-    def from_dict(cls, block, roam_db):
+    def from_dict(cls, block, roam_db=None):
         # TODO: rename this
         content = BlockContent.from_string(block["string"], roam_db=roam_db)
         child_block_objects = []
@@ -202,7 +223,8 @@ class Block:
                 logger.debug(e, exc_info=1)
         children = BlockChildren(child_block_objects)
         return cls(content, children, block['uid'], block.get('create-time',''),
-                   block.get('create-email',''), block.get('edit-time',''), block.get('edit-email',''), roam_db)
+                   block.get('create-email',''), block.get('edit-time',''), block.get('edit-email',''), 
+                   roam_db)
 
     @classmethod
     def from_string(cls, string, *args, **kwargs):

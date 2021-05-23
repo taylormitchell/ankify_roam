@@ -51,9 +51,10 @@ class RoamGraphAnkifier:
             raise ValueError(f"note_cloze must be a cloze note type and '{self.note_cloze}' isn't.")
 
     def is_block_to_ankify(self, block):
-        tags = block.get_tags(inherit=False)
-        if self.tag_ankify in tags:
-            if self.tag_dont_ankify and self.tag_dont_ankify in tags:
+        tags_in_block = block.get_tags(inherit=False)
+        all_tags = block.get_tags(inherit=True)
+        if self.tag_ankify in tags_in_block:
+            if self.tag_dont_ankify and self.tag_dont_ankify in all_tags:
                 return False
             return True
         else:
@@ -62,8 +63,7 @@ class RoamGraphAnkifier:
     def ankify(self, roam_graph):
         self.check_conn_and_params()
         blocks_to_ankify = roam_graph.query_many(
-            lambda b: self.is_block_to_ankify(b),
-            include_parents=True)
+            lambda b: self.is_block_to_ankify(b))
 
         logger.info(f"Found {len(blocks_to_ankify)} blocks with ankify tag")
 
@@ -217,10 +217,10 @@ class BlockAnkifier:
 
     def front_to_html(self, block, **kwargs):
         # Convert content to html
-        page_title_html = roam.content.PageRef(block.parent_page).to_html(**kwargs)
+        page_title_html = roam.content.PageRef(block.parent_page.title).to_html(**kwargs)
         parents_kwargs = kwargs.copy()
         parents_kwargs["proc_cloze"] = False # never convert cloze markup in parents to anki clozes
-        parent_blocks_html = [p.to_html(**parents_kwargs) for p in block.parent_blocks]
+        parent_blocks_html = [p.to_html(**parents_kwargs) for p in block.parent_blocks[::-1]]
         question_html = block.to_html(**kwargs)
 
         # Select parents to include 
