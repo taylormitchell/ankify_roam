@@ -67,7 +67,7 @@ class TestPage(unittest.TestCase):
         pages = json.loads(ROAM_JSON)
         roam_graph = RoamGraph(pages)
         page = roam_graph.get_page("Geography")
-        self.assertEquals(page.num_descendants(), 9)
+        self.assertEqual(page.num_descendants(), 9)
 
 
 class TestBlock(unittest.TestCase):
@@ -75,4 +75,4 @@ class TestBlock(unittest.TestCase):
         pages = json.loads(ROAM_JSON)
         roam_graph = RoamGraph(pages)
         block = roam_graph.query_by_uid("klGAc1Gi3")
-        self.assertEquals(block.num_descendants(), 8)
+        self.assertEqual(block.num_descendants(), 8)
