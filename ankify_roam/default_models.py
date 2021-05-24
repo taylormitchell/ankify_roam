@@ -116,7 +116,7 @@ _css_roam = """
         display: none;
     }
 
-    [data-tag="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{
+    [data-tag^="ankify"], [data-tag^="[[ankify]]:"], [data-tag^="ankify_roam:"], [data-tag^="[[ankify_roam]]:"]{
       display:none !important;
     }
 
