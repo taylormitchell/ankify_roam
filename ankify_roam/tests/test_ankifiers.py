@@ -216,6 +216,25 @@ class TestBlockAnkifier(unittest.TestCase):
         """)
         self.assertEqual(ankifier.front_to_html(block), expected)
 
+        # All parent blocks and page
+        block = Block.from_string("ankified block")
+        block.parent = Block.from_string("parent block #ankify-root")
+        block.parent.parent = Block.from_string("grandparent block")
+        block.parent.parent.parent = Page("Page title")
+
+        ankifier = BlockAnkifier(num_parents="all", tag_ankify_root="ankify-root")
+        expected = remove_html_whitespace("""
+        <div class="front-side">
+            <ul>
+                <li class="block parent parent-1 parent-top">parent block <span data-tag="ankify-root" class="rm-page-ref rm-page-ref-tag">#ankify-root</span></li>
+                <ul>
+                    <li class="block">ankified block</li>
+                </ul>
+            </ul>
+        </div>
+        """)
+        self.assertEqual(ankifier.front_to_html(block), expected)
+
     def test_back_to_html(self):
         block = Block.from_string("block with children")
         child1 = Block.from_string("child 1")
@@ -259,6 +278,28 @@ class TestBlockAnkifier(unittest.TestCase):
         self.assertEqual(ankifier.back_to_html(block), expected)
 
     def test_ankify(self):
+        block = Block(
+            content=BlockContent.from_string("question"),
+            children=[Block.from_string("answer")],
+            parent=Page("page")
+        )
+        ankifier = BlockAnkifier(
+            deck="my deck",
+            note_basic="my basic",
+            field_names = {"my basic": ["Front", "Back"]}
+        )
+        expected = {
+            "deckName": "my deck",
+            "modelName": "my basic",
+            "fields": {
+                "Front": '<div class="front-side">question</div>', 
+                "Back": '<div class="back-side">answer</div>'
+            },
+            "tags": ["page"]
+        }
+        self.assertEqual(expected, ankifier.ankify(block))
+
+    def test_ankify_root(self):
         block = Block(
             content=BlockContent.from_string("question"),
             children=[Block.from_string("answer")],

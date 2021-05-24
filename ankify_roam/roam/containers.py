@@ -81,7 +81,7 @@ class Page:
         self.edit_time = edit_time
         self.edit_email = edit_email
 
-    def get_tags(self):
+    def get_tags(self, *args, **kwargs):
         return [self.title]
 
     def get(self, key, default=None):
@@ -117,6 +117,9 @@ class Page:
         for block in self.children:
             block.propagate_parents(parent=self)
 
+    def to_html(self, *args, **kwargs):
+        return PageRef(self.title).to_html(**kwargs)
+
     @classmethod
     def from_dict(cls, page, roam_db):
         child_block_objects = []
@@ -145,6 +148,14 @@ class Block:
         self.parent = parent
 
     @property
+    def parents(self):
+        if isinstance(self.parent, Page):
+            return [self.parent]
+        elif isinstance(self.parent, Block):
+            return [self.parent] + self.parent.parents
+        return []
+
+    @property
     def parent_blocks(self):
         if isinstance(self.parent, Block):
             return [self.parent] + self.parent.parent_blocks
@@ -152,12 +163,10 @@ class Block:
 
     @property
     def parent_page(self):
-        if self.parent is None:
-            return None
-        elif isinstance(self.parent, Page):
-            return self.parent
-        else: 
-            return self.parent_blocks[-1].parent
+        parent = self.parent
+        while parent and not isinstance(parent, Page):
+            parent = parent.parent
+        return parent
 
     def get(self, key, default=None):
         if not default: default=BlockChildren()
