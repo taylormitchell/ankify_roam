@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.1.1 (202-05-23)
+## 0.1.2 (2021-08-31)
+
+### Fixes
+- Correctly parse more code block languages
+
+## 0.1.1 (2021-05-23)
 
 ### New Features
 - Added support for hints e.g. "Javascript is {synchronous::asynchronous/synchronous}" in Roam becomes "Javascript is {{c1::synchronous::asynchronous/synchronous}}" in Anki

@@ -449,8 +449,12 @@ class CodeBlock(BlockContentItem):
     @classmethod
     def from_string(cls, string, **kwargs):
         super().from_string(string)
-        supported_languages = ["clojure", "html", "css", "javascript"]
-        pat_lang = "^```(%s)\n" % "|".join(supported_languages)
+        supported_languages = [
+            "clojure", "css", "elixir", "html", "plain text", "python", "ruby", 
+            "swift", "typescript", "isx", "yaml", "rust", "shell", "php", "java", 
+            "c#", "c++", "objective-c", "kotlin", "sql", "haskell", "scala", 
+            "common lisp", "julia", "sparql", "turtle"]
+        pat_lang = "^```(%s)\n" % "|".join([re.escape(l) for l in supported_languages])
         match_lang = re.search(pat_lang, string)
         if match_lang:
             language = match_lang.group(1)
