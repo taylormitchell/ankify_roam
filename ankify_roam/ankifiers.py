@@ -17,13 +17,14 @@ ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128)
                                if chr(i) not in string.printable])
 
 class RoamGraphAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", num_parents=0, include_page=False, max_depth=None):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
         self.pageref_cloze = pageref_cloze
         self.tag_ankify = tag_ankify
         self.tag_dont_ankify = tag_dont_ankify
+        self.tag_ankify_root = tag_ankify_root
         self.num_parents = num_parents
         self.include_page = include_page
         self.max_depth = max_depth
@@ -51,9 +52,10 @@ class RoamGraphAnkifier:
             raise ValueError(f"note_cloze must be a cloze note type and '{self.note_cloze}' isn't.")
 
     def is_block_to_ankify(self, block):
-        tags = block.get_tags(inherit=False)
-        if self.tag_ankify in tags:
-            if self.tag_dont_ankify and self.tag_dont_ankify in tags:
+        tags_in_block = block.get_tags(inherit=False)
+        all_tags = block.get_tags(inherit=True)
+        if self.tag_ankify in tags_in_block:
+            if self.tag_dont_ankify and self.tag_dont_ankify in all_tags:
                 return False
             return True
         else:
@@ -62,8 +64,7 @@ class RoamGraphAnkifier:
     def ankify(self, roam_graph):
         self.check_conn_and_params()
         blocks_to_ankify = roam_graph.query_many(
-            lambda b: self.is_block_to_ankify(b),
-            include_parents=True)
+            lambda b: self.is_block_to_ankify(b))
 
         logger.info(f"Found {len(blocks_to_ankify)} blocks with ankify tag")
 
@@ -101,12 +102,13 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
         self.pageref_cloze = pageref_cloze
         self.tag_ankify = tag_ankify
+        self.tag_ankify_root = tag_ankify_root
         self.num_parents = num_parents
         self.include_page = include_page
         self.max_depth = max_depth
@@ -216,35 +218,46 @@ class BlockAnkifier:
         return fields
 
     def front_to_html(self, block, **kwargs):
-        # Convert content to html
-        page_title_html = roam.content.PageRef(block.parent_page).to_html(**kwargs)
         parents_kwargs = kwargs.copy()
         parents_kwargs["proc_cloze"] = False # never convert cloze markup in parents to anki clozes
-        parent_blocks_html = [p.to_html(**parents_kwargs) for p in block.parent_blocks]
+        num_parents_to_include = kwargs.get("num_parents", self.num_parents)
+        include_page = kwargs.get("include_page", self.include_page)
+
+        # Get parent blocks up to the root
+        parents = block.parents
+        if self.tag_ankify_root is not None:
+            for i, o in enumerate(parents):
+                if self.tag_ankify_root in o.get_tags(inherit=False):
+                    break
+            parents_to_root = parents[:i+1]
+
+        # Convert content to html
+        page_html = block.parent_page.to_html(**parents_kwargs)
+        parents_to_root_html = [p.to_html(**parents_kwargs) for p in parents_to_root]
         question_html = block.to_html(**kwargs)
 
         # Select parents to include 
-        num_parents = kwargs.get("num_parents", self.num_parents)
-        include_page = kwargs.get("include_page", self.include_page)
-        # All parents
-        if (num_parents == "all") or (num_parents == len(block.parent_blocks) + 1) or ((num_parents == len(block.parent_blocks)) and include_page):
-            parents_html = [page_title_html] + parent_blocks_html
-        # No parents
-        elif num_parents == 0:
-            parents_html = [page_title_html] if include_page else []
-        # Some parents
+        if num_parents_to_include == "all":
+            num_parents_to_include = len(parents_to_root)
         else:
-            if include_page:
-                parents_html = [page_title_html] + ['<span class="ellipsis">...</span>'] + parent_blocks_html[-num_parents:]
+            num_parents_to_include = min(num_parents_to_include, len(parents_to_root))
+        parents_selected_html = parents_to_root_html[:num_parents_to_include]
+        # Add page to selection
+        if include_page: 
+            if len(parents_selected_html) == len(parents):  # Page is already included
+                pass
+            elif len(parents_selected_html) == len(parents) - 1:  # Selected parents is only missing the top page
+                parents_selected_html = parents_selected_html + [page_html]
             else:
-                parents_html = parent_blocks_html[-num_parents:]
+                parents_selected_html = parents_selected_html + ['<span class="ellipsis">...</span>'] + [page_html]
+            
 
         # Put into html list
-        if len(parents_html) == len(block.parent_blocks)+1: # all parents
-            list_html = self._listify_front(parents_html + [question_html], cls='page-title')
+        if len(parents_selected_html) == len(parents): # all parents
+            list_html = self._listify_front(parents_selected_html[::-1] + [question_html], cls='page-title')
             return f'<div class="front-side">{list_html}</div>'
-        elif len(parents_html) > 0:
-            list_html = self._listify_front(parents_html + [question_html])
+        elif len(parents_selected_html) > 0:
+            list_html = self._listify_front(parents_selected_html[::-1] + [question_html])
             return f'<div class="front-side">{list_html}</div>'
         else:
             return f'<div class="front-side">{question_html}</div>'

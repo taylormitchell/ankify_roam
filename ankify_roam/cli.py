@@ -70,6 +70,9 @@ def main():
     parser_add.add_argument('--tag-dont-ankify', default=default_args['tag_dont_ankify'],
                         type=str, action='store', 
                         help='Roam tag used to flag blocks not to ankify, even if they have the `--tag-ankify` tag (default: "%(default)s")')
+    parser_add.add_argument('--tag-ankify-root', default=default_args['tag_ankify_root'],
+                        type=str, action='store', 
+                        help='Roam tag used to treat a block as a root node, even if there are parents above it (default: "%(default)s")')
     parser_add.add_argument('--num-parents', default=default_args['num_parents'],
                         type=str, action='store', 
                         help='Number of parents blocks to include on anki notes (pass "all" to select all) (default: "%(default)s")')

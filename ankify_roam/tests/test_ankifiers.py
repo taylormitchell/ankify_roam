@@ -9,7 +9,7 @@ from ankify_roam import roam, anki
 from ankify_roam.tests.roam_export import ROAM_JSON
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE, add_default_models
 from ankify_roam.ankifiers import RoamGraphAnkifier, BlockAnkifier
-from ankify_roam.roam import Block, BlockContent
+from ankify_roam.roam import Page, Block, BlockContent
 from ankify_roam import util
 
 class AnkiAppTest:
@@ -157,8 +157,9 @@ class TestBlockAnkifier(unittest.TestCase):
               - ankified block
         """
         block = Block.from_string("ankified block")
-        block.parent_page = "Page title"
-        block.parent_blocks = [Block.from_string("grandparent block"), Block.from_string("parent block")]
+        block.parent = Block.from_string("parent block")
+        block.parent.parent = Block.from_string("grandparent block")
+        block.parent.parent.parent = Page("Page title")
 
         # No parent blocks or page
         ankifier = BlockAnkifier(num_parents=0, include_page=False)
@@ -215,6 +216,25 @@ class TestBlockAnkifier(unittest.TestCase):
         """)
         self.assertEqual(ankifier.front_to_html(block), expected)
 
+        # All parent blocks and page
+        block = Block.from_string("ankified block")
+        block.parent = Block.from_string("parent block #ankify-root")
+        block.parent.parent = Block.from_string("grandparent block")
+        block.parent.parent.parent = Page("Page title")
+
+        ankifier = BlockAnkifier(num_parents="all", tag_ankify_root="ankify-root")
+        expected = remove_html_whitespace("""
+        <div class="front-side">
+            <ul>
+                <li class="block parent parent-1 parent-top">parent block <span data-tag="ankify-root" class="rm-page-ref rm-page-ref-tag">#ankify-root</span></li>
+                <ul>
+                    <li class="block">ankified block</li>
+                </ul>
+            </ul>
+        </div>
+        """)
+        self.assertEqual(ankifier.front_to_html(block), expected)
+
     def test_back_to_html(self):
         block = Block.from_string("block with children")
         child1 = Block.from_string("child 1")
@@ -261,8 +281,7 @@ class TestBlockAnkifier(unittest.TestCase):
         block = Block(
             content=BlockContent.from_string("question"),
             children=[Block.from_string("answer")],
-            parent_blocks=[],
-            parent_page="page"
+            parent=Page("page")
         )
         ankifier = BlockAnkifier(
             deck="my deck",
@@ -276,7 +295,29 @@ class TestBlockAnkifier(unittest.TestCase):
                 "Front": '<div class="front-side">question</div>', 
                 "Back": '<div class="back-side">answer</div>'
             },
-            "tags": []
+            "tags": ["page"]
+        }
+        self.assertEqual(expected, ankifier.ankify(block))
+
+    def test_ankify_root(self):
+        block = Block(
+            content=BlockContent.from_string("question"),
+            children=[Block.from_string("answer")],
+            parent=Page("page")
+        )
+        ankifier = BlockAnkifier(
+            deck="my deck",
+            note_basic="my basic",
+            field_names = {"my basic": ["Front", "Back"]}
+        )
+        expected = {
+            "deckName": "my deck",
+            "modelName": "my basic",
+            "fields": {
+                "Front": '<div class="front-side">question</div>', 
+                "Back": '<div class="back-side">answer</div>'
+            },
+            "tags": ["page"]
         }
         self.assertEqual(expected, ankifier.ankify(block))
 

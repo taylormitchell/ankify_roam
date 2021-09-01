@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.1.1 (202-05-23)
+## 0.1.2 (2021-08-31)
+
+### New Features
+- Adding the #ankify-root tag to a block makes it so all descendent blocks which are ankified will only include parents up to the block with the #ankify-root tag
+
+### Improvements
+- Added more syntax for defining cloze hints e.g. "Example of {clozed text[[::]]hint}", "Example of {clozed text[[::hint]]}", "Example of [[{]]clozed text[[::hint}]]"
+
+### Fixes
+- Correctly parse more code block languages
+- Option tags closest to block now prioritized
+
+## 0.1.1 (2021-05-23)
 
 ### New Features
 - Added support for hints e.g. "Javascript is {synchronous::asynchronous/synchronous}" in Roam becomes "Javascript is {{c1::synchronous::asynchronous/synchronous}}" in Anki

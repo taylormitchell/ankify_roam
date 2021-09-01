@@ -149,9 +149,21 @@ class TestCloze(unittest.TestCase):
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.hint, "hint")
 
-        string = "[[{]]text[[::hint in page ref}]]"
+        string = "{text[[::]]hint}"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.hint, "hint")
+
+        string = "{text[[::hint in page ref]]}"
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.hint, "hint in page ref")
+
+        string = "[[{]]text[[::hint in page ref]][[}]]"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.hint, "hint in page ref")
+
+        string = "[[{]]text[[::hint in closing page ref}]]"
+        cloze = Cloze.from_string(string)
+        self.assertEqual(cloze.hint, "hint in closing page ref")
 
         string = "{text::hint with double colons :: in it}"
         cloze = Cloze.from_string(string)
@@ -371,12 +383,10 @@ class TestCodeBlock(unittest.TestCase):
         self.assertEqual(cb.language, language)
         self.assertEqual(cb.code, code)
 
-        string = "```python\ndef foo(x+y):\n    return x+y```"
-        language = None
-        code = 'python\ndef foo(x+y):\n    return x+y'
+        string = "```javascript\ndef foo(x+y):\n    return x+y```"
         cb = CodeBlock.from_string(string)
-        self.assertEqual(cb.language, language)
-        self.assertEqual(cb.code, code)
+        self.assertEqual(cb.language, "javascript")
+        self.assertEqual(cb.code, 'def foo(x+y):\n    return x+y')
 
         string = "```\ndef foo(x+y):\n    return x+y```"
         language = None
