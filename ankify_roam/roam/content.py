@@ -242,12 +242,17 @@ class Cloze(BlockContentItem):
         m = re.search("\d+", open)
         id = int(m.group()) if m else None
         # Get hint
-        match_in_text = re.search("::", text)
-        match_in_cloze = re.search("::([^}]*)", close)
-        if match_in_text:
-            text, hint = text[:match_in_text.start()], text[match_in_text.end():]
-        elif match_in_cloze:
-            hint = match_in_cloze.groups()[0]
+        hint_in_text = re.search("(?<!\[\[)::|\[\[::\]\]", text)
+        hint_in_page = re.search("\[\[::([^\]]+)\]\]", text)
+        hint_in_cloze = re.search("::([^}]*)", close)
+        if hint_in_text:
+            hint = text[hint_in_text.end():]
+            text = text[:hint_in_text.start()]
+        elif hint_in_page:
+            hint = hint_in_page.groups()[0]
+            text = text[:hint_in_page.start()]
+        elif hint_in_cloze:
+            hint = hint_in_cloze.groups()[0]
         else:
             hint = None
         return cls(id, text, string, hint)
@@ -453,7 +458,7 @@ class CodeBlock(BlockContentItem):
             "clojure", "css", "elixir", "html", "plain text", "python", "ruby", 
             "swift", "typescript", "isx", "yaml", "rust", "shell", "php", "java", 
             "c#", "c++", "objective-c", "kotlin", "sql", "haskell", "scala", 
-            "common lisp", "julia", "sparql", "turtle"]
+            "common lisp", "julia", "sparql", "turtle", "javascript"]
         pat_lang = "^```(%s)\n" % "|".join([re.escape(l) for l in supported_languages])
         match_lang = re.search(pat_lang, string)
         if match_lang:
