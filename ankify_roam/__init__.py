@@ -1,1 +1,1 @@
-__version__="0.1.2"
+from ankify_roam._version import __version__

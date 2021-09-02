@@ -1,0 +1,29 @@
+name: Deploy
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Test
+        run: |
+          python -m unittest discover tests/unit
+      - name: Build
+        run: |
+          VERSION=${GITHUB_REF/refs\/tags\//}
+          echo "__version__ = \"${VERSION}\"" > ankify_roam/_version.py
+          python setup.py sdist
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          
