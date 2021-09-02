@@ -15,8 +15,9 @@ jobs:
           python-version: '3.x'
       - name: Set version
         run: |
-          version=${GITHUB_REF/refs\/tags\//}
-          echo "__version__=\"${version}\"" > src/__init__.py
+          pwd
+          VERSION=${GITHUB_REF/refs\/tags\//}
+          echo "__version__ = \"${VERSION}\"" > ankify_roam/_version.py
           python -c "import ankify_roam; print(ankify_roam.__version__)"
       - name: Build
         run: |

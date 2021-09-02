@@ -1,1 +1,1 @@
-__version__="dev"
+from ankify_roam._version import __version__
