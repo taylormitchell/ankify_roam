@@ -1,5 +1,10 @@
 # Changelog
 
+## TBD
+
+### New Features
+- Embed support
+
 ## 0.1.2 (2021-08-31)
 
 ### New Features
