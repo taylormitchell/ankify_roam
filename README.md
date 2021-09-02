@@ -27,7 +27,7 @@ A command-line tool which brings flashcards created in [Roam Research](https://r
 ## Installation
 
 ```
-pip install git+https://github.com/taylormitchell/ankify_roam.git
+pip install ankify_roam
 ```
 
 ## Requirements
