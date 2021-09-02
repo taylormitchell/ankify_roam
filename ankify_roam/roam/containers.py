@@ -204,8 +204,35 @@ class Block:
     def to_string(self):
         return self.content.to_string()
 
-    def to_html(self, *args, **kwargs):
-        return self.content.to_html(*args, **kwargs)
+    #def to_html(self, *args, **kwargs):
+    #    return self.content.to_html(*args, **kwargs)
+
+    def to_html(self, children=False, *args, **kwargs):
+        if children:
+            return self._listify_back([self])
+        else:
+            return self.content.to_html(*args, **kwargs)
+
+    def _listify_back(self, blocks, **kwargs):
+        if not blocks:
+            return ""
+        html_list = "" 
+        for block in blocks:
+            html_list += f'<li>{block.to_html(**kwargs)}</li>'
+            html_list += f'{self._listify_back(block.get("children"))}'
+        return f'<ul>{html_list}</ul>'
+
+    #def _children_to_html(self, block=None, *args, **kwargs):
+    #    if not block:
+    #        block = self
+    #    children = block.get("children")
+    #    if not children:
+    #        return ""
+    #    html_list = "" 
+    #    for child in children:
+    #        html_list += f'<li>{child.to_html(**kwargs)}</li>'
+    #        html_list += f'{self._children_to_html(child)}'
+    #    return f'<ul>{html_list}</ul>'
 
     def num_descendants(self):
         count = 0

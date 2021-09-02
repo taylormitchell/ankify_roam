@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 RE_SPLIT_OR = "(?<!\\\)\|"
 
+
+
 class BlockContent(list):
     def __init__(self, roam_objects=[]):
         """
@@ -27,6 +29,7 @@ class BlockContent(list):
             Image,
             Alias,
             Checkbox,
+            Embed,
             View,
             Button,
             PageTag,
@@ -549,7 +552,7 @@ class View(BlockContentItem):
     def create_pattern(cls, strings=None):
         re_template = "{{%s:.*}}"
         pats = []
-        for view in ["youtube", "embed", "query", "mentions"]:
+        for view in ["youtube", "query", "mentions"]:
             pats.append(re_template % view)
             pats.append(re_template % re.escape(f"[[{view}]]"))
         return "|".join(pats)
@@ -561,6 +564,57 @@ class View(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.name==other.name and self.text==other.text
+
+
+class Embed(BlockContentItem):
+    def __init__(self, name: BlockContentItem, blockref, string=None):
+        if type(name)==str:
+            name = String(name)
+        self.name = name
+        self.blockref = blockref
+        self.string = string
+
+    @classmethod
+    def from_string(cls, string, validate=True, **kwargs):
+        super().from_string(string, validate)
+        name, blockref = re.search("{{([^:]*):\s*([^\s]*)\s*}}", string).groups()
+        if re.match("^\[\[.*\]\]$", name):
+            name = PageRef.from_string(name)
+        else:
+            name = String(name)
+        blockref = BlockRef.from_string(blockref, **kwargs)
+        return cls(name, blockref, string)
+
+    def to_html(self, *arg, **kwargs):
+        block = self.blockref.get_referenced_block()
+        if block:
+            inner_html = block.to_html(children=True, *arg, **kwargs)
+        else:
+            inner_html = self.blockref.to_html(*arg, **kwargs)
+        return '<div class="rm-embed-container">' + \
+                    inner_html + \
+               '</div>'
+
+    def get_tags(self):
+        return self.name.get_tags()
+
+    def get_contents(self):
+        return self.name.get_contents()
+
+    @classmethod
+    def create_pattern(cls, strings=None):
+        pats = []
+        pats.append("{{embed:\s*%s\s*}}" % BlockRef.create_pattern())
+        pats.append("{{\[\[embed\]\]:\s*%s\s*}}" % BlockRef.create_pattern())
+        return "|".join(pats)
+
+    def to_string(self):
+        if self.string:
+            return self.string
+        return "{{%s:%s}}" % (self.name.to_string(), self.blockref)
+
+    def __eq__(self, other):
+        return type(self)==type(other) and self.name==other.name and self.blockref==other.blockref
 
 
 class Button(BlockContentItem):
@@ -806,7 +860,8 @@ class BlockRef(BlockContentItem):
         return "\(\([\w\d\-_]{9}\)\)"
 
     def get_referenced_block(self):
-        return self.roam_db.query_by_uid(self.uid)
+        if self.roam_db:
+            return self.roam_db.query_by_uid(self.uid)
 
     def __eq__(self, other):
         return type(self)==type(other) and self.uid==other.uid

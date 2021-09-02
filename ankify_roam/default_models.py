@@ -194,6 +194,17 @@ _css_roam = """
         text-align: left;
         list-style-type: disc;
     }
+
+    .back-side {
+        max-width: 500px;
+        text-align: left;
+        margin: auto;
+    }
+
+    .rm-embed-container {
+        background-color: #E1E8ED;
+        padding: 1px 10px;
+    }
 """
 
 _css_breadcrumb_parents = """
