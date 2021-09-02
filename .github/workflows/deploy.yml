@@ -1,0 +1,23 @@
+name: Deploy
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Set version
+        run: |
+          version=${GITHUB_REF/refs\/tags\//}
+          echo "__version__=\"${version}\"" > src/__init__.py
+      - name: Build
+        run: |
+          python setup.py sdist
+          

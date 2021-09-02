@@ -1,7 +1,7 @@
 import unittest
 import json
 from ankify_roam.roam.containers import RoamGraph, Page, Block 
-from ankify_roam.tests.roam_export import ROAM_JSON
+
 
 class TestRoamGraph(unittest.TestCase):
     def setUp(self):
@@ -64,7 +64,8 @@ class TestRoamGraph(unittest.TestCase):
 
 class TestPage(unittest.TestCase):
     def test_num_descendants(self):
-        pages = json.loads(ROAM_JSON)
+        with open("tests/roam_export.json") as f:
+          pages = json.load(f)
         roam_graph = RoamGraph(pages)
         page = roam_graph.get_page("Geography")
         self.assertEqual(page.num_descendants(), 9)
@@ -72,7 +73,8 @@ class TestPage(unittest.TestCase):
 
 class TestBlock(unittest.TestCase):
     def test_num_descendants(self):
-        pages = json.loads(ROAM_JSON)
+        with open("tests/roam_export.json") as f:
+          pages = json.load(f)
         roam_graph = RoamGraph(pages)
         block = roam_graph.query_by_uid("klGAc1Gi3")
         self.assertEqual(block.num_descendants(), 8)
