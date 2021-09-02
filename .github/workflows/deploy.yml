@@ -17,6 +17,7 @@ jobs:
         run: |
           version=${GITHUB_REF/refs\/tags\//}
           echo "__version__=\"${version}\"" > src/__init__.py
+          python -c "import ankify_roam; print(ankify_roam.__version__)"
       - name: Build
         run: |
           python setup.py sdist
