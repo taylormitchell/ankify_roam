@@ -2,7 +2,7 @@
 
 A command-line tool which brings flashcards created in [Roam Research](https://roamresearch.com/) to [Anki](https://apps.ankiweb.net/).
 
-<img src="images/anki_roam_screenshot.png">
+<img src="img/anki_roam_screenshot.png">
 
 ## Main Features
 
@@ -170,13 +170,13 @@ Here's an example where we specified that all parents should be included:
 ankify_roam add --num-parents=all Geography.json
 ```
 
-<img src="images/anki_roam_with_parents.png" width=600px>
+<img src="img/anki_roam_with_parents.png" width=600px>
 
 Notice that "Geography" is shown differently from the rest of the parents. By default, the top level parent is shown as a title and all other parents are shown as breadcrumbs underneath. Because we included all parents, the top level parent for both blocks was the page name. But that's not always the case, as I'll show in the next example.
 
 You can also use a tag to specify the `num-parents` on a single block. In this example, the `num-parents` was set to 2 using an inline tag:
 
-<img src="images/anki_roam_n_parents.png" width=600px>
+<img src="img/anki_roam_n_parents.png" width=600px>
 
 This ankified block has 3 parents: first parent is "[[Frace]]", the second is "Capitals", and the third is "Geography". Since `num-parents` was set to 2, only "[[Frace]]" and "Capitals" was included. In this case, "Capitals" was the top most parent included, so it's now the one displayed as a title. 
 
@@ -185,11 +185,11 @@ This ankified block has 3 parents: first parent is "[[Frace]]", the second is "C
 
 When you add a cloze deletion around a namespaced page reference, eg. 
 
-<img src="images/pageref_cloze_roam.png" width=600px>
+<img src="img/pageref_cloze_roam.png" width=600px>
 
 ... you can tell ankify_roam to only cloze delete the base name part of the page reference, leaving out the namespace, eg.
 
-<img src="images/pageref_cloze_anki.png" width=500px>
+<img src="img/pageref_cloze_anki.png" width=500px>
 
 ... by setting the `--pageref-cloze` option to "base_only":
 ```
@@ -244,7 +244,7 @@ When a block has multiple children, they're added as bullet points on the backsi
 
 You can also define cloze deletions using curly bracket inside square brackets:
 
-<img src="images/page_link_clozes.png" width=600px>
+<img src="img/page_link_clozes.png" width=600px>
 
 The nice thing about doing it this way is that you can now style the cloze markup. 
 
@@ -261,7 +261,7 @@ span[data-link-title="}"] > span
 
 Now the block shown above will look like this: 
 
-<img src="images/page_link_clozes_better.png" width=600px>
+<img src="img/page_link_clozes_better.png" width=600px>
 
 Note: Just like the regular cloze markup, the page links can also include cloze ids eg. [[{c1:]]Paris[[}]] 
 
