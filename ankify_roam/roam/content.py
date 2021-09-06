@@ -787,8 +787,8 @@ class BlockRef(BlockContentItem):
         return cls(string[2:-2], roam_db=roam_db, string=string)
 
     def to_string(self, expand=False):
-        if expand:
-            block = self.get_referenced_block()
+        block = self.get_referenced_block()
+        if expand and block:
             return block.to_string()
         if self.string:
             return self.string
@@ -808,7 +808,8 @@ class BlockRef(BlockContentItem):
         return "\(\([\w\d\-_]{9}\)\)"
 
     def get_referenced_block(self):
-        return self.roam_db.query_by_uid(self.uid)
+        if self.roam_db:
+            return self.roam_db.query_by_uid(self.uid)
 
     def __eq__(self, other):
         return type(self)==type(other) and self.uid==other.uid
