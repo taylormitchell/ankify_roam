@@ -144,10 +144,10 @@ class BlockContentItem:
     
     @classmethod
     def _find_and_replace(cls, string, *args, **kwargs):
+        "See the find_and_replace method"
         pat = cls.create_pattern(string)
         if not pat:
             return [String(string)]
-        "See the find_and_replace method"
         roam_objects = [cls.from_string(s, validate=False, *args, **kwargs) for s in re.findall(pat, string)]
         string_split = [String(s) for s in re.split(pat, string)]
         # Weave strings and roam objects together 
@@ -224,11 +224,12 @@ class BlockQuote(BlockContentItem):
 
 
 class Cloze(BlockContentItem):
-    def __init__(self, id, text, string=None, hint=None):
+    def __init__(self, id, text, string=None, hint=None, roam_db=None):
         self._id = id
         self.text = text
         self.string = string
         self.hint = hint
+        self.roam_db = roam_db
 
     @property
     def id(self):
@@ -255,11 +256,11 @@ class Cloze(BlockContentItem):
             hint = hint_in_cloze.groups()[0]
         else:
             hint = None
-        return cls(id, text, string, hint)
+        return cls(id, text, string, hint, roam_db=kwargs.get("roam_db", None))
 
     @classmethod
     def find_and_replace(cls, string, *args, **kwargs):
-        roam_objects = super().find_and_replace(string)
+        roam_objects = super().find_and_replace(string, *args, **kwargs)
         cls._assign_cloze_ids([o for o in roam_objects if type(o)==Cloze])
         return BlockContent(roam_objects)
 
@@ -309,18 +310,19 @@ class Cloze(BlockContentItem):
         Args:
             pageref_cloze (str): {'outside', 'inside', 'base_only'}
         """
+        kwargs['roam_db'] = self.roam_db
         proc_cloze = kwargs.get("proc_cloze", True)
         pageref_cloze = kwargs.get("pageref_cloze", "outside")
 
         if not proc_cloze:
             if self.string:
                 sections = self.split_string(self.string)
-                return "".join([BlockContent.from_string(s).to_html() for s in sections])
+                return "".join([BlockContent.from_string(s, *args, **kwargs).to_html() for s in sections])
             else:
-                content = BlockContent.from_string(self.text).to_html()
+                content = BlockContent.from_string(self.text, *args, **kwargs).to_html()
                 return Cloze(self.id, content).to_string()
 
-        roam_objects = BlockContent.from_string(self.text)
+        roam_objects = BlockContent.from_string(self.text, *args, **kwargs)
         if not roam_objects.is_single_pageref():
             return Cloze(self.id, roam_objects.to_html(), hint=self.hint).to_string()
 
