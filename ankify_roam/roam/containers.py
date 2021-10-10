@@ -9,7 +9,9 @@ logger = logging.getLogger(__name__)
 
 class RoamGraph:
     def __init__(self, pages):
-        self.pages = [Page.from_dict(p, self) for p in pages]
+        self.pages = [] 
+        for page in pages:
+            self.pages.append(Page.from_dict(page, self))
         self.propagate_parents()
 
     @classmethod

@@ -841,9 +841,10 @@ class BlockRef(BlockContentItem):
         return cls(string[2:-2], roam_db=roam_db, string=string)
 
     def to_string(self, expand=False):
-        block = self.get_referenced_block()
-        if expand and block:
-            return block.to_string()
+        if expand:
+            block = self.get_referenced_block()
+            if block:
+                return block.to_string()
         if self.string:
             return self.string
         else:
