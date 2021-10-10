@@ -4,6 +4,8 @@
 
 ### New Features
 - Embed support
+### Fixes
+- Fix display of block references inside clozes
 
 ## 0.1.2 (2021-08-31)
 
