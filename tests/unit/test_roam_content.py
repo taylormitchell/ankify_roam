@@ -85,22 +85,22 @@ class TestCloze(unittest.TestCase):
     def test_from_string(self):
         string = "{text}"
         cloze = Cloze.from_string(string)
-        self.assertEqual(cloze.text, "text")
+        self.assertEqual(cloze.content.to_string(), "text")
         
         string = "{1:text}"
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.id, 1)
-        self.assertEqual(cloze.text, "text")
+        self.assertEqual(cloze.content.to_string(), "text")
 
         string = "{c1:text}"
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.id, 1)
-        self.assertEqual(cloze.text, "text")
+        self.assertEqual(cloze.content.to_string(), "text")
 
         string = "{c1|text}"
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.id, 1)
-        self.assertEqual(cloze.text, "text")
+        self.assertEqual(cloze.content.to_string(), "text")
 
         string = "text"
         self.assertRaises(ValueError, Cloze.from_string, string)
@@ -113,36 +113,36 @@ class TestCloze(unittest.TestCase):
 
         string = "[[{]]text[[}]]"
         cloze = Cloze.from_string(string)
-        self.assertEqual(cloze.text, "text")
+        self.assertEqual(cloze.content.to_string(), "text")
         
         string = "[[{1:]]text[[}]]"
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.id, 1)
-        self.assertEqual(cloze.text, "text")
+        self.assertEqual(cloze.content.to_string(), "text")
 
         string = "[[{5]]text[[}]]"
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.id, 5)
-        self.assertEqual(cloze.text, "text")
+        self.assertEqual(cloze.content.to_string(), "text")
 
         string = "[[{99:]]text[[}]]"
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.id, 99)
-        self.assertEqual(cloze.text, "text")
+        self.assertEqual(cloze.content.to_string(), "text")
 
         string = "[[{c1:]]text[[}]]"
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.id, 1)
-        self.assertEqual(cloze.text, "text")
+        self.assertEqual(cloze.content.to_string(), "text")
 
         string = "\n".join(["{te","xt}"])
         cloze = Cloze.from_string(string)
-        self.assertEqual(cloze.text, "\n".join(["te","xt"]))
+        self.assertEqual(cloze.content.to_string(), "\n".join(["te","xt"]))
 
         string = "[[{c1:]]text[[::hint}]]"
         cloze = Cloze.from_string(string)
         self.assertEqual(cloze.id, 1)
-        self.assertEqual(cloze.text, "text")
+        self.assertEqual(cloze.content.to_string(), "text")
 
     def test_hint(self):
         string = "{text::hint}"
@@ -174,6 +174,15 @@ class TestCloze(unittest.TestCase):
         b = [String("Something with a "), Cloze(1, "cloze")]
         self.assertListEqual(a, b)
 
+    def test_clozed_code(self):
+        res = Cloze.find_and_replace("Something with a {c1:cloze with `code` inside} it")
+        exp = BlockContent([
+            String("Something with a "), 
+            Cloze(1, BlockContent([String("cloze with "), CodeInline("code"), String(" inside")])),
+            String(" it"), 
+            ])
+        self.assertListEqual(res, exp)
+
     def test_to_string(self):
         self.assertTrue(Cloze(1, "text").to_string(), "{{c1::text}}")
         self.assertTrue(Cloze(1, "text").to_string(style="anki"), "{{c1::text}}")
@@ -183,7 +192,17 @@ class TestCloze(unittest.TestCase):
 
     def test_to_html(self):
         self.assertTrue(Cloze(1,"text").to_html(), "{{c1:text}}")
-        a = Cloze(1,"[[page]]").to_html(pageref_cloze="outside")
+
+        a = Cloze.from_string("{c2:something}").to_html(proc_cloze=False)
+        b = "{c2:something}"
+        self.assertEqual(a, b)
+
+        a = Cloze.from_string("{c2|something}").to_html(proc_cloze=False)
+        b = "{c2|something}"
+        self.assertEqual(a, b)
+
+    def test_single_page_to_html(self):
+        a = Cloze(1, PageRef("page")).to_html(pageref_cloze="outside")
         b = \
             '{{c1::'\
             '<span data-link-title="page">'\
@@ -192,14 +211,16 @@ class TestCloze(unittest.TestCase):
             '<span class="rm-page-ref-brackets">]]</span></span>'\
             '}}'
         self.assertEqual(a, b)
-        a = Cloze(1,"[[page]]").to_html(pageref_cloze="inside")
+
+        a = Cloze(1, PageRef("page")).to_html(pageref_cloze="inside")
         b = \
             '<span data-link-title="page">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
             '<span class="rm-page-ref rm-page-ref-link-color">{{c1::page}}</span>'\
             '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
-        a = Cloze(1,"[[namespace/base]]").to_html(pageref_cloze="base_only")
+
+        a = Cloze(1,PageRef("namespace/base")).to_html(pageref_cloze="base_only")
         b = \
             '<span data-link-title="namespace/base">'\
             '<span class="rm-page-ref-brackets">[[</span>'\
@@ -219,16 +240,9 @@ class TestCloze(unittest.TestCase):
             '<span class="rm-page-ref-brackets">]]</span></span>'
         self.assertEqual(a, b)
 
-        a = Cloze.from_string("{c2:something}").to_html(proc_cloze=False)
-        b = "{c2:something}"
-        self.assertEqual(a, b)
-
-        a = Cloze.from_string("{c2|something}").to_html(proc_cloze=False)
-        b = "{c2|something}"
-        self.assertEqual(a, b)
-
     def test_get_tags(self):
-        cloze = Cloze(1, "Something with [[page refs]] and #some #[[tags]]")
+        content = BlockContent.from_string("Something with [[page refs]] and #some #[[tags]]")
+        cloze = Cloze(1, content)
         self.assertListEqual(sorted(cloze.get_tags()), ["page refs","some","tags"])
 
     def test_assign_cloze_ids(self):

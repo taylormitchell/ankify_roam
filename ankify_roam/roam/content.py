@@ -25,6 +25,7 @@ class BlockContent(list):
         roam_object_types_in_parse_order = [
             BlockQuote,
             CodeBlock,
+            CodeInline,
             Cloze, 
             Image,
             Alias,
@@ -227,9 +228,15 @@ class BlockQuote(BlockContentItem):
 
 
 class Cloze(BlockContentItem):
-    def __init__(self, id, text, string=None, hint=None, roam_db=None):
+    def __init__(self, id, content, string=None, hint=None, roam_db=None):
         self._id = id
-        self.text = text
+        if type(content) == str:
+            content = BlockContent([String(content)])
+        if type(content) == list:
+            content = BlockContent(content)
+        if isinstance(content, BlockContentItem):
+            content = BlockContent([content])
+        self.content = content
         self.string = string
         self.hint = hint
         self.roam_db = roam_db
@@ -293,7 +300,7 @@ class Cloze(BlockContentItem):
         return pats
 
     def get_tags(self):
-        return BlockContent.from_string(self.text).get_tags()
+        return self.content.get_tags()
 
     def to_string(self, style="anki"):
         """
@@ -301,9 +308,9 @@ class Cloze(BlockContentItem):
             style (string): {'anki','roam'}
         """
         if style=="anki":
-            return "{{c%s::%s%s}}" % (self.id, self.text, "::"+self.hint if self.hint else "")
+            return "{{c%s::%s%s}}" % (self.id, self.content.to_string(), "::"+self.hint if self.hint else "")
         elif style=="roam":
-            return "{c%s:%s%s}" % (self.id, self.text, "::"+self.hint if self.hint else "")
+            return "{c%s:%s%s}" % (self.id, self.content.to_string(), "::"+self.hint if self.hint else "")
         else:
             raise ValueError(f"style='{style}' is an invalid. "\
                               "Must be 'anki' or 'roam'")
@@ -322,29 +329,28 @@ class Cloze(BlockContentItem):
                 sections = self.split_string(self.string)
                 return "".join([BlockContent.from_string(s, *args, **kwargs).to_html() for s in sections])
             else:
-                content = BlockContent.from_string(self.text, *args, **kwargs).to_html()
-                return Cloze(self.id, content).to_string()
-
-        roam_objects = BlockContent.from_string(self.text, *args, **kwargs)
-        if not roam_objects.is_single_pageref():
-            return Cloze(self.id, roam_objects.to_html(), hint=self.hint).to_string()
+                #content = BlockContent.from_string(self.text, *args, **kwargs).to_html()
+                return Cloze(self.id, "%s").to_string() % self.content.to_html()
 
         # Fancy options to move around the cloze when it's only around a PageRef
-        pageref = roam_objects[0]
-        if pageref_cloze=="outside":
-            text = pageref.to_html()
-            return Cloze(self.id, text, hint=self.hint).to_string()
-        elif pageref_cloze=="inside":
-            clozed_title = Cloze(self.id, pageref.title, hint=self.hint).to_string()
-            return pageref.to_html(title=clozed_title)
-        elif pageref_cloze=="base_only":
-            clozed_base = Cloze(self.id, pageref.get_basename(), hint=self.hint).to_string()
-            namespace = pageref.get_namespace()
-            if namespace:
-                clozed_base = namespace + "/" + clozed_base
-            return pageref.to_html(title=clozed_base)
-        else:
-            raise ValueError(f"{pageref_cloze} is an invalid option for `pageref_cloze`")
+        if self.content.is_single_pageref():
+            pageref = self.content[0]
+            if pageref_cloze=="outside":
+                content = pageref.to_html()
+                return Cloze(self.id, content, hint=self.hint).to_string()
+            elif pageref_cloze=="inside":
+                clozed_title = Cloze(self.id, pageref.title, hint=self.hint).to_string()
+                return pageref.to_html(title=clozed_title)
+            elif pageref_cloze=="base_only":
+                clozed_base = Cloze(self.id, pageref.get_basename(), hint=self.hint).to_string()
+                namespace = pageref.get_namespace()
+                if namespace:
+                    clozed_base = namespace + "/" + clozed_base
+                return pageref.to_html(title=clozed_base)
+            else:
+                raise ValueError(f"{pageref_cloze} is an invalid option for `pageref_cloze`")
+            
+        return Cloze(self.id, self.content.to_html(), hint=self.hint).to_string()
         
     @staticmethod
     def _assign_cloze_ids(clozes):
@@ -358,11 +364,12 @@ class Cloze(BlockContentItem):
             cloze._id = next_id
 
     def __repr__(self):
+        string = self.string or self.to_string(style="roam")
         return "<%s(id=%s, string='%s')>" % (
-            self.__class__.__name__, self._id, self.string)
+            self.__class__.__name__, self._id, string)
 
     def __eq__(self, other):
-        return type(self)==type(other) and self.text == other.text
+        return type(self)==type(other) and self.content == other.content
 
 
 class Image(BlockContentItem):
@@ -492,6 +499,34 @@ class CodeBlock(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.language==other.language and self.code==other.code
+
+
+class CodeInline(BlockContentItem):
+    def __init__(self, code, string=None):
+        self.code = code
+        self.string = string
+
+    @classmethod
+    def from_string(cls, string, **kwargs):
+        super().from_string(string)
+        pat = re.compile("`([^`]*)`")
+        code = re.search(pat, string).group(1)
+        return cls(code, string) 
+
+    @classmethod
+    def create_pattern(cls, string=None):
+        return "`[^`]*`"
+
+    def to_string(self):
+        if self.string: return self.string 
+        return f'`{self.code}`'
+
+    def to_html(self, *args, **kwargs):
+        code = html.escape(self.code)
+        return f'<code>{code}</code>'
+
+    def __eq__(self, other):
+        return type(self)==type(other) and self.code==other.code
 
 
 class Checkbox(BlockContentItem):
