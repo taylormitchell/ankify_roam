@@ -546,10 +546,6 @@ class TestView(unittest.TestCase):
         self.assertEqual(a, b)
 
     def test_to_html(self):
-        string = "{{[[embed]]: ((hh2wTNsMz))}}"
-        view = View.from_string(string)
-        self.assertEqual(view.to_string(), string)
-
         string = "{{[[query]]: {and: [[ex-A]] [[ex-B]]}}}"
         view = View.from_string(string)
         self.assertEqual(view.to_string(), string)
