@@ -3,6 +3,7 @@ import re
 import logging
 from functools import reduce
 from itertools import zip_longest
+from collections.abc import Iterable
 import html
 
 logger = logging.getLogger(__name__)
@@ -17,16 +18,20 @@ class BlockContent(list):
         Args:
             roam_objects (List of BlockContentItem)
         """
-        if type(roam_objects) == str:
-            roam_objects = [String(roam_objects)]
-        elif type(roam_objects) == BlockContentItem:
+        if type(roam_objects) not in [list, BlockContent]:
             roam_objects = [roam_objects]
         for obj in roam_objects:
+            if type(obj) in [str, int, float]:
+                obj = String(str(obj))
+            elif isinstance(obj, BlockContentItem):
+                pass
+            else:
+                raise ValueError(f"roam_objects can't contain {type(obj)} type objects")
             self.append(obj)
 
     @classmethod
-    def find_and_replace(cls, string, *args, **kwargs):
-        roam_object_types_in_parse_order = [
+    def find_and_replace(cls, obj, skip=[], *args, **kwargs):
+        roam_object_types = [
             BlockQuote,
             CodeBlock,
             CodeInline,
@@ -43,8 +48,9 @@ class BlockContent(list):
             Attribute,
             #Url, #TODO: don't have a good regex for this right now
         ]
-        roam_objects = BlockContent([String(string)])
-        for rm_obj_type in roam_object_types_in_parse_order:
+        roam_object_types = [o for o in roam_object_types if o not in skip]
+        roam_objects = BlockContent(obj)
+        for rm_obj_type in roam_object_types:
             roam_objects = rm_obj_type.find_and_replace(roam_objects, *args, **kwargs)
         return cls(roam_objects)
 
@@ -243,9 +249,9 @@ class ClozeLeftBracket(BlockContentItem):
     @classmethod
     def _find_and_replace(cls, string):
         pats = [ 
-            "\[\[{c?\d*[:|]?\]\]",
-            "(?<!{){c?\d+[:|]",
-            "(?<!{){"
+            "\[\[{c?\d*[:|]?\]\]", # [[{]] or [[{c1:}]]
+            "(?<!{){c?\d+[:|]", # {1 or {c1:
+            "(?<!{){(?!{)" # {
         ]
         matches = list(re.finditer("|".join(pats), string))
         if not matches:
@@ -285,6 +291,9 @@ class ClozeLeftBracket(BlockContentItem):
             res = "[[" + res + "]]"
         return res
 
+    def to_html(self):
+        return "{{c" + str(self.id) + "::"
+
     def __repr__(self):
         return "<%s(string='%s')>" % (
             self.__class__.__name__, self.to_string())
@@ -292,20 +301,23 @@ class ClozeLeftBracket(BlockContentItem):
 
 class ClozeRightBracket(BlockContentItem):
     """
+    - [[::hint}]]
+    - [[}]]
+    - [[::hint]]}
     - }
     - ::hint}
-    - [[}]]
-    - [[::hint}]]
     """
-    def __init__(self, enclosed=False, hint=None):
+    def __init__(self, enclosed=False, hint=None, string=None):
         self.enclosed = enclosed
         self.hint = hint
+        self.string = string
 
     @classmethod
     def _find_and_replace(cls, string):
         pats = [ 
-            "\[\[(?:::[^}\[]*)?}\]\]",
-            "(?:::[^}\[]*)?}(?!})",
+            "\[\[(?:::[^}\[]*)?}\]\]", # [[}]] or [[::hint}]] 
+            "\[\[(?:::[^}\[]*)\]\]}", # [[::hint]]}
+            "(?:::[^}\[]*)?}(?!})", # } or ::hint}
         ]
         matches = re.finditer("|".join(pats), string)
         if not matches:
@@ -314,11 +326,18 @@ class ClozeRightBracket(BlockContentItem):
         last_cloze_end = 0
         for match in matches:
             text = match.group(0)
-            enclosed = text.startswith("[[")
-            if "::" in text:
-                hint = ClozeHint(re.sub("[\[\]:}]", "", text))
-            else: 
-                hint = None
+            # [[}]] or [[::hint}]] 
+            if text.startswith("[[") and text.endswith("]]"):
+                hint = ClozeHint(re.sub("[\[\]}]", "", text)[2:]) if "::" in text else None
+                enclosed = True
+            # [[::hint]]}
+            elif text.startswith("[[") and text.endswith("}"):
+                hint = ClozeHint(re.sub("[\[\]}]", "", text)[2:], enclosed=True)
+                enclosed = False
+            # } or ::hint}
+            else:
+                hint = ClozeHint(re.sub("[\[\]}]", "", text)[2:]) if "::" in text else None
+                enclosed = False
             # Split string and replace with objects
             objs.append(String(string[last_cloze_end:match.start()]))
             objs.append(cls(enclosed, hint=hint))
@@ -327,7 +346,6 @@ class ClozeRightBracket(BlockContentItem):
             objs.append(String(string[last_cloze_end:]))
         return BlockContent(objs)
         
-    "[[{]]something::aderp[[}]]"
     def to_string(self):
         res = "}"
         if self.hint:
@@ -335,6 +353,11 @@ class ClozeRightBracket(BlockContentItem):
         if self.enclosed:
             res = "[[" + res + "]]"
         return res
+
+    def to_html(self):
+        if self.hint:
+            return self.hint.to_html() + "}}"
+        return "}}"
 
     def __repr__(self):
         return "<%s(string='%s')>" % (
@@ -344,11 +367,13 @@ class ClozeRightBracket(BlockContentItem):
 class ClozeHint(BlockContentItem):
     """
     - {something::hint}
+    - {something[[::hint]]}
     - [[{]]something::hint[[}]]
     - [[{]]something[[::hint}]]
     """
-    def __init__(self, hint):
-        self.hint = hint
+    def __init__(self, text, enclosed=False):
+        self.text = text
+        self.enclosed = enclosed
 
     @classmethod
     def from_string(cls, hint):
@@ -356,31 +381,50 @@ class ClozeHint(BlockContentItem):
 
     @classmethod
     def _find_and_replace(cls, string):
-        matches = re.finditer("::[^}\[]*", string)
+        pats = [
+            "\[\[::[^\]]*\]\]",
+            "::[^}\[]*"
+        ]
+        matches = re.finditer("|".join(pats), string)
         if not matches:
             return BlockContent(string)
         objs = []
         last_cloze_end = 0
         for match in matches:
-            hint = match.group(0)[2:]
+            text = match.group(0)
+            if text.startswith("[["):
+                enclosed = True
+                text = text[2:-2] # remove surround brackets
+            else:
+                enclosed = False 
+            text = text[2:] # remove '::' prefix 
             objs.append(String(string[last_cloze_end:match.start()]))
-            objs.append(cls(hint))
+            objs.append(cls(text, enclosed))
             last_cloze_end = match.end()
         if last_cloze_end != len(string):
             objs.append(String(string[last_cloze_end:]))
         return BlockContent(objs)
 
     def to_string(self):
-        return "::" + str(self.hint)
+        res = "::" + str(self.text)
+        if self.enclosed:
+            res = "[[" + res + "]]"
+        return res
+
+    def to_html(self):
+        return "::" + str(self.text)
 
 
 class Cloze(BlockContentItem):
-    def __init__(self, inner:BlockContent="", left_bracket:ClozeLeftBracket=None, right_bracket:ClozeRightBracket=None, hint:ClozeHint=None, id=None, string=None, roam_db=None):
+    def __init__(self, inner:BlockContent="", left_bracket:ClozeLeftBracket=None, right_bracket:ClozeRightBracket=None, 
+                 hint:ClozeHint=None, id=1, c=True, sep=":", enclosed=False, string=None, roam_db=None):
         self.inner = BlockContent(inner)
-        self.left_bracket = left_bracket or ClozeLeftBracket(id=id)
-        self.right_bracket = right_bracket or ClozeRightBracket()
+        self.left_bracket = left_bracket or ClozeLeftBracket(id=id, c=c, enclosed=enclosed, sep=sep)
+        self.right_bracket = right_bracket or ClozeRightBracket(enclosed=enclosed)
         if self.right_bracket.hint and hint:
             raise ValueError("Only allowed one hint")
+        if type(hint) == str:
+            hint = ClozeHint(hint)
         self._hint = hint
         self.string = string
         self.roam_db = roam_db
@@ -415,12 +459,6 @@ class Cloze(BlockContentItem):
         next_idx = 0
         left_idx = right_idx = None
         for i, obj in enumerate(objs):
-            
-            ## Unmatched right cloze bracket at start
-            #if left_idx is None and right_idx is None and type(obj) == ClozeRightBracket:
-            #    cloze = cls(inner=BlockContent(objs[:i]), left_bracket=None, right_bracket=obj)
-            #    res.append(cloze)
-            #    next_idx = i+1
 
             # Left cloze bracket 
             if right_idx is None and type(obj) == ClozeLeftBracket: 
@@ -428,11 +466,12 @@ class Cloze(BlockContentItem):
                 next_idx = left_idx = i
 
             # Right cloze bracket matched to previous left bracket
-            elif left_idx and type(obj) == ClozeRightBracket:
+            elif left_idx is not None and type(obj) == ClozeRightBracket:
                 inner = objs[left_idx+1:i]
                 hint = None
                 if type(inner[-1]) == ClozeHint:
                     inner, hint = inner[:-1], inner[-1]
+                inner = BlockContent.find_and_replace(inner)
                 cloze = cls(inner=inner, left_bracket=objs[left_idx], right_bracket=obj, hint=hint)
                 res.append(cloze)
                 left_idx = right_idx = None
@@ -487,9 +526,8 @@ class Cloze(BlockContentItem):
         pageref_cloze = kwargs.get("pageref_cloze", "outside")
 
         if not proc_cloze:
-            res = ""
-            for o in [self.left_bracket, self.inner, self.hint, self.right_bracket]:
-                res += o.to_html(*args, **kwargs) if o else ""
+            bc = BlockContent.find_and_replace(self.to_string("roam"), skip=[Cloze])
+            return bc.to_html(*args, **kwargs)
 
         # Fancy options to move around the cloze when it's only around a PageRef
         if self.inner.is_single_pageref() and self.hint is None:
@@ -509,9 +547,10 @@ class Cloze(BlockContentItem):
             else:
                 raise ValueError(f"{pageref_cloze} is an invalid option for `pageref_cloze`")
             
-        return Cloze(inner=self.inner.to_html(),
-            left_bracket=ClozeLeftBracket(self.id),
-            hint=self.hint).to_string()
+        res = ""
+        for o in [self.left_bracket, self.inner, self.hint, self.right_bracket]:
+            res += o.to_html() if o else ""
+        return res
         
     @staticmethod
     def _assign_cloze_ids(clozes):
@@ -530,7 +569,8 @@ class Cloze(BlockContentItem):
             self.__class__.__name__, self.id, string)
 
     def __eq__(self, other):
-        return type(self)==type(other) and self.content == other.content
+        return type(self)==type(other) and self.inner == other.inner
+
 
 
 class Image(BlockContentItem):
@@ -1155,10 +1195,7 @@ if __name__=="__main__":
     #print("")
     #print(res)
 
-    x = [String("weaae} something {clozed} and {some "), CodeInline("code"), String("} and [[{]]another[[}]] thing")]
-    res = Cloze.find_and_replace(x)
     print("")
-    print(res)
 
     # x = "weaae} something {clozed} and {some `code`} and [[{]]another[[}]] thing"
     # print(x)
