@@ -124,6 +124,15 @@ class BlockContent(list):
                 items += item.get_contents()
             return items
 
+    def merge_adjacent_strings(self):
+        i = 0
+        while i + 1 < len(self):
+            if type(self[i]) == String and type(self[i+1]) == String:
+                self[i].string += self[i+1].string
+                del self[i+1]
+            else:
+                i += 1
+
 
 class BlockContentItem:
     @classmethod
@@ -317,7 +326,8 @@ class ClozeRightBracket(BlockContentItem):
         pats = [ 
             "\[\[(?:::[^}\[]*)?}\]\]", # [[}]] or [[::hint}]] 
             "\[\[(?:::[^}\[]*)\]\]}", # [[::hint]]}
-            "(?:::[^}\[]*)?}(?!})", # } or ::hint}
+            "(?:::[^}\[]*)}(?!})", # ::hint}
+            "(?<!})}(?!})", # }
         ]
         matches = re.finditer("|".join(pats), string)
         if not matches:
@@ -495,7 +505,10 @@ class Cloze(BlockContentItem):
 
         cls._assign_cloze_ids([o for o in res if type(o)==Cloze])
 
-        return BlockContent(res)
+        bc = BlockContent(res)
+        bc.merge_adjacent_strings()
+
+        return bc 
 
     def get_tags(self):
         return self.inner.get_tags()
@@ -849,7 +862,7 @@ class Embed(BlockContentItem):
     def to_string(self):
         if self.string:
             return self.string
-        return "{{%s:%s}}" % (self.name.to_string(), self.blockref)
+        return "{{%s:%s}}" % (self.name.to_string(), self.blockref.to_string())
 
     def __eq__(self, other):
         return type(self)==type(other) and self.name==other.name and self.blockref==other.blockref
@@ -1187,17 +1200,3 @@ class Attribute(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.title==other.title
-
-    
-if __name__=="__main__":
-    #string = "something {clozed::derp} and [[{]]another::hint[[}]] [[{]]another[[::derp}]]"
-    #res = Cloze.find_and_replace(string)
-    #print("")
-    #print(res)
-
-    print("")
-
-    # x = "weaae} something {clozed} and {some `code`} and [[{]]another[[}]] thing"
-    # print(x)
-    # x = BlockContent.from_string(x)
-    # print(x)
