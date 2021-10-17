@@ -496,10 +496,6 @@ class TestCheckbox(unittest.TestCase):
 
 class TestView(unittest.TestCase):
     def test_from_string(self):
-        embed = View.from_string("{{[[embed]]:((hh2wTNsMz))}}")
-        self.assertEqual(embed.name, PageRef("embed"))
-        self.assertEqual(embed.text, "((hh2wTNsMz))")
-
         youtube = View.from_string("{{[[youtube]]:www.youtube.com}}")
         self.assertEqual(youtube.name, PageRef("youtube"))
         self.assertEqual(youtube.text, "www.youtube.com")
@@ -511,10 +507,6 @@ class TestView(unittest.TestCase):
         mentions = View.from_string("{{[[mentions]]:[[page]]}}")
         self.assertEqual(mentions.name, PageRef("mentions"))
         self.assertEqual(mentions.text, "[[page]]")
-
-        embed = View.from_string("{{embed:((hh2wTNsMz))}}")
-        self.assertEqual(embed.name, String("embed"))
-        self.assertEqual(embed.text, "((hh2wTNsMz))")
 
         youtube = View.from_string("{{youtube:www.youtube.com}}")
         self.assertEqual(youtube.name, String("youtube"))
@@ -541,8 +533,8 @@ class TestView(unittest.TestCase):
         self.assertListEqual(a,b)
 
     def to_string(self):
-        a = View("embed", "some text").to_string()
-        b = "{{embed:some text}}"
+        a = View("query", "some text").to_string()
+        b = "{{query:some text}}"
         self.assertEqual(a, b)
 
     def test_to_html(self):
@@ -562,6 +554,27 @@ class TestView(unittest.TestCase):
         a = View.from_string("{{[[query]]:some text}}").get_tags()
         b = ["query"]
         self.assertListEqual(a, b)
+
+
+class TestEmbed(unittest.TestCase):
+    def test_from_string(self):
+        embed = Embed.from_string("{{[[embed]]:((hh2wTNsMz))}}")
+        self.assertEqual(embed.name, PageRef("embed"))
+        self.assertEqual(embed.blockref, BlockRef("hh2wTNsMz"))
+
+    def test_find_and_replace(self):
+        string = "here's a {{embed: ((hh2wTNsMz))}}"
+        a = Embed.find_and_replace(string)
+        b = BlockContent([
+            String("here's a "),
+            Embed("embed", BlockRef("hh2wTNsMz"))
+        ])
+        self.assertListEqual(a,b)
+
+    def to_string(self):
+        a = Embed("embed", BlockRef("hh2wTNsMz")).to_string()
+        b = "{{embed:((hh2wTNsMz))}}"
+        self.assertEqual(a, b)
 
 
 class TestButton(unittest.TestCase):

@@ -585,7 +585,6 @@ class Cloze(BlockContentItem):
         return type(self)==type(other) and self.inner == other.inner
 
 
-
 class Image(BlockContentItem):
     def __init__(self, src, alt="", string=None):
         self.src = src
