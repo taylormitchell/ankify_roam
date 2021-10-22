@@ -522,7 +522,7 @@ class Cloze(BlockContentItem):
             return "{{c%s::%s%s}}" % (self.id, self.inner.to_string(), self.hint.to_string() if self.hint else "")
         elif style=="roam":
             res = ""
-            for o in [self.left_bracket, self.inner, self.hint, self.right_bracket]:
+            for o in [self.left_bracket, self.inner, self._hint, self.right_bracket]:
                 res += o.to_string() if o else ""
             return res
         else:
@@ -561,7 +561,7 @@ class Cloze(BlockContentItem):
                 raise ValueError(f"{pageref_cloze} is an invalid option for `pageref_cloze`")
             
         res = ""
-        for o in [self.left_bracket, self.inner, self.hint, self.right_bracket]:
+        for o in [self.left_bracket, self.inner, self._hint, self.right_bracket]:
             res += o.to_html() if o else ""
         return res
         
