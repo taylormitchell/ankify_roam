@@ -3,6 +3,7 @@ import re
 import logging
 from functools import reduce
 from itertools import zip_longest
+from collections.abc import Iterable
 import html
 
 logger = logging.getLogger(__name__)
@@ -17,14 +18,23 @@ class BlockContent(list):
         Args:
             roam_objects (List of BlockContentItem)
         """
+        if type(roam_objects) not in [list, BlockContent]:
+            roam_objects = [roam_objects]
         for obj in roam_objects:
+            if type(obj) in [str, int, float]:
+                obj = String(str(obj))
+            elif isinstance(obj, BlockContentItem):
+                pass
+            else:
+                raise ValueError(f"roam_objects can't contain {type(obj)} type objects")
             self.append(obj)
 
     @classmethod
-    def find_and_replace(cls, string, *args, **kwargs):
-        roam_object_types_in_parse_order = [
+    def find_and_replace(cls, obj, skip=[], *args, **kwargs):
+        roam_object_types = [
             BlockQuote,
             CodeBlock,
+            CodeInline,
             Cloze, 
             Image,
             Alias,
@@ -38,8 +48,9 @@ class BlockContent(list):
             Attribute,
             #Url, #TODO: don't have a good regex for this right now
         ]
-        roam_objects = BlockContent([String(string)])
-        for rm_obj_type in roam_object_types_in_parse_order:
+        roam_object_types = [o for o in roam_object_types if o not in skip]
+        roam_objects = BlockContent(obj)
+        for rm_obj_type in roam_object_types:
             roam_objects = rm_obj_type.find_and_replace(roam_objects, *args, **kwargs)
         return cls(roam_objects)
 
@@ -113,6 +124,15 @@ class BlockContent(list):
                 items += item.get_contents()
             return items
 
+    def merge_adjacent_strings(self):
+        i = 0
+        while i + 1 < len(self):
+            if type(self[i]) == String and type(self[i+1]) == String:
+                self[i].string += self[i+1].string
+                del self[i+1]
+            else:
+                i += 1
+
 
 class BlockContentItem:
     @classmethod
@@ -127,11 +147,6 @@ class BlockContentItem:
         if re.match(re.compile(pat), string):
             return True
         return False
-
-    @classmethod
-    def create_pattern(cls, string):
-        "Return regex pattern for sub-strings representing this roam object type"
-        raise NotImplementedError
 
     def to_string(self):
         raise NotImplementedError
@@ -226,74 +241,277 @@ class BlockQuote(BlockContentItem):
         return type(self)==type(other) and self.block_content.to_string()==other.block_content.to_string() 
 
 
-class Cloze(BlockContentItem):
-    def __init__(self, id, text, string=None, hint=None, roam_db=None):
-        self._id = id
-        self.text = text
-        self.string = string
+class ClozeLeftBracket(BlockContentItem):
+    """
+    - {
+    - {1
+    - {1:
+    - {c1:
+    - [[{c1:]]
+    """
+    def __init__(self, id=None, enclosed=False, c=False, sep=""):
+        self.id = id 
+        self.enclosed = enclosed
+        self.c = c
+        self.sep = sep
+
+    @classmethod
+    def _find_and_replace(cls, string):
+        pats = [ 
+            "\[\[{c?\d*[:|]?\]\]", # [[{]] or [[{c1:}]]
+            "(?<!{){c?\d+[:|]", # {1 or {c1:
+            "(?<!{){(?!{)" # {
+        ]
+        matches = list(re.finditer("|".join(pats), string))
+        if not matches:
+            return [String(string)]
+        objs = []
+        last_cloze_end = 0
+        for match in matches:
+            # Create cloze
+            text = match.group(0)
+            c = "c" in text
+            enclosed = text.startswith("[[")
+            m = re.search("\d+", text)
+            id = int(m.group(0)) if m else None
+            if ":" in text:
+                sep = ":"
+            elif "|" in text:
+                sep = "|"
+            else:
+                sep = ""
+            # Split string and replace with objects
+            objs.append(String(string[last_cloze_end:match.start()]))
+            objs.append(cls(id, enclosed, c, sep))
+            last_cloze_end = match.end()
+        if last_cloze_end != len(string):
+            objs.append(String(string[last_cloze_end:]))
+        return BlockContent(objs)
+    
+    def to_string(self):
+        res = "{"
+        if self.c: 
+            res += "c"
+        if self.id:
+            res += str(self.id)
+        if self.sep:
+            res += self.sep
+        if self.enclosed:
+            res = "[[" + res + "]]"
+        return res
+
+    def to_html(self):
+        return "{{c" + str(self.id) + "::"
+
+    def __repr__(self):
+        return "<%s(string='%s')>" % (
+            self.__class__.__name__, self.to_string())
+
+
+class ClozeRightBracket(BlockContentItem):
+    """
+    - [[::hint}]]
+    - [[}]]
+    - [[::hint]]}
+    - }
+    - ::hint}
+    """
+    def __init__(self, enclosed=False, hint=None, string=None):
+        self.enclosed = enclosed
         self.hint = hint
+        self.string = string
+
+    @classmethod
+    def _find_and_replace(cls, string):
+        pats = [ 
+            "\[\[(?:::[^}\[]*)?}\]\]", # [[}]] or [[::hint}]] 
+            "\[\[(?:::[^}\[]*)\]\]}", # [[::hint]]}
+            "(?:::[^}\[]*)}(?!})", # ::hint}
+            "(?<!})}(?!})", # }
+        ]
+        matches = re.finditer("|".join(pats), string)
+        if not matches:
+            return [String(string)]
+        objs = []
+        last_cloze_end = 0
+        for match in matches:
+            text = match.group(0)
+            # [[}]] or [[::hint}]] 
+            if text.startswith("[[") and text.endswith("]]"):
+                hint = ClozeHint(re.sub("[\[\]}]", "", text)[2:]) if "::" in text else None
+                enclosed = True
+            # [[::hint]]}
+            elif text.startswith("[[") and text.endswith("}"):
+                hint = ClozeHint(re.sub("[\[\]}]", "", text)[2:], enclosed=True)
+                enclosed = False
+            # } or ::hint}
+            else:
+                hint = ClozeHint(re.sub("[\[\]}]", "", text)[2:]) if "::" in text else None
+                enclosed = False
+            # Split string and replace with objects
+            objs.append(String(string[last_cloze_end:match.start()]))
+            objs.append(cls(enclosed, hint=hint))
+            last_cloze_end = match.end()
+        if last_cloze_end != len(string):
+            objs.append(String(string[last_cloze_end:]))
+        return BlockContent(objs)
+        
+    def to_string(self):
+        res = "}"
+        if self.hint:
+            res = self.hint.to_string() + res
+        if self.enclosed:
+            res = "[[" + res + "]]"
+        return res
+
+    def to_html(self):
+        if self.hint:
+            return self.hint.to_html() + "}}"
+        return "}}"
+
+    def __repr__(self):
+        return "<%s(string='%s')>" % (
+            self.__class__.__name__, self.to_string())
+
+
+class ClozeHint(BlockContentItem):
+    """
+    - {something::hint}
+    - {something[[::hint]]}
+    - [[{]]something::hint[[}]]
+    - [[{]]something[[::hint}]]
+    """
+    def __init__(self, text, enclosed=False):
+        self.text = text
+        self.enclosed = enclosed
+
+    @classmethod
+    def from_string(cls, hint):
+        return cls(hint[2:]) 
+
+    @classmethod
+    def _find_and_replace(cls, string):
+        pats = [
+            "\[\[::[^\]]*\]\]",
+            "::[^}\[]*"
+        ]
+        matches = re.finditer("|".join(pats), string)
+        if not matches:
+            return BlockContent(string)
+        objs = []
+        last_cloze_end = 0
+        for match in matches:
+            text = match.group(0)
+            if text.startswith("[["):
+                enclosed = True
+                text = text[2:-2] # remove surround brackets
+            else:
+                enclosed = False 
+            text = text[2:] # remove '::' prefix 
+            objs.append(String(string[last_cloze_end:match.start()]))
+            objs.append(cls(text, enclosed))
+            last_cloze_end = match.end()
+        if last_cloze_end != len(string):
+            objs.append(String(string[last_cloze_end:]))
+        return BlockContent(objs)
+
+    def to_string(self):
+        res = "::" + str(self.text)
+        if self.enclosed:
+            res = "[[" + res + "]]"
+        return res
+
+    def to_html(self):
+        return "::" + str(self.text)
+
+
+class Cloze(BlockContentItem):
+    def __init__(self, inner:BlockContent="", left_bracket:ClozeLeftBracket=None, right_bracket:ClozeRightBracket=None, 
+                 hint:ClozeHint=None, id=1, c=True, sep=":", enclosed=False, string=None, roam_db=None):
+        self.inner = BlockContent(inner)
+        self.left_bracket = left_bracket or ClozeLeftBracket(id=id, c=c, enclosed=enclosed, sep=sep)
+        self.right_bracket = right_bracket or ClozeRightBracket(enclosed=enclosed)
+        if self.right_bracket.hint and hint:
+            raise ValueError("Only allowed one hint")
+        if type(hint) == str:
+            hint = ClozeHint(hint)
+        self._hint = hint
+        self.string = string
         self.roam_db = roam_db
 
     @property
+    def hint(self):
+        return self._hint or self.right_bracket.hint
+    
+    @property
     def id(self):
-        return self._id or 1
+        return self.left_bracket.id if self.left_bracket else None
+
+    @id.setter
+    def id(self, id):
+        self.left_bracket.id = id
 
     @classmethod
     def from_string(cls, string, validate=True, **kwargs):
-        super().from_string(string, validate)
-        open, text, close = cls.split_string(string)
-        # Get cloze id
-        m = re.search("\d+", open)
-        id = int(m.group()) if m else None
-        # Get hint
-        hint_in_text = re.search("(?<!\[\[)::|\[\[::\]\]", text)
-        hint_in_page = re.search("\[\[::([^\]]+)\]\]", text)
-        hint_in_cloze = re.search("::([^}]*)", close)
-        if hint_in_text:
-            hint = text[hint_in_text.end():]
-            text = text[:hint_in_text.start()]
-        elif hint_in_page:
-            hint = hint_in_page.groups()[0]
-            text = text[:hint_in_page.start()]
-        elif hint_in_cloze:
-            hint = hint_in_cloze.groups()[0]
-        else:
-            hint = None
-        return cls(id, text, string, hint, roam_db=kwargs.get("roam_db", None))
+        objs = cls.find_and_replace(string)
+        if len(objs) != 1 or type(objs[0]) != cls:
+            raise ValueError(f"Invalid string '{string}' for {cls.__name__}")
+        return objs[0]
 
     @classmethod
     def find_and_replace(cls, string, *args, **kwargs):
-        roam_objects = super().find_and_replace(string, *args, **kwargs)
-        cls._assign_cloze_ids([o for o in roam_objects if type(o)==Cloze])
-        return BlockContent(roam_objects)
+        objs = BlockContent(string)
+        objs = ClozeLeftBracket.find_and_replace(objs)
+        objs = ClozeRightBracket.find_and_replace(objs)
+        objs = ClozeHint.find_and_replace(objs)
 
-    @classmethod
-    def split_string(cls, string):
-        for pat in cls.create_grouped_patterns(string):
-            groups = re.findall(pat, string)
-            if groups: 
-                return groups[0]
+        res = []
+        next_idx = 0
+        left_idx = right_idx = None
+        for i, obj in enumerate(objs):
 
-    @classmethod
-    def create_grouped_patterns(cls, string):
-        pat_groups = cls._create_patterns()
-        return ["".join([f"({g})" for g in groups]) for groups in pat_groups]
+            # Left cloze bracket 
+            if right_idx is None and type(obj) == ClozeLeftBracket: 
+                res += objs[next_idx:i]
+                next_idx = left_idx = i
 
-    @classmethod
-    def create_pattern(cls, string=None):
-        pat_tuples = cls._create_patterns()
-        return "|".join(["".join(p) for p in pat_tuples])
+            # Right cloze bracket matched to previous left bracket
+            elif left_idx is not None and type(obj) == ClozeRightBracket:
+                inner = objs[left_idx+1:i]
+                hint = None
+                if type(inner[-1]) == ClozeHint:
+                    inner, hint = inner[:-1], inner[-1]
+                inner = BlockContent.find_and_replace(inner)
+                cloze = cls(inner=inner, left_bracket=objs[left_idx], right_bracket=obj, hint=hint)
+                res.append(cloze)
+                left_idx = right_idx = None
+                next_idx = i+1
+            
+            # Left bracket after an unmatched left bracket
+            elif left_idx is not None and type(obj) == ClozeLeftBracket:
+                res += objs[left_idx:i]
+                next_idx = left_idx = i
+            
+            # Right bracket after an unmatched right bracket
+            elif right_idx is not None and type(obj) == ClozeRightBracket:
+                res += objs[right_idx:i]
+                next_idx = right_idx = i
+        res += objs[next_idx:]
 
-    @classmethod
-    def _create_patterns(cls, string=None):
-        pats = [    
-            ("\[\[{c?\d*[:|]?\]\]","[^{}]+","\[\[(?:::[^}]*)?}\]\]"),
-            ("(?<!{){c?\d+[:|]","[^{}]+","}(?!})"),
-            ("(?<!{){","[^{}]+","}(?!})")]
-        return pats
+        # Remove any cloze brackets or hints which weren't matched up
+        for i, obj in enumerate(res):
+            if type(obj) in [ClozeLeftBracket, ClozeRightBracket, ClozeHint]:
+                res[i] = String(obj.to_string())
+
+        cls._assign_cloze_ids([o for o in res if type(o)==Cloze])
+
+        bc = BlockContent(res)
+        bc.merge_adjacent_strings()
+
+        return bc 
 
     def get_tags(self):
-        return BlockContent.from_string(self.text).get_tags()
+        return self.inner.get_tags()
 
     def to_string(self, style="anki"):
         """
@@ -301,9 +519,12 @@ class Cloze(BlockContentItem):
             style (string): {'anki','roam'}
         """
         if style=="anki":
-            return "{{c%s::%s%s}}" % (self.id, self.text, "::"+self.hint if self.hint else "")
+            return "{{c%s::%s%s}}" % (self.id, self.inner.to_string(), self.hint.to_string() if self.hint else "")
         elif style=="roam":
-            return "{c%s:%s%s}" % (self.id, self.text, "::"+self.hint if self.hint else "")
+            res = ""
+            for o in [self.left_bracket, self.inner, self.hint, self.right_bracket]:
+                res += o.to_string() if o else ""
+            return res
         else:
             raise ValueError(f"style='{style}' is an invalid. "\
                               "Must be 'anki' or 'roam'")
@@ -318,51 +539,50 @@ class Cloze(BlockContentItem):
         pageref_cloze = kwargs.get("pageref_cloze", "outside")
 
         if not proc_cloze:
-            if self.string:
-                sections = self.split_string(self.string)
-                return "".join([BlockContent.from_string(s, *args, **kwargs).to_html() for s in sections])
-            else:
-                content = BlockContent.from_string(self.text, *args, **kwargs).to_html()
-                return Cloze(self.id, content).to_string()
-
-        roam_objects = BlockContent.from_string(self.text, *args, **kwargs)
-        if not roam_objects.is_single_pageref():
-            return Cloze(self.id, roam_objects.to_html(), hint=self.hint).to_string()
+            bc = BlockContent.find_and_replace(self.to_string("roam"), skip=[Cloze])
+            return bc.to_html(*args, **kwargs)
 
         # Fancy options to move around the cloze when it's only around a PageRef
-        pageref = roam_objects[0]
-        if pageref_cloze=="outside":
-            text = pageref.to_html()
-            return Cloze(self.id, text, hint=self.hint).to_string()
-        elif pageref_cloze=="inside":
-            clozed_title = Cloze(self.id, pageref.title, hint=self.hint).to_string()
-            return pageref.to_html(title=clozed_title)
-        elif pageref_cloze=="base_only":
-            clozed_base = Cloze(self.id, pageref.get_basename(), hint=self.hint).to_string()
-            namespace = pageref.get_namespace()
-            if namespace:
-                clozed_base = namespace + "/" + clozed_base
-            return pageref.to_html(title=clozed_base)
-        else:
-            raise ValueError(f"{pageref_cloze} is an invalid option for `pageref_cloze`")
+        if self.inner.is_single_pageref() and self.hint is None:
+            pageref = self.inner[0]
+            if pageref_cloze=="outside":
+                content = pageref.to_html()
+                return Cloze(id=self.id, inner=content, hint=self.hint).to_string()
+            elif pageref_cloze=="inside":
+                clozed_title = Cloze(id=self.id, inner=pageref.title, hint=self.hint).to_string()
+                return pageref.to_html(title=clozed_title)
+            elif pageref_cloze=="base_only":
+                clozed_base = Cloze(id=self.id, inner=pageref.get_basename(), hint=self.hint).to_string()
+                namespace = pageref.get_namespace()
+                if namespace:
+                    clozed_base = namespace + "/" + clozed_base
+                return pageref.to_html(title=clozed_base)
+            else:
+                raise ValueError(f"{pageref_cloze} is an invalid option for `pageref_cloze`")
+            
+        res = ""
+        for o in [self.left_bracket, self.inner, self.hint, self.right_bracket]:
+            res += o.to_html() if o else ""
+        return res
         
     @staticmethod
     def _assign_cloze_ids(clozes):
-        assigned_ids = [c._id for c in clozes if c._id]
+        assigned_ids = [c.id for c in clozes if c.id]
         next_id = 1
         for cloze in clozes:
-            if cloze._id: continue
+            if cloze.id: continue
             while next_id in assigned_ids:
                 next_id += 1
             assigned_ids += [next_id]
-            cloze._id = next_id
+            cloze.id = next_id
 
     def __repr__(self):
+        string = self.string or self.to_string(style="roam")
         return "<%s(id=%s, string='%s')>" % (
-            self.__class__.__name__, self._id, self.string)
+            self.__class__.__name__, self.id, string)
 
     def __eq__(self, other):
-        return type(self)==type(other) and self.text == other.text
+        return type(self)==type(other) and self.inner == other.inner
 
 
 class Image(BlockContentItem):
@@ -494,6 +714,34 @@ class CodeBlock(BlockContentItem):
         return type(self)==type(other) and self.language==other.language and self.code==other.code
 
 
+class CodeInline(BlockContentItem):
+    def __init__(self, code, string=None):
+        self.code = code
+        self.string = string
+
+    @classmethod
+    def from_string(cls, string, **kwargs):
+        super().from_string(string)
+        pat = re.compile("`([^`]*)`")
+        code = re.search(pat, string).group(1)
+        return cls(code, string) 
+
+    @classmethod
+    def create_pattern(cls, string=None):
+        return "`[^`]*`"
+
+    def to_string(self):
+        if self.string: return self.string 
+        return f'`{self.code}`'
+
+    def to_html(self, *args, **kwargs):
+        code = html.escape(self.code)
+        return f'<code>{code}</code>'
+
+    def __eq__(self, other):
+        return type(self)==type(other) and self.code==other.code
+
+
 class Checkbox(BlockContentItem):
     def __init__(self, checked=False):
         self.checked = checked
@@ -613,7 +861,7 @@ class Embed(BlockContentItem):
     def to_string(self):
         if self.string:
             return self.string
-        return "{{%s:%s}}" % (self.name.to_string(), self.blockref)
+        return "{{%s:%s}}" % (self.name.to_string(), self.blockref.to_string())
 
     def __eq__(self, other):
         return type(self)==type(other) and self.name==other.name and self.blockref==other.blockref
@@ -891,6 +1139,8 @@ class Url(BlockContentItem):
 
 class String(BlockContentItem):
     def __init__(self, string):
+        if type(string) == String:
+            string == string.to_string()
         self.string = string
 
     @classmethod
