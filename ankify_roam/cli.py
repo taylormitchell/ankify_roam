@@ -3,6 +3,7 @@ import inspect
 import argparse
 import logging
 import re
+import os
 import subprocess
 from ankify_roam import __version__
 from ankify_roam import anki
@@ -34,11 +35,11 @@ def init_models(overwrite=False):
 
 
 def get_version():
-    res = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True)
+    res = subprocess.run(["git", "-C", os.path.dirname(__file__), "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True)
     if res.returncode == 0:
         # this is a local git repository
         git_branch = res.stdout.decode().strip()
-        return git_branch
+        return __version__ + "+" + git_branch
     return __version__
 
 
