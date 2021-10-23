@@ -3,6 +3,8 @@ import inspect
 import argparse
 import logging
 import re
+import os
+import subprocess
 from ankify_roam import __version__
 from ankify_roam import anki
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE, add_default_models
@@ -32,13 +34,22 @@ def init_models(overwrite=False):
                 "If you want to overwrite it, use `ankify_roam init-models --overwrite`")
 
 
+def get_version():
+    res = subprocess.run(["git", "-C", os.path.dirname(__file__), "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True)
+    if res.returncode == 0:
+        # this is a local git repository
+        git_branch = res.stdout.decode().strip()
+        return __version__ + "+" + git_branch
+    return __version__
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Import flashcards from Roam to Anki',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument('--version', action='version',
-                        version='%(prog)s {version}'.format(version=__version__))
+                        version='%(prog)s {version}'.format(version=get_version()))
 
     subparsers = parser.add_subparsers(help='sub-command help')
 
