@@ -1227,36 +1227,3 @@ class Attribute(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.title==other.title
-
-
-if __name__ == "__main__":
-    text = """```javascript
-    x = () => { return 'hello world' }
-    x() ` aweawe `
-    ```
-    aweawef
-    ```"""
-    pat = "```"
-    res = list(re.finditer(pat, text))
-
-    supported_languages = ["javascript"]
-
-    content = []
-    string_start = 0
-    while len(res) > 2:
-        code_start, code_end = res.pop(0), res.pop(0)
-        code_block = text[code_start.start():code_end.end()]
-        code = text[code_start.end():code_end.start()]
-        try:
-            first_line = re.search("^.*\n", code).group().strip()
-            language = first_line if first_line in supported_languages else None
-        except AttributeError:
-            language = None
-        content.append(String(text[string_start:code_start.start()]))
-        content.append(CodeBlock(code, language, code_block))
-        string_start = code_end.end()
-    content.append(String(text[string_start:]))
-            
-
-    print(content)
-    
