@@ -1,5 +1,9 @@
 # Changelog
 
+## TBD
+
+- Fix parsing of code blocks containing back ticks
+
 ## 0.1.3
 
 ### New Features
