@@ -678,26 +678,56 @@ class CodeBlock(BlockContentItem):
 
     @classmethod
     def from_string(cls, string, **kwargs):
-        super().from_string(string)
+        #super().from_string(string)
+        #supported_languages = [
+        #    "clojure", "css", "elixir", "html", "plain text", "python", "ruby", 
+        #    "swift", "typescript", "isx", "yaml", "rust", "shell", "php", "java", 
+        #    "c#", "c++", "objective-c", "kotlin", "sql", "haskell", "scala", 
+        #    "common lisp", "julia", "sparql", "turtle", "javascript"]
+        #pat_lang = "^```(%s)\n" % "|".join([re.escape(l) for l in supported_languages])
+        #match_lang = re.search(pat_lang, string)
+        #if match_lang:
+        #    language = match_lang.group(1)
+        #    pat = re.compile(f"```{language}\n([^`]*)```")
+        #else:
+        #    language = None
+        #    pat = re.compile("```([^`]*)```")
+        #code = re.search(pat, string).group(1)
+        #return cls(code, language, string) 
+        objs = cls.find_and_replace(string)
+        if len(objs) != 1 or type(objs[0]) != cls:
+            raise ValueError(f"Invalid string '{string}' for {cls.__name__}")
+        return objs[0]
+
+    @classmethod
+    def _find_and_replace(cls, string):
         supported_languages = [
             "clojure", "css", "elixir", "html", "plain text", "python", "ruby", 
             "swift", "typescript", "isx", "yaml", "rust", "shell", "php", "java", 
             "c#", "c++", "objective-c", "kotlin", "sql", "haskell", "scala", 
             "common lisp", "julia", "sparql", "turtle", "javascript"]
-        pat_lang = "^```(%s)\n" % "|".join([re.escape(l) for l in supported_languages])
-        match_lang = re.search(pat_lang, string)
-        if match_lang:
-            language = match_lang.group(1)
-            pat = re.compile(f"```{language}\n([^`]*)```")
-        else:
-            language = None
-            pat = re.compile("```([^`]*)```")
-        code = re.search(pat, string).group(1)
-        return cls(code, language, string) 
+        code_bookends = list(re.finditer("```", string))
+        content = []
+        string_start = 0
+        while len(code_bookends) > 1:
+            code_start, code_end = code_bookends.pop(0), code_bookends.pop(0)
+            code_block = string[code_start.start():code_end.end()]
+            code = string[code_start.end():code_end.start()]
+            try:
+                first_line = re.search("^.*\n", code).group().strip()
+                language = first_line if first_line in supported_languages else None
+            except AttributeError:
+                language = None
+            content.append(String(string[string_start:code_start.start()]))
+            content.append(CodeBlock(code, language, code_block))
+            string_start = code_end.end()
+        content.append(String(string[string_start:]))
 
-    @classmethod
-    def create_pattern(cls, string=None):
-        return f"```[^`]*```"
+        return BlockContent([c for c in content if c.to_string()])
+
+    #@classmethod
+    #def create_pattern(cls, string=None):
+    #    return f"```[^`]*```"
 
     def to_string(self):
         if self.string: return self.string 
@@ -1199,3 +1229,36 @@ class Attribute(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.title==other.title
+
+
+if __name__ == "__main__":
+    text = """```javascript
+    x = () => { return 'hello world' }
+    x() ` aweawe `
+    ```
+    aweawef
+    ```"""
+    pat = "```"
+    res = list(re.finditer(pat, text))
+
+    supported_languages = ["javascript"]
+
+    content = []
+    string_start = 0
+    while len(res) > 2:
+        code_start, code_end = res.pop(0), res.pop(0)
+        code_block = text[code_start.start():code_end.end()]
+        code = text[code_start.end():code_end.start()]
+        try:
+            first_line = re.search("^.*\n", code).group().strip()
+            language = first_line if first_line in supported_languages else None
+        except AttributeError:
+            language = None
+        content.append(String(text[string_start:code_start.start()]))
+        content.append(CodeBlock(code, language, code_block))
+        string_start = code_end.end()
+    content.append(String(text[string_start:]))
+            
+
+    print(content)
+    
