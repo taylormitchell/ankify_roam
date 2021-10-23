@@ -1,11 +1,13 @@
 # Changelog
 
-## TBD
+## 0.1.3
 
 ### New Features
 - Embed support
+
 ### Fixes
-- Fix display of block references inside clozes
+- Fixed display of block references inside clozes
+- Curly brackets inside code blocks and inline code are no longer parsed as cloze deletions
 
 ## 0.1.2 (2021-08-31)
 
