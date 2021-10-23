@@ -700,7 +700,7 @@ class CodeBlock(BlockContentItem):
         return objs[0]
 
     @classmethod
-    def _find_and_replace(cls, string):
+    def _find_and_replace(cls, string, *args, **kwargs):
         supported_languages = [
             "clojure", "css", "elixir", "html", "plain text", "python", "ruby", 
             "swift", "typescript", "isx", "yaml", "rust", "shell", "php", "java", 
@@ -713,21 +713,19 @@ class CodeBlock(BlockContentItem):
             code_start, code_end = code_bookends.pop(0), code_bookends.pop(0)
             code_block = string[code_start.start():code_end.end()]
             code = string[code_start.end():code_end.start()]
-            try:
-                first_line = re.search("^.*\n", code).group().strip()
-                language = first_line if first_line in supported_languages else None
-            except AttributeError:
-                language = None
+            pat = "^.*\n"
+            m = re.search(pat, code)
+            specified_language = m.group().strip() if m else ""
+            if specified_language in supported_languages:
+                language, code = specified_language, re.sub(pat, "", code)
+            else:
+                language, code = None, code
             content.append(String(string[string_start:code_start.start()]))
             content.append(CodeBlock(code, language, code_block))
             string_start = code_end.end()
         content.append(String(string[string_start:]))
 
         return BlockContent([c for c in content if c.to_string()])
-
-    #@classmethod
-    #def create_pattern(cls, string=None):
-    #    return f"```[^`]*```"
 
     def to_string(self):
         if self.string: return self.string 

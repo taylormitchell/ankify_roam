@@ -432,6 +432,13 @@ class TestCodeBlock(unittest.TestCase):
         self.assertEqual(cb.language, language)
         self.assertEqual(cb.code, code)
 
+        # Code block with back ticks inside
+        string = "```javascript\nx = () => return `derp`\n```"
+        language, code = "javascript", "x = () => return `derp`\n"
+        cb = CodeBlock.from_string(string)
+        self.assertEqual(cb.language, language)
+        self.assertEqual(cb.code, code)
+
     def test_find_and_replace(self):
         string = "something something ```clojure\ndef foo(x+y):\n    return x+y```"
         a = CodeBlock.find_and_replace(string)
