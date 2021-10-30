@@ -3,6 +3,7 @@
 ## TBD
 
 - Fix parsing of code blocks containing back ticks
+- Add --tags-from-attr option
 
 ## 0.1.3
 

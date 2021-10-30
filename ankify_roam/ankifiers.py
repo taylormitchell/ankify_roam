@@ -16,8 +16,9 @@ logger = logging.getLogger(__name__)
 ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128) 
                                if chr(i) not in string.printable])
 
+
 class RoamGraphAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, tags_from_attr=False):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -28,6 +29,7 @@ class RoamGraphAnkifier:
         self.num_parents = num_parents
         self.include_page = include_page
         self.max_depth = max_depth
+        self.tags_from_attr = tags_from_attr
         
     def check_conn_and_params(self):
         if not anki.connection_open():
@@ -52,8 +54,8 @@ class RoamGraphAnkifier:
             raise ValueError(f"note_cloze must be a cloze note type and '{self.note_cloze}' isn't.")
 
     def is_block_to_ankify(self, block):
-        tags_in_block = block.get_tags(inherit=False)
-        all_tags = block.get_tags(inherit=True)
+        tags_in_block = block.get_tags(inherit=False, from_attr=self.tags_from_attr)
+        all_tags = block.get_tags(inherit=True, from_attr=self.tags_from_attr)
         if self.tag_ankify in tags_in_block:
             if self.tag_dont_ankify and self.tag_dont_ankify in all_tags:
                 return False
@@ -102,7 +104,7 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}, tags_from_attr=False):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -114,6 +116,7 @@ class BlockAnkifier:
         self.max_depth = max_depth
         self.option_keys = option_keys
         self.field_names = field_names 
+        self.tags_from_attr = tags_from_attr
 
     def ankify(self, block, **kwargs):
         modelName = self._get_note_type(block)
@@ -126,7 +129,7 @@ class BlockAnkifier:
         kwargs["include_page"] = self._get_include_page(block)
         kwargs["max_depth"] = self._get_max_depth(block)
         fields = self._block_to_fields(block, self.field_names[modelName], flashcard_type, **kwargs)
-        tags = self.ankify_tags(block.get_tags())
+        tags = self.ankify_tags(block.get_tags(from_attr=self.tags_from_attr))
         return {
             "deckName": deckName,
             "modelName": modelName,
@@ -139,7 +142,7 @@ class BlockAnkifier:
 
     def _get_option(self, block, option):
         pat = f'''^(\[\[)?({"|".join(self.option_keys)})(\]\])?:\s*{option}\s?=\s?["']?([\w\s]*)["']?$'''
-        for tag in block.get_tags():
+        for tag in block.get_tags(from_attr=self.tags_from_attr):
             m = re.match(pat, tag)
             if m:
                 return m.groups()[-1]
@@ -227,7 +230,7 @@ class BlockAnkifier:
         parents = block.parents
         if self.tag_ankify_root is not None:
             for i, o in enumerate(parents):
-                if self.tag_ankify_root in o.get_tags(inherit=False):
+                if self.tag_ankify_root in o.get_tags(inherit=False, from_attr=self.tags_from_attr):
                     break
             parents_to_root = parents[:i+1]
 

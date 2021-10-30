@@ -90,6 +90,9 @@ def main():
     parser_add.add_argument('--include-page', default=default_args['num_parents'],
                         action='store_true', 
                         help='Whether to include page titles on anki notes')
+    parser_add.add_argument('--tags-from-attr', default=default_args['tags_from_attr'],
+                        action='store_true', 
+                        help='Whether to assign tags next to "tags::" property to parent')
     parser_add.add_argument('--max-depth', default=default_args['max_depth'],
                         type=str, action='store', 
                         help="Maximum depth of children to ankify e.g. `--max-depth=1` will show the block's children but not grand children. (default: '%(default)s')")

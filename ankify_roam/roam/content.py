@@ -114,6 +114,12 @@ class BlockContent(list):
         return "<%s(%s)>" % (
             self.__class__.__name__, repr(list(self)))
 
+    def __getitem__(self, key):
+        res = super().__getitem__(key)
+        if isinstance(key, slice):
+            return BlockContent(res)
+        return res
+
     def get_contents(self, recursive=False):
         if not recursive:
             return list(self)
@@ -1227,3 +1233,5 @@ class Attribute(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.title==other.title
+
+

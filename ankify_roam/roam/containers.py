@@ -83,8 +83,20 @@ class Page:
         self.edit_time = edit_time
         self.edit_email = edit_email
 
-    def get_tags(self, *args, **kwargs):
-        return [self.title]
+    def get_attribute(self, key, default=None):
+        for o in self.children:
+            if o.content and type(o.content[0]) == Attribute and o.content[0].title == key:
+                return o.content[1:]
+        return default
+
+    def get_tags(self, from_attr=False, drop_duplicates=False, *args, **kwargs):
+        tags = [self.title]
+        if from_attr:
+            bc = self.get_attribute("tags")
+            tags += bc.get_tags() if bc else []
+        if drop_duplicates:
+            tags = list(dict.fromkeys(tags)) # This preserves order
+        return tags
 
     def get(self, key, default=None):
         return getattr(self, key) if hasattr(self, key) else default
@@ -174,7 +186,13 @@ class Block:
         if not default: default=BlockChildren()
         return getattr(self, key) if hasattr(self, key) else default
 
-    def get_tags(self, inherit=True, drop_duplicates=False):
+    def get_attribute(self, key, default=None):
+        for o in self.children:
+            if o.content and type(o.content[0]) == Attribute and o.content[0].title == key:
+                return o.content[1:]
+        return default
+
+    def get_tags(self, inherit=True, drop_duplicates=False, from_attr=False):
         """Return a list of tags on the block
 
         The list of tags are ordered such that tags inside the block come first, ordered
@@ -191,11 +209,15 @@ class Block:
         tags = self.content.get_tags()
         if inherit:
             if isinstance(self.parent, Page):
-                tags += self.parent.get_tags()
+                tags += self.parent.get_tags(from_attr=from_attr)
             elif isinstance(self.parent, Block):
-                tags += self.parent.get_tags(inherit=True)
+                tags += self.parent.get_tags(inherit=True, from_attr=from_attr)
             else:
                 pass
+        if from_attr:
+            # Get tags listed as attribute
+            bc = self.get_attribute("tags", [])
+            tags += bc.get_tags() if bc else []
         if drop_duplicates:
             tags = list(dict.fromkeys(tags)) # This preserves order
         return tags
@@ -282,4 +304,3 @@ class BlockChildren(list):
     def __repr__(self):
         return "<%s(%s)>" % (
             self.__class__.__name__, repr(list(self)))
-

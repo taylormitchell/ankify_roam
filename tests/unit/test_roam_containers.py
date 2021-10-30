@@ -1,6 +1,7 @@
 import unittest
 import json
 from ankify_roam.roam.containers import RoamGraph, Page, Block 
+from ankify_roam.roam.content import BlockContent
 
 
 class TestRoamGraph(unittest.TestCase):
@@ -78,3 +79,30 @@ class TestBlock(unittest.TestCase):
         roam_graph = RoamGraph(pages)
         block = roam_graph.query_by_uid("klGAc1Gi3")
         self.assertEqual(block.num_descendants(), 8)
+
+
+class TestTagsFromAttribute(unittest.TestCase):
+  def test_block(self):
+    block = Block(
+        content=BlockContent.from_string("some [[block]]"),
+        children=[
+            Block(BlockContent("another block")),
+            Block(BlockContent.from_string("tags:: #[[foo]], [[bar]]"))
+        ]
+    )
+    self.assertSetEqual(set(block.get_tags(from_attr=False)), set(["block"]))
+    self.assertSetEqual(set(block.get_tags(from_attr=True)), set(["block", "foo", "bar"]))
+
+  def test_page(self):
+    page = Page(
+        title = "derp",
+        children = [
+            Block(BlockContent("another [[block]]")),
+            Block(BlockContent.from_string("tags:: #[[foo]], [[bar]]"))
+        ]
+    )
+    self.assertSetEqual(set(page.get_tags(from_attr=False)), set(["derp"]))
+    self.assertSetEqual(set(page.get_tags(from_attr=True)), set(["derp", "foo", "bar"]))
+
+
+  
