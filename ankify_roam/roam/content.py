@@ -483,7 +483,7 @@ class Cloze(BlockContentItem):
 
             # Right cloze bracket matched to previous left bracket
             elif left_idx is not None and type(obj) == ClozeRightBracket:
-                inner = objs[left_idx+1:i]
+                inner = objs[left_idx+1:i] if left_idx+1 < i else [String("")]
                 hint = None
                 if type(inner[-1]) == ClozeHint:
                     inner, hint = inner[:-1], inner[-1]
@@ -1233,5 +1233,3 @@ class Attribute(BlockContentItem):
 
     def __eq__(self, other):
         return type(self)==type(other) and self.title==other.title
-
-
