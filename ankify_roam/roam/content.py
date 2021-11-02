@@ -69,6 +69,8 @@ class BlockContent(list):
 
     def to_html(self, *args, **kwargs):
         # TODO: implement filters
+        if kwargs.get("proc_cloze", False):
+            Cloze._assign_cloze_ids([o for o in self if type(o)==Cloze])
         res = "".join([o.to_html(*args, **kwargs) for o in self])
         res = self._all_emphasis_to_html(res)
         return res 
@@ -307,7 +309,7 @@ class ClozeLeftBracket(BlockContentItem):
         return res
 
     def to_html(self):
-        return "{{c" + str(self.id) + "::"
+        return "{{c" + str(self.id or 1) + "::"
 
     def __repr__(self):
         return "<%s(string='%s')>" % (
@@ -509,8 +511,6 @@ class Cloze(BlockContentItem):
             if type(obj) in [ClozeLeftBracket, ClozeRightBracket, ClozeHint]:
                 res[i] = String(obj.to_string())
 
-        cls._assign_cloze_ids([o for o in res if type(o)==Cloze])
-
         bc = BlockContent(res)
         bc.merge_adjacent_strings()
 
@@ -519,13 +519,13 @@ class Cloze(BlockContentItem):
     def get_tags(self):
         return self.inner.get_tags()
 
-    def to_string(self, style="anki"):
+    def to_string(self, style="roam"):
         """
         Args:
             style (string): {'anki','roam'}
         """
         if style=="anki":
-            return "{{c%s::%s%s}}" % (self.id, self.inner.to_string(), self.hint.to_string() if self.hint else "")
+            return "{{c%s::%s%s}}" % (self.id or 1, self.inner.to_string(), self.hint.to_string() if self.hint else "")
         elif style=="roam":
             res = ""
             for o in [self.left_bracket, self.inner, self._hint, self.right_bracket]:
@@ -553,12 +553,12 @@ class Cloze(BlockContentItem):
             pageref = self.inner[0]
             if pageref_cloze=="outside":
                 content = pageref.to_html()
-                return Cloze(id=self.id, inner=content, hint=self.hint).to_string()
+                return Cloze(id=self.id, inner=content, hint=self.hint).to_string("anki")
             elif pageref_cloze=="inside":
-                clozed_title = Cloze(id=self.id, inner=pageref.title, hint=self.hint).to_string()
+                clozed_title = Cloze(id=self.id, inner=pageref.title, hint=self.hint).to_string("anki")
                 return pageref.to_html(title=clozed_title)
             elif pageref_cloze=="base_only":
-                clozed_base = Cloze(id=self.id, inner=pageref.get_basename(), hint=self.hint).to_string()
+                clozed_base = Cloze(id=self.id, inner=pageref.get_basename(), hint=self.hint).to_string("anki")
                 namespace = pageref.get_namespace()
                 if namespace:
                     clozed_base = namespace + "/" + clozed_base
@@ -1132,9 +1132,9 @@ class BlockRef(BlockContentItem):
         else:
             return f"(({self.uid}))"
 
-    def to_html(self, *arg, **kwargs):
+    def to_html(self, *args, **kwargs):
         block = self.get_referenced_block()
-        text = block.to_html() if block else html.escape(self.to_string())
+        text = block.to_html(*args, **kwargs) if block else html.escape(self.to_string())
         return '<div class="rm-block-ref"><span>%s</span></div>' % text
 
     def get_tags(self):
