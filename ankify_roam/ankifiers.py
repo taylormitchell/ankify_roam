@@ -6,6 +6,8 @@ import re
 import inspect
 import string
 from itertools import zip_longest
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 from ankify_roam import roam
 from ankify_roam import anki
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
@@ -18,7 +20,7 @@ ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128)
 
 
 class RoamGraphAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, tags_from_attr=False):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, tags_from_attr=False, download_imgs=False):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -30,6 +32,7 @@ class RoamGraphAnkifier:
         self.include_page = include_page
         self.max_depth = max_depth
         self.tags_from_attr = tags_from_attr
+        self.download_imgs = download_imgs
         
     def check_conn_and_params(self):
         if not anki.connection_open():
@@ -104,7 +107,7 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}, tags_from_attr=False):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}, tags_from_attr=False, download_imgs=False):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -117,6 +120,7 @@ class BlockAnkifier:
         self.option_keys = option_keys
         self.field_names = field_names 
         self.tags_from_attr = tags_from_attr
+        self.download_imgs = download_imgs
 
     def ankify(self, block, **kwargs):
         modelName = self._get_note_type(block)
@@ -130,12 +134,33 @@ class BlockAnkifier:
         kwargs["max_depth"] = self._get_max_depth(block)
         fields = self._block_to_fields(block, self.field_names[modelName], flashcard_type, **kwargs)
         tags = self.ankify_tags(block.get_tags(from_attr=self.tags_from_attr))
-        return {
+
+        res = {
             "deckName": deckName,
             "modelName": modelName,
             "fields": fields,
-            "tags": tags
+            "tags": tags,
         }
+        if self.download_imgs:
+            res["fields"], res["images"] = self.img_urls_to_filenames(fields)
+        
+        return res
+        
+    def img_urls_to_filenames(fields):
+        new_fields, images = {}, []
+        for field in fields:
+            soup = BeautifulSoup(field, 'html.parser')
+            for img in soup.find_all("img"):
+                filename = os.path.basename(urlparse(img['src']).path)
+                images[filename] = {
+                    "url": img['src'],
+                    "filename": filename
+                }
+                img['src'] = filename
+            new_fields.append(str(soup))
+        images = [data for _, data in images.items()]
+
+        return new_fields, images
 
     def ankify_tags(self, roam_tags):
         return [re.sub(r"\s+","_",tag) for tag in roam_tags]
