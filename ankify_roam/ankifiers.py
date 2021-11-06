@@ -141,14 +141,14 @@ class BlockAnkifier:
             "fields": fields,
             "tags": tags,
         }
-        if self.download_imgs:
+        if self._get_download_imgs(block):
             res["fields"], res["images"] = self.img_urls_to_filenames(fields)
         
         return res
         
-    def img_urls_to_filenames(fields):
-        new_fields, images = {}, []
-        for field in fields:
+    def img_urls_to_filenames(self, fields):
+        new_fields, images = {}, {}
+        for name, field in fields.items():
             soup = BeautifulSoup(field, 'html.parser')
             for img in soup.find_all("img"):
                 filename = os.path.basename(urlparse(img['src']).path)
@@ -157,7 +157,7 @@ class BlockAnkifier:
                     "filename": filename
                 }
                 img['src'] = filename
-            new_fields.append(str(soup))
+            new_fields[name] = str(soup)
         images = [data for _, data in images.items()]
 
         return new_fields, images
@@ -227,6 +227,14 @@ class BlockAnkifier:
             if re.match("^([1-9]?\d+|0)$", opt):
                 return int(opt)
         return self.max_depth
+
+    def _get_download_imgs(self, block):
+        opt = self._get_option(block, "download-imgs")
+        if opt == "True":
+            return True
+        if opt == "False":
+            return False
+        return self.download_imgs
 
     def _block_to_fields(self, block, field_names, flashcard_type, **kwargs):
         # Convert block content to html

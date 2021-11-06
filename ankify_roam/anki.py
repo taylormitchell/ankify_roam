@@ -48,16 +48,29 @@ def upload(anki_dict):
     else:
         return add_note(anki_dict)
             
-def add_note(anki_dict):
+def add_note(anki_dict, overwrite_img=False):
+    for image in anki_dict.pop("images", []):
+        add_media(image, overwrite=overwrite_img)
     return _invoke("addNote", note=anki_dict)
 
-def update_note(anki_dict, note_id=None):
+def update_note(anki_dict, note_id=None, overwrite_img=False):
+    for image in anki_dict.pop("images", []):
+        add_media(image, overwrite=overwrite_img)
     note_id = note_id or get_note_id(anki_dict)
     return update_fields(note_id, anki_dict["fields"])
 
 def update_fields(note_id, fields):
     note = {"id":note_id, "fields": fields}
     return _invoke("updateNoteFields", note=note)
+
+def add_media(media, overwrite=False):
+    if not overwrite and media_exists(media['filename']):
+        return 
+    return _invoke("storeMediaFile", **media)
+
+def media_exists(filename):
+    res = _invoke("retrieveMediaFile", filename=filename)
+    return True if res else False
 
 def update_tags(note_id, tags):
     old_tags = get_note_tags(note_id)
