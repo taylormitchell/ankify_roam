@@ -6,7 +6,9 @@ import re
 import inspect
 import string
 from itertools import zip_longest
+import base64
 from bs4 import BeautifulSoup
+import requests
 from urllib.parse import urlparse
 from ankify_roam import roam
 from ankify_roam import anki
@@ -142,25 +144,36 @@ class BlockAnkifier:
             "tags": tags,
         }
         if self._get_download_imgs(block):
-            res["fields"], res["images"] = self.img_urls_to_filenames(fields)
-        
+            res["fields"], res["images"], errors = self.download_images(fields)
+            if errors:
+                errors_list = "\n".join(["  "+str(e) for e in errors])
+                logging.error(f"Errors while downloading images on block '{block.uid}':\n{errors_list}")
         return res
         
-    def img_urls_to_filenames(self, fields):
-        new_fields, images = {}, {}
+    def download_images(self, fields):
+        new_fields, images, errors = {}, {}, []
         for name, field in fields.items():
             soup = BeautifulSoup(field, 'html.parser')
             for img in soup.find_all("img"):
+                if img['src'] not in images.keys():
+                    try:
+                        res = requests.get(img['src'])
+                        if res.status_code != 200:
+                            raise ValueError(f"Download of '{img['src']}' failed with return code {res.status_code}")
+                        data = base64.b64encode(res.content).decode()
+                    except Exception as e:
+                        errors.append(e)
+                        continue
                 filename = os.path.basename(urlparse(img['src']).path)
                 images[filename] = {
-                    "url": img['src'],
+                    "data": data,
                     "filename": filename
                 }
                 img['src'] = filename
             new_fields[name] = str(soup)
         images = [data for _, data in images.items()]
 
-        return new_fields, images
+        return new_fields, images, errors
 
     def ankify_tags(self, roam_tags):
         return [re.sub(r"\s+","_",tag) for tag in roam_tags]
