@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+### Fixes
+- Fix bug on windows with getting the version number of ankify_roam
+
 ## 0.1.3
 
 ### New Features
