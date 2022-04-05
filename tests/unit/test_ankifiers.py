@@ -178,7 +178,8 @@ class TestBlockAnkifier(unittest.TestCase):
                 "Front": '<div class="front-side">question</div>', 
                 "Back": '<div class="back-side">answer</div>'
             },
-            "tags": ["page"]
+            "tags": ["page"],
+            "suspend": None,
         }
         self.assertEqual(expected, ankifier.ankify(block))
 
@@ -200,10 +201,20 @@ class TestBlockAnkifier(unittest.TestCase):
                 "Front": '<div class="front-side">question</div>', 
                 "Back": '<div class="back-side">answer</div>'
             },
-            "tags": ["page"]
+            "tags": ["page"],
+            "suspend": None,
         }
         self.assertEqual(expected, ankifier.ankify(block))
 
+    def test_suspend(self):
+        ankifier = BlockAnkifier()
+        block = Block.from_string("a block #[[[[ankify_roam]]: suspend=True]]")
+        self.assertEqual(ankifier._get_suspend(block), True)
+        block = Block.from_string("a block #[[[[ankify_roam]]: suspend=False]]")
+        self.assertEqual(ankifier._get_suspend(block), False)
+        block = Block.from_string("a block")
+        self.assertEqual(ankifier._get_suspend(block), None)
+        
 
 def remove_html_whitespace(html_string):
     html_string = re.sub(">\s*\n?\s*<", "><", html_string)

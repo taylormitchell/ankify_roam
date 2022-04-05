@@ -86,6 +86,7 @@ class RoamGraphAnkifier:
                 num_failed += 1
                 continue
             try:
+                # Add or update the anki note
                 note_id = anki.get_note_id(ankified_note)
                 if note_id:
                     existing_fields = {k: v['value'] for k,v in anki.get_note(note_id)['fields'].items()}
@@ -97,6 +98,11 @@ class RoamGraphAnkifier:
                 else:
                     anki.add_note(ankified_note)
                     num_added += 1
+                # Suspend or unsuspend the anki note
+                if ankified_note['suspend'] == True:
+                    anki.suspend_note(ankified_note)
+                elif ankified_note['suspend'] == False:
+                    anki.unsuspend_note(ankified_note)
             except:
                 logger.exception(f"Failed ankifying {block} during upload to anki")
                 num_failed += 1
@@ -119,6 +125,7 @@ class BlockAnkifier:
         self.tags_from_attr = tags_from_attr
 
     def ankify(self, block, **kwargs):
+        tags = block.get_tags(from_attr=self.tags_from_attr)
         modelName = self._get_note_type(block)
         deckName = self._get_deck(block)
         if modelName not in self.field_names.keys():
@@ -129,13 +136,21 @@ class BlockAnkifier:
         kwargs["include_page"] = self._get_include_page(block)
         kwargs["max_depth"] = self._get_max_depth(block)
         fields = self._block_to_fields(block, self.field_names[modelName], flashcard_type, **kwargs)
-        tags = self.ankify_tags(block.get_tags(from_attr=self.tags_from_attr))
         return {
             "deckName": deckName,
             "modelName": modelName,
             "fields": fields,
-            "tags": tags
+            "tags": self.ankify_tags(tags),
+            "suspend": self._get_suspend(block)
         }
+
+    def _get_suspend(self, block):
+        opt = self._get_option(block, "suspend")
+        if opt == 'True':
+            return True
+        if opt == 'False':
+            return False
+        return None
 
     def ankify_tags(self, roam_tags):
         return [re.sub(r"\s+","_",tag) for tag in roam_tags]
