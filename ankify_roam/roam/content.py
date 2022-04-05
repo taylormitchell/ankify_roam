@@ -63,7 +63,7 @@ class BlockContent(list):
             PageRef,
             BlockRef,
             Attribute,
-            #Url, #TODO: don't have a good regex for this right now
+            Url, 
         ]
         roam_object_types = [o for o in roam_object_types if o not in skip]
         roam_objects = BlockContent(obj)
@@ -217,9 +217,9 @@ class BlockContentItem:
             string = obj.to_string()
             # Parse out string representations of this class and instantiate them
             cls_spans = cls.find_substring_locs(string)  # [(10, 15), (20, 27)]
-            cls_instances = [cls.from_string(string[i:j]) for i, j in cls_spans]
+            cls_instances = [cls.from_string(string[i:j], **kwargs) for i, j in cls_spans]
             non_cls_substrings = [String(s) for s in split_string_at_spans(string, cls_spans)]
-            # Wave back together and append 
+            # Weave back together and append 
             new_roam_objects += [a for b in zip_longest(non_cls_substrings, cls_instances) for a in b if a]
         roam_objects = new_roam_objects
         roam_objects = [o for o in roam_objects if o.to_string()] # remove empty strings
@@ -290,7 +290,7 @@ class ClozeLeftBracket(BlockContentItem):
         ])
 
     @classmethod
-    def from_string(cls, string):
+    def from_string(cls, string, **kwargs):
         c = "c" in string
         enclosed = string.startswith("[[")
         m = re.search("\d+", string)
@@ -346,7 +346,7 @@ class ClozeRightBracket(BlockContentItem):
         ])
 
     @classmethod
-    def from_string(cls, string):
+    def from_string(cls, string, **kwargs):
         if string.startswith("[[") and string.endswith("]]"):
             hint = ClozeHint(re.sub("[\[\]}]", "", string)[2:]) if "::" in string else None
             enclosed = True
@@ -398,7 +398,7 @@ class ClozeHint(BlockContentItem):
         ])
 
     @classmethod
-    def from_string(cls, string):
+    def from_string(cls, string, **kwargs):
         if string.startswith("[["):
             enclosed = True
             hint = string[2:-2] # remove surround brackets
@@ -1113,7 +1113,7 @@ class BlockRef(BlockContentItem):
         self.string = string
 
     @classmethod
-    def from_string(cls, string, *args, **kwargs):
+    def from_string(cls, string, **kwargs):
         super().from_string(string)
         roam_db = kwargs.get("roam_db", None)
         return cls(string[2:-2], roam_db=roam_db, string=string)
@@ -1154,7 +1154,7 @@ class Url(BlockContentItem):
 
     @classmethod
     def from_string(cls, string, **kwargs):
-        super().from_string(string, **kwargs)
+        super().from_string(string)
         return cls(string)
 
     @classmethod

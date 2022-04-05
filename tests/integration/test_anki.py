@@ -57,9 +57,9 @@ class TestRoamGraphAnkifier(unittest.TestCase):
         self.deck="test"
         if not anki.load_profile(self.profile):
             raise ValueError("You need an anki profile called 'test' to run the Ankifier tests on")
-        anki.delete_deck(self.deck)
-        anki.create_deck(self.deck)
-        add_default_models(overwrite=True)
+        # anki.delete_deck(self.deck)
+        # anki.create_deck(self.deck)
+        # add_default_models(overwrite=True)
 
     def test_ankify(self):
         with open("tests/roam_export.json") as f:
