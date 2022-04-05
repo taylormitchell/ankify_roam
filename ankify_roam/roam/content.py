@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import copy
 from functools import reduce
 from itertools import zip_longest
 from collections.abc import Iterable
@@ -86,9 +87,12 @@ class BlockContent(list):
 
     def to_html(self, *args, **kwargs):
         # TODO: implement filters
-        if kwargs.get("proc_cloze", False):
-            Cloze._assign_cloze_ids([o for o in self if type(o)==Cloze])
-        res = "".join([o.to_html(*args, **kwargs) for o in self])
+        if kwargs.get("proc_cloze"):
+            content = copy.deepcopy(self)
+            Cloze._assign_cloze_ids([o for o in content if type(o)==Cloze])
+        else:
+            content = self
+        res = "".join([o.to_html(*args, **kwargs) for o in content])
         res = self._all_emphasis_to_html(res)
         return res 
 

@@ -207,7 +207,7 @@ class BlockAnkifier:
         # Convert block content to html
         htmls = []
         if flashcard_type=="cloze":
-            htmls.append(self.front_to_html(block, **kwargs))
+            htmls.append(self.front_to_html(block, proc_cloze=True, **kwargs))
         else:
             htmls.append(self.front_to_html(block, proc_cloze=False, **kwargs))
             htmls.append(self.back_to_html(block, proc_cloze=False, **kwargs))
