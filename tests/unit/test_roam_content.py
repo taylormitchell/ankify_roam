@@ -323,7 +323,7 @@ class TestAlias(unittest.TestCase):
         string = "[something](www.google.com)"
         alias = Alias.from_string(string)
         self.assertEqual(alias.alias, "something")
-        self.assertEqual(alias.destination, String("www.google.com"))
+        self.assertEqual(alias.destination, Url("www.google.com"))
 
         string = "[something]([[page]])"
         alias = Alias.from_string(string)
@@ -339,7 +339,7 @@ class TestAlias(unittest.TestCase):
         string = "\n".join(["[somet","hing](www.google.com)"])
         alias = Alias.from_string(string)
         self.assertEqual(alias.alias, "\n".join(["somet","hing"]))
-        self.assertEqual(alias.destination, String("www.google.com"))
+        self.assertEqual(alias.destination, Url("www.google.com"))
 
         string = "[](www.google.com)"
         self.assertRaises(ValueError, Alias.from_string, string)
@@ -360,8 +360,15 @@ class TestAlias(unittest.TestCase):
         self.assertRaises(ValueError, Alias.from_string, string)
 
     def test_find_and_replace(self):
-        a = Alias.find_and_replace("something [link]([[page]]) to something")
-        b = [String("something "),Alias("link",PageRef("page")),String(" to something")]
+        a = Alias.find_and_replace("something [link]([[page [[in page]]]]) to [[something]] and a [france](www.google.com), [derp](((y3LFc4rFK)))")
+        b = [
+            String("something "), 
+            Alias("link",PageRef.from_string("[[page [[in page]]]]")),
+            String(" to [[something]] and a "), 
+            Alias("france", Url("www.google.com")), 
+            String(", "), 
+            Alias("derp", BlockRef("y3LFc4rFK"))
+        ]
         self.assertListEqual(a, b)
 
     def test_to_string(self):
@@ -798,10 +805,96 @@ class TestBlockRef(unittest.TestCase):
 
 
 class TestUrl(unittest.TestCase):
+    def test_from_string(self):
+        url = "http://www.google.com"
+        self.assertEqual(Url.from_string(url).to_string(), url)
+        url = "www.google.com"
+        self.assertEqual(Url.from_string(url).to_string(), url)
+
+    def test_find_and_replace(self):
+        string = "something with a link http://www.google.com and another www.foo.com/foo in #it"
+        a = Url.find_and_replace(string)
+        b = BlockContent([
+            String("something with a link "), 
+            Url("http://www.google.com"), 
+            String(" and another "),
+            Url("www.foo.com/foo"), 
+            String(" in #it"), 
+        ])
+        self.assertListEqual(a, b)
+
     def test_to_html(self):
         a = Url("http://www.google.com").to_html()
         b = '<span><a href="http://www.google.com">http://www.google.com</a></span>'
         self.assertEqual(a, b)
+
+        # add http to href
+        a = Url("www.google.com").to_html()
+        b = '<span><a href="http://www.google.com">www.google.com</a></span>'
+        self.assertEqual(a, b)
+
+    def test_pattern(self):
+        should_match = [
+            "www.foo.com",
+            "www.foo.com/blah_blah",
+            "http://foo.com/blah_blah",
+            "http://foo.com/blah_blah/",
+            "http://foo.com/blah_blah_(wikipedia)",
+            "http://foo.com/blah_blah_(wikipedia)_(again)",
+            "http://www.example.com/wpstyle/?p=364",
+            "https://www.example.com/foo/?bar=baz&inga=42&quux",
+            "http://userid:password@example.com:8080",
+            "http://userid:password@example.com:8080/",
+            "http://userid@example.com",
+            "http://userid@example.com/",
+            "http://userid@example.com:8080",
+            "http://userid@example.com:8080/",
+            "http://userid:password@example.com",
+            "http://userid:password@example.com/",
+            "http://142.42.1.1/",
+            "http://142.42.1.1:8080/",
+            "http://foo.com/blah_(wikipedia)#cite-1",
+            "http://foo.com/blah_(wikipedia)_blah#cite-1",
+            "http://foo.com/(something)?after=parens",
+            "http://code.google.com/events/#&product=browser",
+            "http://j.mp",
+            "http://foo.bar/?q=Test%20URL-encoded%20stuff",
+            "http://1337.net",
+            "http://a.b-c.de",
+            "http://223.255.255.254",
+        ]
+        should_not_match = [
+            "http://",
+            "http://.",
+            "http://..",
+            "http://../",
+            "http://?",
+            "http://??",
+            "http://??/",
+            "http://#",
+            "http://##",
+            "http://##/",
+            "//",
+            "//a",
+            "///a",
+            "///",
+            "http:///a",
+            "foo.com",
+            "rdar://1234",
+            "h://test",
+            "http://",
+            "shouldfail.com",
+            "://",
+            "should",
+            "fail",
+            "ftps://foo.bar/",
+            "http://3628126748",
+        ]
+        pat = Url.create_pattern()
+        for string in should_match:
+            self.assertIsNotNone(re.match(pat, string))
+        for string in should_not_match:
+            self.assertIsNone(re.match(pat, string))
 
 
 class TestAttribute(unittest.TestCase):
