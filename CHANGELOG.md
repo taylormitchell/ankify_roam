@@ -2,8 +2,11 @@
 
 ## TBD
 
-- Fix parsing of code blocks containing back ticks
+### New Features
 - Add --tags-from-attr option
+### Fixes
+- Fix parsing of code blocks containing back ticks
+- Fix bug on windows with getting the version number of ankify_roam
 
 ## 0.1.3
 
