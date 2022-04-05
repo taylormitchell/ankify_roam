@@ -25,6 +25,13 @@ class TestBlockAnkifier(unittest.TestCase):
         block = Block.from_string("a block #[[ankify: note=Roam Basic]]")
         self.assertEqual(ankifier._get_option(block, 'note'), "Roam Basic")
 
+        block = Block.from_string("a block #[[ankify: note= Roam Basic]]")
+        self.assertEqual(ankifier._get_option(block, 'note'), "Roam Basic")
+
+        block = Block.from_string("a block #[[ankify: deck='1-Daily']]")
+        self.assertEqual(ankifier._get_option(block, 'deck'), "1-Daily")
+        
+
     def test_front_to_html(self):
         """
         - [[Page title]]

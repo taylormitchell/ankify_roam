@@ -141,11 +141,17 @@ class BlockAnkifier:
         return [re.sub(r"\s+","_",tag) for tag in roam_tags]
 
     def _get_option(self, block, option):
-        pat = f'''^(\[\[)?({"|".join(self.option_keys)})(\]\])?:\s*{option}\s?=\s?["']?([\w\s]*)["']?$'''
+        pat = f'''^(\[\[)?({"|".join(self.option_keys)})(\]\])?:\s*{option}\s?=\s?(.*)$'''
         for tag in block.get_tags(from_attr=self.tags_from_attr):
             m = re.match(pat, tag)
             if m:
-                return m.groups()[-1]
+                res = m.groups()[-1]
+                # Remove surrounding quotes
+                if res.startswith("'") and res.endswith("'"):
+                    res = res[1:-1]
+                elif res.startswith('"') and res.endswith('"'):
+                    res = res[1:-1]
+                return res
         return None
 
     def _get_note_type(self, block):
