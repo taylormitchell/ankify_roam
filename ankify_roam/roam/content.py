@@ -659,13 +659,16 @@ class Alias(BlockContentItem):
         return self.destination.get_contents()
 
     @classmethod
-    def find_substring_locs(cls, string=None):
+    def find_substring_locs(cls, string):
         pat_template = r"\[[^\[\]]+\]\((?:%s)\)"
         substring_locs = []
-        for o in [PageRef, BlockRef, Url]:
-            dest_pat = o.create_pattern(string)
+        for obj in [PageRef, BlockRef, Url]:
+            dest_pat = obj.create_pattern(string)
             pat = pat_template % dest_pat
-            substring_locs += [m.span() for m in re.finditer(pat, string)]
+            obj_locs = [m.span() for m in re.finditer(pat, string)]
+            if obj == PageRef:
+                obj_locs = [span for span in obj_locs if "\n" not in string[span[0]:span[1]]]
+            substring_locs += obj_locs
         return sorted(substring_locs, key=lambda x: x[0])
 
     def __eq__(self, other):

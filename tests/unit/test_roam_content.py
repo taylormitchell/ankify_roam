@@ -359,6 +359,9 @@ class TestAlias(unittest.TestCase):
         string = "[[Promise]](exclude)"
         self.assertRaises(ValueError, Alias.from_string, string)
 
+        string = "\n".join(["[something]([[page with", "newline]])"])
+        self.assertRaises(ValueError, Alias.from_string, string)
+
     def test_find_and_replace(self):
         a = Alias.find_and_replace("something [link]([[page [[in page]]]]) to [[something]] and a [france](www.google.com), [derp](((y3LFc4rFK)))")
         b = [
@@ -648,6 +651,10 @@ class TestPageRef(unittest.TestCase):
         string = "\n".join(["[[pa","ge]]"])
         a = PageRef.from_string(string).title
         b = string[2:-2]
+        self.assertEqual(a, b)
+
+        a = PageRef.from_string("[[]]").title
+        b = ""
         self.assertEqual(a, b)
 
     def test_find_and_replace(self):
