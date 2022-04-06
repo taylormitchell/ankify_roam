@@ -22,7 +22,7 @@ ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128)
 
 
 class RoamGraphAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, tags_from_attr=False, download_imgs='once'):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, tags_from_attr=False, download_imgs='never'):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -115,7 +115,7 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}, tags_from_attr=False, download_imgs='once'):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}, tags_from_attr=False, download_imgs='never'):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -156,10 +156,11 @@ class BlockAnkifier:
             if errors:
                 errors_list = "\n".join(["  "+str(e) for e in errors])
                 logging.error(f"Errors while downloading images on block '{block.uid}':\n{errors_list}")
-            elif images:
+            else:
                 res['fields'] = new_fields
-                res['images'] = images
-                logging.info(f"Downloaded {len(res['images'])} images on block '{block.uid}'")
+                if images:
+                    res['images'] = images
+                    logging.info(f"Downloaded {len(res['images'])} images on block '{block.uid}'")
         return res
         
     def download_images(self, fields, overwrite=False):
@@ -169,7 +170,7 @@ class BlockAnkifier:
             for img in soup.find_all("img"):
                 filename = os.path.basename(urlparse(img['src']).path)
                 # Skip images that have already been downloaded
-                if filename in images.keys() or (not overwrite and anki.found_media(filename)):
+                if filename in images.keys() or (anki.found_media(filename) and not overwrite):
                     img['src'] = filename
                     continue
                 # Download images
