@@ -1036,7 +1036,7 @@ class PageRef(BlockContentItem):
                     page = string[j-1]
                 bracket_count += 1
                 prev_char = ""
-            elif prev_char+c == "]]":
+            elif page and prev_char+c == "]]":
                 bracket_count -= 1
                 prev_char = ""
             else:

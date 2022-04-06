@@ -687,6 +687,15 @@ class TestPageRef(unittest.TestCase):
         b = ["[[page in a [[page]]]]ness","page in a [[page]]", "page"]
         self.assertSetEqual(set(a), set(b))
 
+    def test_extract_page_ref_strings(self):
+        a = PageRef.extract_page_ref_strings("[[page]] and [[another]]")
+        b = ["[[page]]", "[[another]]"]
+        self.assertSetEqual(set(a), set(b))
+
+        a = PageRef.extract_page_ref_strings("[[page]] and [not a ref]] then [[another]]")
+        b = ["[[page]]", "[[another]]"]
+        self.assertSetEqual(set(a), set(b))
+
 
 class TestPageTag(unittest.TestCase):
     def test_from_string(self):
@@ -763,6 +772,7 @@ class TestBlockRef(unittest.TestCase):
         a = BlockRef.from_string("((LWGXbhfz_))", roam_db=self.roam_db).uid
         b = "LWGXbhfz_"
         self.assertEqual(a, b)
+
 
     def test_find_and_replace(self):
         string = "something with a ((4MxiXZn9f)) in #it"

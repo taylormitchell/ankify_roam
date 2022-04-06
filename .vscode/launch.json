@@ -1,0 +1,23 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "CLI",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/ankify_roam/cli.py",
+            "args": [
+                "add",
+                "--num-parents=1",
+                "--deck=2-Recent",
+                "--tags-from-attr",
+                "~/Dropbox/data/roamresearch/second_brain.json"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
