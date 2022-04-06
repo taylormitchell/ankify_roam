@@ -7,6 +7,7 @@ from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE, add_default_model
 from ankify_roam.ankifiers import BlockAnkifier
 from ankify_roam.roam import Page, Block, BlockContent
 from ankify_roam import util
+from bs4 import BeautifulSoup
 
 
 class TestBlockAnkifier(unittest.TestCase):
@@ -182,6 +183,53 @@ class TestBlockAnkifier(unittest.TestCase):
             "suspend": None,
         }
         self.assertEqual(expected, ankifier.ankify(block))
+
+    def test_download_imgs(self):
+        block = Block(
+            content=BlockContent.from_string("![](https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png)"),
+            children=[],
+            parent=Page("page")
+        )
+        ankifier = BlockAnkifier(
+            deck="my deck",
+            note_basic="my basic",
+            field_names = {"my basic": ["Front", "Back"]},
+            download_imgs='always'
+        )
+
+        # Confirm srcs were replaced with filenames
+        ankified_note = ankifier.ankify(block)
+        soup = BeautifulSoup(ankified_note['fields']['Front'], 'html.parser')
+        actual_srcs = [img['src'] for img in soup.find_all("img")]
+        self.assertEqual(actual_srcs, ["googlelogo_color_272x92dp.png"])
+
+        # Confirm images were downloaded
+        for image in ankified_note["images"]:
+            self.assertTrue(len(image['data']) > 0)
+            image['data'] = ''
+        self.assertEqual(ankified_note["images"], [{'data': '', 'filename': 'googlelogo_color_272x92dp.png'}])
+
+    def test_download_imgs_never(self):
+        block = Block(
+            content=BlockContent.from_string("![](https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png)"),
+            children=[],
+            parent=Page("page")
+        )
+        ankifier = BlockAnkifier(
+            deck="my deck",
+            note_basic="my basic",
+            field_names = {"my basic": ["Front", "Back"]},
+            download_imgs='never'
+        )
+
+        ankified_note = ankifier.ankify(block)
+        soup = BeautifulSoup(ankified_note['fields']['Front'], 'html.parser')
+        
+        actual_srcs = [img['src'] for img in soup.find_all("img")]
+        expected_srcs = ["https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png"]
+
+        self.assertEqual(actual_srcs, expected_srcs)
+
 
     def test_ankify_root(self):
         block = Block(
