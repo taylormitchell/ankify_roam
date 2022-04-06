@@ -14,6 +14,7 @@
                 "--num-parents=1",
                 "--deck=2-Recent",
                 "--tags-from-attr",
+                "--download-imgs=once",
                 "~/Dropbox/data/roamresearch/second_brain.json"
             ],
             "console": "integratedTerminal",

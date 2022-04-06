@@ -99,8 +99,9 @@ def main():
     parser_add.add_argument('--max-depth', default=default_args['max_depth'],
                         type=str, action='store', 
                         help="Maximum depth of children to ankify e.g. `--max-depth=1` will show the block's children but not grand children. (default: '%(default)s')")
-    parser_add.add_argument('--download-imgs',
-                        action='store_true', 
+    parser_add.add_argument('--download-imgs', default=default_args['download_imgs'],
+                        type=str, action='store',
+                        choices=["once", "always", "never"],
                         help='Whether to download images embedded in blocks and save in anki')
     parser_add.set_defaults(func=add)
 
