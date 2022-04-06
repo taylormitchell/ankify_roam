@@ -35,11 +35,14 @@ def init_models(overwrite=False):
 
 
 def get_version():
-    res = subprocess.run(["git", "-C", os.path.dirname(__file__), "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True)
-    if res.returncode == 0:
-        # this is a local git repository
-        git_branch = res.stdout.decode().strip()
-        return __version__ + "+" + git_branch
+    try:
+        res = subprocess.run(["git", "-C", os.path.dirname(__file__), "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True)
+        if res.returncode == 0:
+            # this is a local git repository
+            git_branch = res.stdout.decode().strip()
+            return __version__ + "+" + git_branch
+    except:
+        pass
     return __version__
 
 
@@ -90,6 +93,9 @@ def main():
     parser_add.add_argument('--include-page', default=default_args['num_parents'],
                         action='store_true', 
                         help='Whether to include page titles on anki notes')
+    parser_add.add_argument('--tags-from-attr', default=default_args['tags_from_attr'],
+                        action='store_true', 
+                        help='Whether to assign tags next to "tags::" property to parent')
     parser_add.add_argument('--max-depth', default=default_args['max_depth'],
                         type=str, action='store', 
                         help="Maximum depth of children to ankify e.g. `--max-depth=1` will show the block's children but not grand children. (default: '%(default)s')")

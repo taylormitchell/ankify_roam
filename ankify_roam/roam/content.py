@@ -1,6 +1,7 @@
 import os
 import re
 import logging
+import copy
 from functools import reduce
 from itertools import zip_longest
 from collections.abc import Iterable
@@ -10,6 +11,23 @@ logger = logging.getLogger(__name__)
 
 RE_SPLIT_OR = "(?<!\\\)\|"
 
+
+def split_string_at_spans(string, spans):
+    """Split string at non-overlapping spans
+
+    Args
+        string (str): string to split at spans
+        spans (list of tuple): list of 2-dimensional tuples representing
+            substring spans of `string` to split at 
+    """
+    if len(spans) == 0:
+        return [string]
+    res = []
+    res.append(string[:spans[0][0]])
+    for i in range(len(spans)-1):
+        res.append(string[spans[i][1]:spans[i+1][0]])
+    res.append(string[spans[-1][1]:])
+    return res
 
 
 class BlockContent(list):
@@ -46,7 +64,7 @@ class BlockContent(list):
             PageRef,
             BlockRef,
             Attribute,
-            #Url, #TODO: don't have a good regex for this right now
+            Url, 
         ]
         roam_object_types = [o for o in roam_object_types if o not in skip]
         roam_objects = BlockContent(obj)
@@ -69,7 +87,12 @@ class BlockContent(list):
 
     def to_html(self, *args, **kwargs):
         # TODO: implement filters
-        res = "".join([o.to_html(*args, **kwargs) for o in self])
+        if kwargs.get("proc_cloze"):
+            content = copy.deepcopy(self)
+            Cloze._assign_cloze_ids([o for o in content if type(o)==Cloze])
+        else:
+            content = self
+        res = "".join([o.to_html(*args, **kwargs) for o in content])
         res = self._all_emphasis_to_html(res)
         return res 
 
@@ -114,6 +137,12 @@ class BlockContent(list):
         return "<%s(%s)>" % (
             self.__class__.__name__, repr(list(self)))
 
+    def __getitem__(self, key):
+        res = super().__getitem__(key)
+        if isinstance(key, slice):
+            return BlockContent(res)
+        return res
+
     def get_contents(self, recursive=False):
         if not recursive:
             return list(self)
@@ -142,8 +171,8 @@ class BlockContentItem:
 
     @classmethod
     def validate_string(cls, string):
-        pat = cls.create_pattern(string)
-        pat = "|".join([f"^{p}$" for p in re.split(RE_SPLIT_OR, pat)])
+        pat = "^(?:%s)$" % cls.create_pattern(string)
+        #pat = "|".join([f"^{p}$" for p in re.split(RE_SPLIT_OR, pat)])
         if re.match(re.compile(pat), string):
             return True
         return False
@@ -161,21 +190,15 @@ class BlockContentItem:
         return []
     
     @classmethod
-    def _find_and_replace(cls, string, *args, **kwargs):
-        "See the find_and_replace method"
+    def find_substring_locs(cls, string):
         pat = cls.create_pattern(string)
         if not pat:
-            return [String(string)]
-        roam_objects = [cls.from_string(s, validate=False, *args, **kwargs) for s in re.findall(pat, string)]
-        string_split = [String(s) for s in re.split(pat, string)]
-        # Weave strings and roam objects together 
-        roam_objects = [a for b in zip_longest(string_split, roam_objects) for a in b if a]
-        roam_objects = [o for o in roam_objects if o.to_string()]
-        return roam_objects
+            return []
+        return [m.span() for m in re.finditer(pat, string)]
 
     @classmethod
     def find_and_replace(cls, string, *args, **kwargs):
-        """Replace all substring representations of this object with this object
+        """Replace all substring representations of this object with instances of this object
 
         Args:
             string (str or sequence of BlockContentItem)
@@ -192,14 +215,20 @@ class BlockContentItem:
 
         new_roam_objects = []
         for obj in roam_objects:
-            if type(obj)==String:
-                new_roam_objects += cls._find_and_replace(obj.to_string(), *args, **kwargs)
-            else:
-                new_roam_objects += [obj]
+            if type(obj) != String:
+                new_roam_objects += [obj] 
+                continue
+            string = obj.to_string()
+            # Parse out string representations of this class and instantiate them
+            cls_spans = cls.find_substring_locs(string)  # [(10, 15), (20, 27)]
+            cls_instances = [cls.from_string(string[i:j], **kwargs) for i, j in cls_spans]
+            non_cls_substrings = [String(s) for s in split_string_at_spans(string, cls_spans)]
+            # Weave back together and append 
+            new_roam_objects += [a for b in zip_longest(non_cls_substrings, cls_instances) for a in b if a]
         roam_objects = new_roam_objects
+        roam_objects = [o for o in roam_objects if o.to_string()] # remove empty strings
 
         return BlockContent(roam_objects)
-
 
     def __repr__(self):
         return "<%s(string='%s')>" % (
@@ -249,44 +278,34 @@ class ClozeLeftBracket(BlockContentItem):
     - {c1:
     - [[{c1:]]
     """
-    def __init__(self, id=None, enclosed=False, c=False, sep=""):
+    def __init__(self, id=None, enclosed=False, c=False, sep="", string=None):
         self.id = id 
         self.enclosed = enclosed
         self.c = c
         self.sep = sep
+        self.string = string
 
     @classmethod
-    def _find_and_replace(cls, string):
-        pats = [ 
+    def create_pattern(cls, string):
+        return "|".join([ 
             "\[\[{c?\d*[:|]?\]\]", # [[{]] or [[{c1:}]]
             "(?<!{){c?\d+[:|]", # {1 or {c1:
             "(?<!{){(?!{)" # {
-        ]
-        matches = list(re.finditer("|".join(pats), string))
-        if not matches:
-            return [String(string)]
-        objs = []
-        last_cloze_end = 0
-        for match in matches:
-            # Create cloze
-            text = match.group(0)
-            c = "c" in text
-            enclosed = text.startswith("[[")
-            m = re.search("\d+", text)
-            id = int(m.group(0)) if m else None
-            if ":" in text:
-                sep = ":"
-            elif "|" in text:
-                sep = "|"
-            else:
-                sep = ""
-            # Split string and replace with objects
-            objs.append(String(string[last_cloze_end:match.start()]))
-            objs.append(cls(id, enclosed, c, sep))
-            last_cloze_end = match.end()
-        if last_cloze_end != len(string):
-            objs.append(String(string[last_cloze_end:]))
-        return BlockContent(objs)
+        ])
+
+    @classmethod
+    def from_string(cls, string, **kwargs):
+        c = "c" in string
+        enclosed = string.startswith("[[")
+        m = re.search("\d+", string)
+        id = int(m.group(0)) if m else None
+        if ":" in string:
+            sep = ":"
+        elif "|" in string:
+            sep = "|"
+        else:
+            sep = ""
+        return cls(id, enclosed, c, sep, string)
     
     def to_string(self):
         res = "{"
@@ -301,7 +320,7 @@ class ClozeLeftBracket(BlockContentItem):
         return res
 
     def to_html(self):
-        return "{{c" + str(self.id) + "::"
+        return "{{c" + str(self.id or 1) + "::"
 
     def __repr__(self):
         return "<%s(string='%s')>" % (
@@ -322,40 +341,29 @@ class ClozeRightBracket(BlockContentItem):
         self.string = string
 
     @classmethod
-    def _find_and_replace(cls, string):
-        pats = [ 
+    def create_pattern(cls, string):
+        return "|".join([ 
             "\[\[(?:::[^}\[]*)?}\]\]", # [[}]] or [[::hint}]] 
             "\[\[(?:::[^}\[]*)\]\]}", # [[::hint]]}
             "(?:::[^}\[]*)}(?!})", # ::hint}
             "(?<!})}(?!})", # }
-        ]
-        matches = re.finditer("|".join(pats), string)
-        if not matches:
-            return [String(string)]
-        objs = []
-        last_cloze_end = 0
-        for match in matches:
-            text = match.group(0)
-            # [[}]] or [[::hint}]] 
-            if text.startswith("[[") and text.endswith("]]"):
-                hint = ClozeHint(re.sub("[\[\]}]", "", text)[2:]) if "::" in text else None
-                enclosed = True
-            # [[::hint]]}
-            elif text.startswith("[[") and text.endswith("}"):
-                hint = ClozeHint(re.sub("[\[\]}]", "", text)[2:], enclosed=True)
-                enclosed = False
-            # } or ::hint}
-            else:
-                hint = ClozeHint(re.sub("[\[\]}]", "", text)[2:]) if "::" in text else None
-                enclosed = False
-            # Split string and replace with objects
-            objs.append(String(string[last_cloze_end:match.start()]))
-            objs.append(cls(enclosed, hint=hint))
-            last_cloze_end = match.end()
-        if last_cloze_end != len(string):
-            objs.append(String(string[last_cloze_end:]))
-        return BlockContent(objs)
-        
+        ])
+
+    @classmethod
+    def from_string(cls, string, **kwargs):
+        if string.startswith("[[") and string.endswith("]]"):
+            hint = ClozeHint(re.sub("[\[\]}]", "", string)[2:]) if "::" in string else None
+            enclosed = True
+        # [[::hint]]}
+        elif string.startswith("[[") and string.endswith("}"):
+            hint = ClozeHint(re.sub("[\[\]}]", "", string)[2:], enclosed=True)
+            enclosed = False
+        # } or ::hint}
+        else:
+            hint = ClozeHint(re.sub("[\[\]}]", "", string)[2:]) if "::" in string else None
+            enclosed = False
+        return cls(enclosed, hint=hint)
+
     def to_string(self):
         res = "}"
         if self.hint:
@@ -381,39 +389,28 @@ class ClozeHint(BlockContentItem):
     - [[{]]something::hint[[}]]
     - [[{]]something[[::hint}]]
     """
-    def __init__(self, text, enclosed=False):
+    def __init__(self, text, enclosed=False, string=None):
         self.text = text
         self.enclosed = enclosed
+        self.string = string
 
     @classmethod
-    def from_string(cls, hint):
-        return cls(hint[2:]) 
-
-    @classmethod
-    def _find_and_replace(cls, string):
-        pats = [
+    def create_pattern(cls, string):
+        return "|".join([
             "\[\[::[^\]]*\]\]",
             "::[^}\[]*"
-        ]
-        matches = re.finditer("|".join(pats), string)
-        if not matches:
-            return BlockContent(string)
-        objs = []
-        last_cloze_end = 0
-        for match in matches:
-            text = match.group(0)
-            if text.startswith("[["):
-                enclosed = True
-                text = text[2:-2] # remove surround brackets
-            else:
-                enclosed = False 
-            text = text[2:] # remove '::' prefix 
-            objs.append(String(string[last_cloze_end:match.start()]))
-            objs.append(cls(text, enclosed))
-            last_cloze_end = match.end()
-        if last_cloze_end != len(string):
-            objs.append(String(string[last_cloze_end:]))
-        return BlockContent(objs)
+        ])
+
+    @classmethod
+    def from_string(cls, string, **kwargs):
+        if string.startswith("[["):
+            enclosed = True
+            hint = string[2:-2] # remove surround brackets
+        else:
+            enclosed = False 
+            hint = string
+        hint = hint[2:] # remove '::' prefix 
+        return cls(hint, enclosed, string=string)
 
     def to_string(self):
         res = "::" + str(self.text)
@@ -477,7 +474,7 @@ class Cloze(BlockContentItem):
 
             # Right cloze bracket matched to previous left bracket
             elif left_idx is not None and type(obj) == ClozeRightBracket:
-                inner = objs[left_idx+1:i]
+                inner = objs[left_idx+1:i] if left_idx+1 < i else [String("")]
                 hint = None
                 if type(inner[-1]) == ClozeHint:
                     inner, hint = inner[:-1], inner[-1]
@@ -503,8 +500,6 @@ class Cloze(BlockContentItem):
             if type(obj) in [ClozeLeftBracket, ClozeRightBracket, ClozeHint]:
                 res[i] = String(obj.to_string())
 
-        cls._assign_cloze_ids([o for o in res if type(o)==Cloze])
-
         bc = BlockContent(res)
         bc.merge_adjacent_strings()
 
@@ -513,13 +508,13 @@ class Cloze(BlockContentItem):
     def get_tags(self):
         return self.inner.get_tags()
 
-    def to_string(self, style="anki"):
+    def to_string(self, style="roam"):
         """
         Args:
             style (string): {'anki','roam'}
         """
         if style=="anki":
-            return "{{c%s::%s%s}}" % (self.id, self.inner.to_string(), self.hint.to_string() if self.hint else "")
+            return "{{c%s::%s%s}}" % (self.id or 1, self.inner.to_string(), self.hint.to_string() if self.hint else "")
         elif style=="roam":
             res = ""
             for o in [self.left_bracket, self.inner, self._hint, self.right_bracket]:
@@ -547,12 +542,12 @@ class Cloze(BlockContentItem):
             pageref = self.inner[0]
             if pageref_cloze=="outside":
                 content = pageref.to_html()
-                return Cloze(id=self.id, inner=content, hint=self.hint).to_string()
+                return Cloze(id=self.id, inner=content, hint=self.hint).to_string("anki")
             elif pageref_cloze=="inside":
-                clozed_title = Cloze(id=self.id, inner=pageref.title, hint=self.hint).to_string()
+                clozed_title = Cloze(id=self.id, inner=pageref.title, hint=self.hint).to_string("anki")
                 return pageref.to_html(title=clozed_title)
             elif pageref_cloze=="base_only":
-                clozed_base = Cloze(id=self.id, inner=pageref.get_basename(), hint=self.hint).to_string()
+                clozed_base = Cloze(id=self.id, inner=pageref.get_basename(), hint=self.hint).to_string("anki")
                 namespace = pageref.get_namespace()
                 if namespace:
                     clozed_base = namespace + "/" + clozed_base
@@ -620,6 +615,15 @@ class Alias(BlockContentItem):
         self.string = string
 
     @classmethod
+    def validate_string(cls, string):
+        locs = cls.find_substring_locs(string)
+        if len(locs) == 1:
+            loc = locs[0]
+            if loc[0] == 0 and loc[1] == len(string):
+                return True
+        return False
+
+    @classmethod
     def from_string(cls, string, validate=True, **kwargs):
         super().from_string(string, validate)
         alias, destination = re.search(r"^\[([^\[\]]+)\]\(([\W\w]+)\)$", string).groups()
@@ -629,8 +633,7 @@ class Alias(BlockContentItem):
             roam_db = kwargs.get("roam_db", None)
             destination = BlockRef.from_string(destination, roam_db=roam_db)
         else:
-            # TODO: should this be a Url object?
-            destination = String(destination)
+            destination = Url.from_string(destination)
         return cls(alias, destination, string)
 
     def to_string(self):
@@ -654,17 +657,19 @@ class Alias(BlockContentItem):
 
     def get_contents(self):
         return self.destination.get_contents()
-    
-    @classmethod
-    def create_pattern(cls, string=None):
-        re_template = r"\[[^\[\]]+\]\(%s\)"
-        destination_pats = []
-        for o in [PageRef, BlockRef]:
-            dest_pat = o.create_pattern(string)
-            destination_pats += re.split(RE_SPLIT_OR, dest_pat) if dest_pat else []
-        destination_pats.append("[^\(\)\[\]]+") # TODO: replace this with a real url regex
 
-        return  "|".join([re_template % pat for pat in destination_pats])
+    @classmethod
+    def find_substring_locs(cls, string):
+        pat_template = r"\[[^\[\]]+\]\((?:%s)\)"
+        substring_locs = []
+        for obj in [PageRef, BlockRef, Url]:
+            dest_pat = obj.create_pattern(string)
+            pat = pat_template % dest_pat
+            obj_locs = [m.span() for m in re.finditer(pat, string)]
+            if obj == PageRef:
+                obj_locs = [span for span in obj_locs if "\n" not in string[span[0]:span[1]]]
+            substring_locs += obj_locs
+        return sorted(substring_locs, key=lambda x: x[0])
 
     def __eq__(self, other):
         return type(self)==type(other) and self.alias==other.alias and other.destination==other.destination
@@ -678,26 +683,58 @@ class CodeBlock(BlockContentItem):
 
     @classmethod
     def from_string(cls, string, **kwargs):
-        super().from_string(string)
         supported_languages = [
             "clojure", "css", "elixir", "html", "plain text", "python", "ruby", 
             "swift", "typescript", "isx", "yaml", "rust", "shell", "php", "java", 
             "c#", "c++", "objective-c", "kotlin", "sql", "haskell", "scala", 
             "common lisp", "julia", "sparql", "turtle", "javascript"]
-        pat_lang = "^```(%s)\n" % "|".join([re.escape(l) for l in supported_languages])
-        match_lang = re.search(pat_lang, string)
-        if match_lang:
-            language = match_lang.group(1)
-            pat = re.compile(f"```{language}\n([^`]*)```")
+        if not string.startswith("```") or not string.endswith("```"):
+            raise ValueError("Code block must be surrounded by triple backticks")
+        code = string[3:-3]
+        pat = "^.*\n"
+        m = re.search(pat, code)
+        specified_language = m.group().strip() if m else ""
+        if specified_language in supported_languages:
+            language, code = specified_language, re.sub(pat, "", code)
         else:
-            language = None
-            pat = re.compile("```([^`]*)```")
-        code = re.search(pat, string).group(1)
-        return cls(code, language, string) 
+            language, code = None, code
+        return cls(code, language, string)
+
+    def find_substring_locs(string):
+        code_bookends = list(re.finditer("```", string))
+        locs = []
+        while len(code_bookends) > 1:
+            code_start, code_end = code_bookends.pop(0), code_bookends.pop(0)
+            locs.append((code_start.span()[0], code_end.span()[1]))
+        return locs
 
     @classmethod
-    def create_pattern(cls, string=None):
-        return f"```[^`]*```"
+    def _find_and_replace(cls, string, *args, **kwargs):
+        supported_languages = [
+            "clojure", "css", "elixir", "html", "plain text", "python", "ruby", 
+            "swift", "typescript", "isx", "yaml", "rust", "shell", "php", "java", 
+            "c#", "c++", "objective-c", "kotlin", "sql", "haskell", "scala", 
+            "common lisp", "julia", "sparql", "turtle", "javascript"]
+        code_bookends = list(re.finditer("```", string))
+        content = []
+        string_start = 0
+        while len(code_bookends) > 1:
+            code_start, code_end = code_bookends.pop(0), code_bookends.pop(0)
+            code_block = string[code_start.start():code_end.end()]
+            code = string[code_start.end():code_end.start()]
+            pat = "^.*\n"
+            m = re.search(pat, code)
+            specified_language = m.group().strip() if m else ""
+            if specified_language in supported_languages:
+                language, code = specified_language, re.sub(pat, "", code)
+            else:
+                language, code = None, code
+            content.append(String(string[string_start:code_start.start()]))
+            content.append(CodeBlock(code, language, code_block))
+            string_start = code_end.end()
+        content.append(String(string[string_start:]))
+
+        return BlockContent([c for c in content if c.to_string()])
 
     def to_string(self):
         if self.string: return self.string 
@@ -941,8 +978,11 @@ class PageRef(BlockContentItem):
             return "|".join([re.escape(p) for p in page_refs])
 
     def get_tags(self):
+        if not self.title:
+            return []
         tags_in_title = [o.get_tags() for o in self._title]
-        tags_in_title = list(set(reduce(lambda x,y: x+y, tags_in_title)))
+        if tags_in_title:
+            tags_in_title = list(set(reduce(lambda x,y: x+y, tags_in_title)))
         return [self.title] + tags_in_title
 
     def get_contents(self):
@@ -1002,7 +1042,7 @@ class PageRef(BlockContentItem):
                     page = string[j-1]
                 bracket_count += 1
                 prev_char = ""
-            elif prev_char+c == "]]":
+            elif page and prev_char+c == "]]":
                 bracket_count -= 1
                 prev_char = ""
             else:
@@ -1083,7 +1123,7 @@ class BlockRef(BlockContentItem):
         self.string = string
 
     @classmethod
-    def from_string(cls, string, *args, **kwargs):
+    def from_string(cls, string, **kwargs):
         super().from_string(string)
         roam_db = kwargs.get("roam_db", None)
         return cls(string[2:-2], roam_db=roam_db, string=string)
@@ -1098,9 +1138,9 @@ class BlockRef(BlockContentItem):
         else:
             return f"(({self.uid}))"
 
-    def to_html(self, *arg, **kwargs):
+    def to_html(self, *args, **kwargs):
         block = self.get_referenced_block()
-        text = block.to_html() if block else html.escape(self.to_string())
+        text = block.to_html(*args, **kwargs) if block else html.escape(self.to_string())
         return '<div class="rm-block-ref"><span>%s</span></div>' % text
 
     def get_tags(self):
@@ -1127,11 +1167,16 @@ class Url(BlockContentItem):
         super().from_string(string)
         return cls(string)
 
+    @classmethod
+    def create_pattern(cls, string=None):
+        return r"""(?:(?:https?:\/\/)|(?:www\.))(?:(?:[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]{2,6})|(?:(?:\d+\.){1,256}))(?:[-a-zA-Z0-9@:%_\+.~#?&\/\/=\(\)]*)"""
+
     def to_string(self):
         return self.text
 
     def to_html(self, *arg, **kwargs):
-        return f'<span><a href="{html.escape(self.text)}">{html.escape(self.text)}</a></span>'
+        href = self.text if re.match("^https?:\/\/", self.text) else "http://" + self.text
+        return f'<span><a href="{html.escape(href)}">{html.escape(self.text)}</a></span>'
 
     def __eq__(self, other):
         return type(self)==type(other) and self.text==other.text

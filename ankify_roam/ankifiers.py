@@ -16,8 +16,9 @@ logger = logging.getLogger(__name__)
 ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128) 
                                if chr(i) not in string.printable])
 
+
 class RoamGraphAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, tags_from_attr=False):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -28,6 +29,7 @@ class RoamGraphAnkifier:
         self.num_parents = num_parents
         self.include_page = include_page
         self.max_depth = max_depth
+        self.tags_from_attr = tags_from_attr
         
     def check_conn_and_params(self):
         if not anki.connection_open():
@@ -52,8 +54,8 @@ class RoamGraphAnkifier:
             raise ValueError(f"note_cloze must be a cloze note type and '{self.note_cloze}' isn't.")
 
     def is_block_to_ankify(self, block):
-        tags_in_block = block.get_tags(inherit=False)
-        all_tags = block.get_tags(inherit=True)
+        tags_in_block = block.get_tags(inherit=False, from_attr=self.tags_from_attr)
+        all_tags = block.get_tags(inherit=True, from_attr=self.tags_from_attr)
         if self.tag_ankify in tags_in_block:
             if self.tag_dont_ankify and self.tag_dont_ankify in all_tags:
                 return False
@@ -84,6 +86,7 @@ class RoamGraphAnkifier:
                 num_failed += 1
                 continue
             try:
+                # Add or update the anki note
                 note_id = anki.get_note_id(ankified_note)
                 if note_id:
                     existing_fields = {k: v['value'] for k,v in anki.get_note(note_id)['fields'].items()}
@@ -95,6 +98,11 @@ class RoamGraphAnkifier:
                 else:
                     anki.add_note(ankified_note)
                     num_added += 1
+                # Suspend or unsuspend the anki note
+                if ankified_note['suspend'] == True:
+                    anki.suspend_note(ankified_note)
+                elif ankified_note['suspend'] == False:
+                    anki.unsuspend_note(ankified_note)
             except:
                 logger.exception(f"Failed ankifying {block} during upload to anki")
                 num_failed += 1
@@ -102,7 +110,7 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}, tags_from_attr=False):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -114,8 +122,10 @@ class BlockAnkifier:
         self.max_depth = max_depth
         self.option_keys = option_keys
         self.field_names = field_names 
+        self.tags_from_attr = tags_from_attr
 
     def ankify(self, block, **kwargs):
+        tags = block.get_tags(from_attr=self.tags_from_attr)
         modelName = self._get_note_type(block)
         deckName = self._get_deck(block)
         if modelName not in self.field_names.keys():
@@ -126,23 +136,37 @@ class BlockAnkifier:
         kwargs["include_page"] = self._get_include_page(block)
         kwargs["max_depth"] = self._get_max_depth(block)
         fields = self._block_to_fields(block, self.field_names[modelName], flashcard_type, **kwargs)
-        tags = self.ankify_tags(block.get_tags())
         return {
             "deckName": deckName,
             "modelName": modelName,
             "fields": fields,
-            "tags": tags
+            "tags": self.ankify_tags(tags),
+            "suspend": self._get_suspend(block)
         }
+
+    def _get_suspend(self, block):
+        opt = self._get_option(block, "suspend")
+        if opt == 'True':
+            return True
+        if opt == 'False':
+            return False
+        return None
 
     def ankify_tags(self, roam_tags):
         return [re.sub(r"\s+","_",tag) for tag in roam_tags]
 
     def _get_option(self, block, option):
-        pat = f'''^(\[\[)?({"|".join(self.option_keys)})(\]\])?:\s*{option}\s?=\s?["']?([\w\s]*)["']?$'''
-        for tag in block.get_tags():
+        pat = f'''^(\[\[)?({"|".join(self.option_keys)})(\]\])?:\s*{option}\s?=\s?(.*)$'''
+        for tag in block.get_tags(from_attr=self.tags_from_attr):
             m = re.match(pat, tag)
             if m:
-                return m.groups()[-1]
+                res = m.groups()[-1]
+                # Remove surrounding quotes
+                if res.startswith("'") and res.endswith("'"):
+                    res = res[1:-1]
+                elif res.startswith('"') and res.endswith('"'):
+                    res = res[1:-1]
+                return res
         return None
 
     def _get_note_type(self, block):
@@ -204,7 +228,7 @@ class BlockAnkifier:
         # Convert block content to html
         htmls = []
         if flashcard_type=="cloze":
-            htmls.append(self.front_to_html(block, **kwargs))
+            htmls.append(self.front_to_html(block, proc_cloze=True, **kwargs))
         else:
             htmls.append(self.front_to_html(block, proc_cloze=False, **kwargs))
             htmls.append(self.back_to_html(block, proc_cloze=False, **kwargs))
@@ -227,7 +251,7 @@ class BlockAnkifier:
         parents = block.parents
         if self.tag_ankify_root is not None:
             for i, o in enumerate(parents):
-                if self.tag_ankify_root in o.get_tags(inherit=False):
+                if self.tag_ankify_root in o.get_tags(inherit=False, from_attr=self.tags_from_attr):
                     break
             parents_to_root = parents[:i+1]
 

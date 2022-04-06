@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.4
+
+### New Features
+- Add --tags-from-attr option
+- Suspend notes from Roam using the tag `#[[ankify_roam: suspend=True]]`
+- Add url support
+### Fixes
+- Fix parsing of code blocks containing back ticks
+- Fix option parsing (which was causing specifying decks with tags to sometimes fail)     
+- Fix bug on windows with getting the version number of ankify_roam
+- Curly brackets on the backside of cards are now just treated as curly brackets, not cloze deletions
+
 ## 0.1.3
 
 ### New Features
