@@ -91,6 +91,7 @@ class RoamGraphAnkifier:
                 num_failed += 1
                 continue
             try:
+                # Add or update the anki note
                 note_id = anki.get_note_id(ankified_note)
                 if note_id:
                     existing_fields = {k: v['value'] for k,v in anki.get_note(note_id)['fields'].items()}
@@ -102,6 +103,11 @@ class RoamGraphAnkifier:
                 else:
                     anki.add_note(ankified_note)
                     num_added += 1
+                # Suspend or unsuspend the anki note
+                if ankified_note['suspend'] == True:
+                    anki.suspend_note(ankified_note)
+                elif ankified_note['suspend'] == False:
+                    anki.unsuspend_note(ankified_note)
             except:
                 logger.exception(f"Failed ankifying {block} during upload to anki")
                 num_failed += 1
@@ -125,6 +131,7 @@ class BlockAnkifier:
         self.download_imgs = download_imgs
 
     def ankify(self, block, **kwargs):
+        tags = block.get_tags(from_attr=self.tags_from_attr)
         modelName = self._get_note_type(block)
         deckName = self._get_deck(block)
         if modelName not in self.field_names.keys():
@@ -135,13 +142,12 @@ class BlockAnkifier:
         kwargs["include_page"] = self._get_include_page(block)
         kwargs["max_depth"] = self._get_max_depth(block)
         fields = self._block_to_fields(block, self.field_names[modelName], flashcard_type, **kwargs)
-        tags = self.ankify_tags(block.get_tags(from_attr=self.tags_from_attr))
-
         res = {
             "deckName": deckName,
             "modelName": modelName,
             "fields": fields,
-            "tags": tags,
+            "tags": self.ankify_tags(tags),
+            "suspend": self._get_suspend(block)
         }
         if self._get_download_imgs(block):
             res["fields"], res["images"], errors = self.download_images(fields)
@@ -175,15 +181,29 @@ class BlockAnkifier:
 
         return new_fields, images, errors
 
+    def _get_suspend(self, block):
+        opt = self._get_option(block, "suspend")
+        if opt == 'True':
+            return True
+        if opt == 'False':
+            return False
+        return None
+
     def ankify_tags(self, roam_tags):
         return [re.sub(r"\s+","_",tag) for tag in roam_tags]
 
     def _get_option(self, block, option):
-        pat = f'''^(\[\[)?({"|".join(self.option_keys)})(\]\])?:\s*{option}\s?=\s?["']?([\w\s]*)["']?$'''
+        pat = f'''^(\[\[)?({"|".join(self.option_keys)})(\]\])?:\s*{option}\s?=\s?(.*)$'''
         for tag in block.get_tags(from_attr=self.tags_from_attr):
             m = re.match(pat, tag)
             if m:
-                return m.groups()[-1]
+                res = m.groups()[-1]
+                # Remove surrounding quotes
+                if res.startswith("'") and res.endswith("'"):
+                    res = res[1:-1]
+                elif res.startswith('"') and res.endswith('"'):
+                    res = res[1:-1]
+                return res
         return None
 
     def _get_note_type(self, block):
@@ -253,7 +273,7 @@ class BlockAnkifier:
         # Convert block content to html
         htmls = []
         if flashcard_type=="cloze":
-            htmls.append(self.front_to_html(block, **kwargs))
+            htmls.append(self.front_to_html(block, proc_cloze=True, **kwargs))
         else:
             htmls.append(self.front_to_html(block, proc_cloze=False, **kwargs))
             htmls.append(self.back_to_html(block, proc_cloze=False, **kwargs))

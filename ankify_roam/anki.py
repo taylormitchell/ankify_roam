@@ -59,6 +59,14 @@ def update_note(anki_dict, note_id=None, overwrite_img=False):
     note_id = note_id or get_note_id(anki_dict)
     return update_fields(note_id, anki_dict["fields"])
 
+def suspend_note(anki_dict):
+    card_ids = get_card_ids(anki_dict)
+    return _invoke("suspend", cards=card_ids)
+
+def unsuspend_note(anki_dict):
+    card_ids = get_card_ids(anki_dict)
+    return _invoke("unsuspend", cards=card_ids)
+
 def update_fields(note_id, fields):
     note = {"id":note_id, "fields": fields}
     return _invoke("updateNoteFields", note=note)
@@ -93,6 +101,10 @@ def get_note_id(anki_dict):
     if res:
         return res[0]
     return None
+
+def get_card_ids(anki_dict):
+    res = _invoke('findCards', query=f"uid:{anki_dict['fields']['uid']}")
+    return res
 
 def get_note(note_id):
     res = _invoke("notesInfo", notes=[note_id])
