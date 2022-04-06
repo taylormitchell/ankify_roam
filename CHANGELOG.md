@@ -4,7 +4,7 @@
 
 ### New Features
 - Add --tags-from-attr option
-- Suspend notes from Roam using the tag #[[ankify_roam: suspend=True]] 
+- Suspend notes from Roam using the tag `#[[ankify_roam: suspend=True]]`
 - Add url support
 ### Fixes
 - Fix parsing of code blocks containing back ticks
