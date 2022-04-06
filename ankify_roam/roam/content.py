@@ -978,8 +978,11 @@ class PageRef(BlockContentItem):
             return "|".join([re.escape(p) for p in page_refs])
 
     def get_tags(self):
+        if not self.title:
+            return []
         tags_in_title = [o.get_tags() for o in self._title]
-        tags_in_title = list(set(reduce(lambda x,y: x+y, tags_in_title)))
+        if tags_in_title:
+            tags_in_title = list(set(reduce(lambda x,y: x+y, tags_in_title)))
         return [self.title] + tags_in_title
 
     def get_contents(self):

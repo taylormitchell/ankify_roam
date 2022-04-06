@@ -694,6 +694,9 @@ class TestPageRef(unittest.TestCase):
         b = ["[[page in a [[page]]]]ness","page in a [[page]]", "page"]
         self.assertSetEqual(set(a), set(b))
 
+        tags = PageRef.from_string("[[]]").get_tags()
+        self.assertEqual(tags, [])
+
     def test_extract_page_ref_strings(self):
         a = PageRef.extract_page_ref_strings("[[page]] and [[another]]")
         b = ["[[page]]", "[[another]]"]
