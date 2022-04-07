@@ -49,9 +49,13 @@ def upload(anki_dict):
         return add_note(anki_dict)
             
 def add_note(anki_dict):
+    for image in anki_dict.pop("images", []):
+        add_media(image)
     return _invoke("addNote", note=anki_dict)
 
 def update_note(anki_dict, note_id=None):
+    for image in anki_dict.pop("images", []):
+        add_media(image)
     note_id = note_id or get_note_id(anki_dict)
     return update_fields(note_id, anki_dict["fields"])
 
@@ -66,6 +70,17 @@ def unsuspend_note(anki_dict):
 def update_fields(note_id, fields):
     note = {"id":note_id, "fields": fields}
     return _invoke("updateNoteFields", note=note)
+
+def add_media(media):
+    return _invoke("storeMediaFile", **media)
+
+def found_media(filename):
+    try:
+        res = _invoke("retrieveMediaFile", filename=filename)
+        return True if res else False
+    except Exception as e:
+        logging.warning(f"Exception while looking for media: {e}")
+        return False
 
 def update_tags(note_id, tags):
     old_tags = get_note_tags(note_id)
