@@ -16,5 +16,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Test
         run: |
+          pip install -e .
           python -m unittest discover tests/unit
           
