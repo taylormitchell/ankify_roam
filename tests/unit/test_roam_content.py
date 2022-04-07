@@ -70,7 +70,6 @@ class TestBlockContent(unittest.TestCase):
         tags = sorted(BlockContent.from_string(string).get_tags())
         self.assertListEqual(tags, ["page refs","some","tags"])
 
-
 class TestBlockQuote(unittest.TestCase):
     def test_from_string(self):
         string = "> here's a quote"

@@ -31,7 +31,6 @@ class TestBlockAnkifier(unittest.TestCase):
 
         block = Block.from_string("a block #[[ankify: deck='1-Daily']]")
         self.assertEqual(ankifier._get_option(block, 'deck'), "1-Daily")
-        
 
     def test_front_to_html(self):
         """
@@ -230,7 +229,6 @@ class TestBlockAnkifier(unittest.TestCase):
 
         self.assertEqual(actual_srcs, expected_srcs)
 
-
     def test_ankify_root(self):
         block = Block(
             content=BlockContent.from_string("question"),
@@ -263,6 +261,21 @@ class TestBlockAnkifier(unittest.TestCase):
         block = Block.from_string("a block")
         self.assertEqual(ankifier._get_suspend(block), None)
         
+    def test_assign_cloze_ids(self):
+        block = Block(
+            content=BlockContent.from_string("something {with} some {c1:clozes} in {it}"),
+            children=[],
+            parent=Page("page")
+        )
+        ankifier = BlockAnkifier(
+            note_cloze="Roam Cloze",
+            field_names = {"Roam Cloze": ["Text", "Back Extra"]}
+        )
+        ankified_note = ankifier.ankify(block)
+        actual = ankified_note['fields']['Text']
+        expected = '<div class="front-side">something {{c2::with}} some {{c1::clozes}} in {{c3::it}}</div>'
+        self.assertEqual(actual, expected)
+
 
 def remove_html_whitespace(html_string):
     html_string = re.sub(">\s*\n?\s*<", "><", html_string)
