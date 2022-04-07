@@ -1,5 +1,10 @@
 # Changelog
 
+## TBD
+
+### New Features
+- Add `--download-imgs` option. Set it to `--download-imgs=once` to have all your linked images in Roam downloaded into Anki's media collection. 
+
 ## 0.1.4
 
 ### New Features
