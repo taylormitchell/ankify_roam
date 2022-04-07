@@ -62,7 +62,7 @@ class TestRoamGraphAnkifier(unittest.TestCase):
         # add_default_models(overwrite=True)
 
     def test_ankify(self):
-        with open("tests/roam_export.json") as f:
+        with open("tests/export-pages.json") as f:
             pages = json.load(f)
         roam_graph = roam.RoamGraph(pages)
         ankifier = RoamGraphAnkifier(deck=self.deck)

@@ -12,6 +12,7 @@ from ankify_roam.ankifiers import RoamGraphAnkifier
 from ankify_roam.roam import RoamGraph
 from ankify_roam import util
 
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def add(path, **kwargs):
@@ -99,6 +100,10 @@ def main():
     parser_add.add_argument('--max-depth', default=default_args['max_depth'],
                         type=str, action='store', 
                         help="Maximum depth of children to ankify e.g. `--max-depth=1` will show the block's children but not grand children. (default: '%(default)s')")
+    parser_add.add_argument('--download-imgs', default=default_args['download_imgs'],
+                        type=str, action='store',
+                        choices=["once", "always", "never"],
+                        help='Whether to download images embedded in blocks and save in anki')
     parser_add.set_defaults(func=add)
 
     # Arguments for initializer

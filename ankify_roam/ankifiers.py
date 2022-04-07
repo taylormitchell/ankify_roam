@@ -6,11 +6,14 @@ import re
 import inspect
 import string
 from itertools import zip_longest
+import base64
+from bs4 import BeautifulSoup
+import requests
+from urllib.parse import urlparse
 from ankify_roam import roam
 from ankify_roam import anki
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128) 
@@ -18,7 +21,7 @@ ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128)
 
 
 class RoamGraphAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, tags_from_attr=False):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_dont_ankify="dont-ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, tags_from_attr=False, download_imgs='never'):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -30,6 +33,7 @@ class RoamGraphAnkifier:
         self.include_page = include_page
         self.max_depth = max_depth
         self.tags_from_attr = tags_from_attr
+        self.download_imgs = download_imgs
         
     def check_conn_and_params(self):
         if not anki.connection_open():
@@ -110,7 +114,7 @@ class RoamGraphAnkifier:
 
 
 class BlockAnkifier:
-    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}, tags_from_attr=False):
+    def __init__(self, deck="Default", note_basic="Roam Basic", note_cloze="Roam Cloze", pageref_cloze="outside", tag_ankify="ankify", tag_ankify_root="ankify-root", num_parents=0, include_page=False, max_depth=None, option_keys=["ankify", "ankify_roam"], field_names={}, tags_from_attr=False, download_imgs='never'):
         self.deck = deck
         self.note_basic = note_basic
         self.note_cloze = note_cloze
@@ -123,6 +127,7 @@ class BlockAnkifier:
         self.option_keys = option_keys
         self.field_names = field_names 
         self.tags_from_attr = tags_from_attr
+        self.download_imgs = download_imgs
 
     def ankify(self, block, **kwargs):
         tags = block.get_tags(from_attr=self.tags_from_attr)
@@ -136,13 +141,54 @@ class BlockAnkifier:
         kwargs["include_page"] = self._get_include_page(block)
         kwargs["max_depth"] = self._get_max_depth(block)
         fields = self._block_to_fields(block, self.field_names[modelName], flashcard_type, **kwargs)
-        return {
+        res = {
             "deckName": deckName,
             "modelName": modelName,
             "fields": fields,
             "tags": self.ankify_tags(tags),
             "suspend": self._get_suspend(block)
         }
+        download_imgs = self._get_download_imgs(block)
+        if download_imgs != 'never':
+            overwrite = download_imgs == 'always'
+            new_fields, images, errors = self.download_images(fields, overwrite)
+            if errors:
+                errors_list = "\n".join(["  "+str(e) for e in errors])
+                logging.error(f"Errors while downloading images on block '{block.uid}':\n{errors_list}")
+            else:
+                res['fields'] = new_fields
+                if images:
+                    res['images'] = images
+                    logging.info(f"Downloaded {len(res['images'])} images on block '{block.uid}'")
+        return res
+        
+    def download_images(self, fields, overwrite=False):
+        new_fields, images, errors = {}, {}, []
+        for name, field in fields.items():
+            soup = BeautifulSoup(field, 'html.parser')
+            for img in soup.find_all("img"):
+                filename = os.path.basename(urlparse(img['src']).path)
+                # Skip images that have already been downloaded
+                if filename in images.keys() or (anki.found_media(filename) and not overwrite):
+                    img['src'] = filename
+                    continue
+                # Download images
+                try:
+                    res = requests.get(img['src'])
+                    if res.status_code != 200:
+                        raise ValueError(f"Download of '{img['src']}' failed with return code {res.status_code}")
+                    data = base64.b64encode(res.content).decode()
+                    images[filename] = {
+                        "data": data,
+                        "filename": filename
+                    }
+                    img['src'] = filename
+                except Exception as e:
+                    errors.append(e)
+            new_fields[name] = str(soup)
+        images = [data for _, data in images.items()]
+
+        return new_fields, images, errors
 
     def _get_suspend(self, block):
         opt = self._get_option(block, "suspend")
@@ -223,6 +269,10 @@ class BlockAnkifier:
             if re.match("^([1-9]?\d+|0)$", opt):
                 return int(opt)
         return self.max_depth
+
+    def _get_download_imgs(self, block):
+        opt = self._get_option(block, "download-imgs")
+        return opt or self.download_imgs
 
     def _block_to_fields(self, block, field_names, flashcard_type, **kwargs):
         # Convert block content to html

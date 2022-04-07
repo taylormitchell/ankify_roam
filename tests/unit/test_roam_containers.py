@@ -65,7 +65,7 @@ class TestRoamGraph(unittest.TestCase):
 
 class TestPage(unittest.TestCase):
     def test_num_descendants(self):
-        with open("tests/roam_export.json") as f:
+        with open("tests/export-pages.json") as f:
           pages = json.load(f)
         roam_graph = RoamGraph(pages)
         page = roam_graph.get_page("Geography")
@@ -74,7 +74,7 @@ class TestPage(unittest.TestCase):
 
 class TestBlock(unittest.TestCase):
     def test_num_descendants(self):
-        with open("tests/roam_export.json") as f:
+        with open("tests/export-pages.json") as f:
           pages = json.load(f)
         roam_graph = RoamGraph(pages)
         block = roam_graph.query_by_uid("klGAc1Gi3")
