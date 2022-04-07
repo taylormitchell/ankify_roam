@@ -14,7 +14,6 @@ from ankify_roam import roam
 from ankify_roam import anki
 from ankify_roam.default_models import ROAM_BASIC, ROAM_CLOZE
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 ASCII_NON_PRINTABLE = "".join([chr(i) for i in range(128) 

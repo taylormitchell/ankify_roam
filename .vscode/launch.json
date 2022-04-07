@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "CLI",
+            "name": "My graph",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/ankify_roam/cli.py",
@@ -16,6 +16,22 @@
                 "--tags-from-attr",
                 "--download-imgs=once",
                 "~/Dropbox/data/roamresearch/second_brain.json"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Test graph",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/ankify_roam/cli.py",
+            "args": [
+                "add",
+                "--num-parents=1",
+                "--deck=2-Recent",
+                "--tags-from-attr",
+                "--download-imgs=once",
+                "${workspaceFolder}/tests/export-pages.json"
             ],
             "console": "integratedTerminal",
             "justMyCode": true

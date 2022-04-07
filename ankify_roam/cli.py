@@ -12,6 +12,7 @@ from ankify_roam.ankifiers import RoamGraphAnkifier
 from ankify_roam.roam import RoamGraph
 from ankify_roam import util
 
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def add(path, **kwargs):
