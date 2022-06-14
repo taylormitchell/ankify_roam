@@ -54,11 +54,9 @@ class TestRoamGraphAnkifier(unittest.TestCase):
         if not AnkiAppTest.is_open():
             AnkiAppTest.open()
         self.profile="test"
-        self.deck="test"
+        self.deck="Default"
         if not anki.load_profile(self.profile):
             raise ValueError("You need an anki profile called 'test' to run the Ankifier tests on")
-        anki.delete_deck(self.deck)
-        anki.create_deck(self.deck)
         add_default_models(overwrite=True)
 
     def test_ankify(self):
