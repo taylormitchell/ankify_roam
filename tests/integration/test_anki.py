@@ -57,6 +57,10 @@ class TestRoamGraphAnkifier(unittest.TestCase):
         self.deck="Default"
         if not anki.load_profile(self.profile):
             raise ValueError("You need an anki profile called 'test' to run the Ankifier tests on")
+        modelNames = anki.get_model_names()
+        for model in [ROAM_BASIC, ROAM_CLOZE]:
+            if model['modelName'] in modelNames:
+                raise ValueError("You must delete the 'Roam Basic' and 'Roam Cloze' note types before running this test")
         add_default_models(overwrite=True)
 
     def test_ankify(self):
