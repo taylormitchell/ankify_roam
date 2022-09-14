@@ -1,5 +1,10 @@
 # Changelog
 
+## TBD
+
+### Fixes
+- URLs including commas and with any transfer protocol are now properly handled 
+
 ## 0.2.0
 
 ### New Features
