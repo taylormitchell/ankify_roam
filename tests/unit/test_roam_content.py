@@ -906,7 +906,6 @@ class TestUrl(unittest.TestCase):
             "://",
             "should",
             "fail",
-            "ftps://foo.bar/",
             "http://3628126748",
         ]
         pat = Url.create_pattern()
