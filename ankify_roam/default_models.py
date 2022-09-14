@@ -257,6 +257,7 @@ ROAM_CLOZE = {
     "modelName": "Roam Cloze",
     "inOrderFields": ["Text", "Back Extra", "uid"],
     "css": textwrap.dedent(_css_cloze+_css_roam),
+    "isCloze": True,
     "cardTemplates": [
         {
             "Name": "Cloze",

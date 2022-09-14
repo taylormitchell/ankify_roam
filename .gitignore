@@ -6,3 +6,4 @@ dist
 *.pyc
 .DS_Store
 *.ipynb
+.archive
