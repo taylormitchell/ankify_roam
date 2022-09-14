@@ -23,7 +23,7 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
-          git commit -m "Bump"
+          git commit --allow-empty -m "Bump"
           git tag -a v$version -m "Release $version" 
           git push origin master
           git push origin v$version
