@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+### Fixes
+- Fix cloze cards failing to import as Roam Cloze note type. The bug only affects users who created Roam Cloze using `ankify_roam init-models`. It didn't affect you if you created it manually following [these steps](https://github.com/taylormitchell/ankify_roam/tree/79cec1fdf5ac1ec74a9c40c13fd9cae9443c1018#4-create-roam-note-types-first-time-only).
+- URLs including commas and with any transfer protocol are now properly handled 
+
 ## 0.2.0
 
 ### New Features
