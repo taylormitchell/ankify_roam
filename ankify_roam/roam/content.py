@@ -67,6 +67,8 @@ class BlockContent(list):
             BlockRef,
             Attribute,
             Url,
+            Highlight,
+            Bold,
         ]
         roam_object_types = [o for o in roam_object_types if o not in skip]
         roam_objects = BlockContent(obj)
@@ -96,7 +98,7 @@ class BlockContent(list):
         else:
             content = self
         res = "".join([o.to_html(*args, **kwargs) for o in content])
-        res = self._all_emphasis_to_html(res)
+        # res = self._all_emphasis_to_html(res)
         return res
 
     def is_single_pageref(self):
@@ -282,14 +284,6 @@ class BlockQuote(BlockContentItem):
         return type(self) == type(other) and self.block_content.to_string() == other.block_content.to_string()
 
 
-class EmphasisBracket:
-    def __init__(self, string):
-        self.string = string
-
-    def create_pattern(self):
-        return re.escape(self.string)
-
-
 class MarkupSpec(TypedDict):
     string: str
     left: str
@@ -297,11 +291,14 @@ class MarkupSpec(TypedDict):
 
 
 class Emphasis(BlockContentItem):
+    '''
+    This is an abstract class represents a block of text that is emphasized.
+    It's subclasses include Bold, Italic, etc.
+    '''
     markup: MarkupSpec
     inner: BlockContent
 
-    def __init__(self, markup: MarkupSpec, inner: Union[str, BlockContent]):
-        self.markup = markup
+    def __init__(self, inner: Union[str, BlockContent]):
         self.inner = BlockContent(inner)
 
     def to_html(self, *args, **kwargs):
@@ -316,19 +313,64 @@ class Emphasis(BlockContentItem):
     def get_contents(self):
         return self.inner.get_contents()
 
+    @classmethod
     def find_and_replace(cls, string: Union[str, BlockContent], *args, **kwargs):
         # find and replace all emphasis brackets
         objs = BlockContent(string)
-        objs = Emphasis.find_and_replace(objs, *args, **kwargs)
-        # match up the emphasis brackets
-        # create emphasis objects
-        # remove unmatched emphasis brackets
+
+        class EmphasisBracket(BlockContentItem):
+            def __init__(self):
+                pass
+
+            def create_pattern(self):
+                return re.escape(cls.markup["string"])
+
+            @classmethod
+            def from_string(cls, string, validate=True, **kwargs):
+                super().from_string(string, validate)
+                return cls()
+
+            def to_string(self):
+                return cls.markup["string"]
+        objs = EmphasisBracket.find_and_replace(objs, *args, **kwargs)
+        # Iterate through all objects. When you find a pair of emphasis brackets, create a new emphasis object
+        # and replace the brackets and the inner content with the emphasis object. When you reach the end of the
+        # list of objects, remove all unmatched emphasis brackets.
+        new_objs = []
+        left_bracket = None
+        for i, obj in enumerate(objs):
+            if type(obj) == EmphasisBracket:
+                if left_bracket is None:
+                    new_objs.append(obj)
+                    left_bracket = len(new_objs) - 1
+                else:
+                    # Create emphasis object
+                    inner = new_objs[left_bracket+1:i]
+                    new_objs[left_bracket:] = [cls(inner)]
+                    left_bracket = None
+            elif isinstance(obj, Emphasis):
+                # Recursively find and replace emphasis brackets in the inner content
+                obj.inner = cls.find_and_replace(obj.inner, *args, **kwargs)
+                new_objs.append(obj)
+            else:
+                new_objs.append(obj)
+        if left_bracket is not None:
+            del new_objs[left_bracket]
+        return BlockContent(new_objs)
 
     def __repr__(self):
-        return f"<Emphasis(markup={self.markup}, inner={self.inner})>"
+        return f"<{self.__class__.__name__}(markup={self.markup}, inner={self.inner})>"
 
     def __eq__(self, other):
         return type(self) == type(other) and self.markup == other.markup and self.inner == other.inner
+
+
+class Highlight(Emphasis):
+    markup = {"string": "^^", "left": "<mark>", "right": "</mark>"}
+
+
+class Bold(Emphasis):
+    markup = {"string": "**", "left": "<strong>", "right": "</strong>"}
 
 
 class ClozeLeftBracket(BlockContentItem):
@@ -1336,3 +1378,14 @@ class Attribute(BlockContentItem):
 
     def __eq__(self, other):
         return type(self) == type(other) and self.title == other.title
+
+
+# example = '''
+# Here's text with ^^highlight and **bold**^^ in it
+# and a code block
+# ```
+# with **bold** and ^^highlight^^
+# ```
+# '''
+# bc = BlockContent.find_and_replace(example)
+# print(bc.to_html())
