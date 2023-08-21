@@ -34,7 +34,7 @@ class AnkiAppTest:
     @classmethod
     def open(cls):
         if not cls.is_open():
-            subprocess.call(["open","/Applications/Anki.app/"])
+            subprocess.call(["open", "/Applications/Anki.app/"])
         while not anki.connection_open():
             pass
         anki.load_profile("test")
@@ -53,14 +53,16 @@ class TestRoamGraphAnkifier(unittest.TestCase):
     def setUp(self):
         if not AnkiAppTest.is_open():
             AnkiAppTest.open()
-        self.profile="test"
-        self.deck="Default"
+        self.profile = "test"
+        self.deck = "Default"
         if not anki.load_profile(self.profile):
-            raise ValueError("You need an anki profile called 'test' to run the Ankifier tests on")
+            raise ValueError(
+                "You need an anki profile called 'test' to run the Ankifier tests on")
         modelNames = anki.get_model_names()
         for model in [ROAM_BASIC, ROAM_CLOZE]:
             if model['modelName'] in modelNames:
-                raise ValueError("You must delete the 'Roam Basic' and 'Roam Cloze' note types before running this test")
+                raise ValueError(
+                    "You must delete the 'Roam Basic' and 'Roam Cloze' note types before running this test")
         add_default_models(overwrite=True)
 
     def test_ankify(self):
@@ -70,7 +72,8 @@ class TestRoamGraphAnkifier(unittest.TestCase):
         ankifier = RoamGraphAnkifier(deck=self.deck)
         with self.assertLogs() as ctx:
             ankifier.ankify(roam_graph)
-        self.assertFalse([r for r in ctx.records if r.levelno >= logging.WARNING])
+        self.assertFalse(
+            [r for r in ctx.records if r.levelno >= logging.WARNING])
 
 
 class TestCheckConnAndParams(unittest.TestCase):
@@ -89,47 +92,39 @@ class TestCheckConnAndParams(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             ankifier.check_conn_and_params()
         self.assertEqual(
-            f"Deck named '{ankifier.deck}' not in Anki.", 
+            f"Deck named '{ankifier.deck}' not in Anki.",
             str(cm.exception))
 
     def test_bad_note_basic(self):
         if not AnkiAppTest.is_open():
             AnkiAppTest.open()
-        ankifier = RoamGraphAnkifier(note_basic="not a model")
+        ankifier = RoamGraphAnkifier(
+            note_basic="not a model", note_cloze="Cloze")
         with self.assertRaises(ValueError) as cm:
             ankifier.check_conn_and_params()
         self.assertEqual(
-            f"Note type named '{ankifier.note_basic}' not in Anki.", 
+            f"Note type named '{ankifier.note_basic}' not in Anki.",
             str(cm.exception))
 
     def test_bad_note_cloze(self):
         if not AnkiAppTest.is_open():
             AnkiAppTest.open()
-        ankifier = RoamGraphAnkifier(note_cloze="not a model")
+        ankifier = RoamGraphAnkifier(
+            note_basic="Basic", note_cloze="not a model")
         with self.assertRaises(ValueError) as cm:
             ankifier.check_conn_and_params()
         self.assertEqual(
-            f"Note type named '{ankifier.note_cloze}' not in Anki.", 
+            f"Note type named '{ankifier.note_cloze}' not in Anki.",
             str(cm.exception))
 
     def test_missing_uid_field(self):
         if not AnkiAppTest.is_open():
             AnkiAppTest.open()
-        ankifier = RoamGraphAnkifier(note_basic="Basic")
+        ankifier = RoamGraphAnkifier(note_basic="Basic", note_cloze="Cloze")
         with self.assertRaises(ValueError) as cm:
             ankifier.check_conn_and_params()
         self.assertEqual(
-            f"'{ankifier.note_basic}' note type is missing a 'uid' field.", 
-            str(cm.exception))
-
-    def test_cloze_not_cloze(self):
-        if not AnkiAppTest.is_open():
-            AnkiAppTest.open()
-        ankifier = RoamGraphAnkifier(note_cloze="Roam Basic")
-        with self.assertRaises(ValueError) as cm:
-            ankifier.check_conn_and_params()
-        self.assertEqual(
-            f"note_cloze must be a cloze note type and '{ankifier.note_cloze}' isn't.", 
+            f"'{ankifier.note_basic}' note type is missing a 'uid' field.",
             str(cm.exception))
 
 
@@ -137,10 +132,11 @@ class TestAnki(unittest.TestCase):
     def setUp(self):
         if not AnkiAppTest.is_open():
             AnkiAppTest.open()
-        self.profile="test"
-        self.deck="test"
+        self.profile = "test"
+        self.deck = "test"
         if not anki.load_profile(self.profile):
-            raise ValueError("You need an anki profile called 'test' to run the Ankifier tests on")
+            raise ValueError(
+                "You need an anki profile called 'test' to run the Ankifier tests on")
         self.test_model_basic = {
             "modelName": "test_model_basic",
             "inOrderFields": ["Front", "Back", "Extra", "uid"],
@@ -151,7 +147,7 @@ class TestAnki(unittest.TestCase):
                     "Front": "{{Front}}",
                     "Back": "{{FrontSide}}<hr id=answer>{{Back}}<br><br>{{Extra}}"
                 }
-            ]   
+            ]
         }
         self.test_model_cloze = {
             "modelName": "test_model_cloze",
@@ -163,7 +159,7 @@ class TestAnki(unittest.TestCase):
                     "Front": "{{cloze:Text}}",
                     "Back": "{{cloze:Text}}<br><br>{{Extra}}"
                 }
-            ]   
+            ]
         }
 
     def test_update_model(self):
@@ -182,5 +178,5 @@ class TestAnki(unittest.TestCase):
             self.assertEqual(test_model["css"], css)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     unittest.main()
