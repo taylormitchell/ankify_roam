@@ -167,7 +167,8 @@ class BlockAnkifier:
         for name, field in fields.items():
             soup = BeautifulSoup(field, 'html.parser')
             for img in soup.find_all("img"):
-                filename = os.path.basename(urlparse(img['src']).path)
+                # Get image filename (if part of the filename is URL encoded, split by "%2F" and take the last part)
+                filename = os.path.basename(urlparse(img['src']).path).split("%2F")[-1]
                 # Skip images that have already been downloaded
                 if filename in images.keys() or (anki.found_media(filename) and not overwrite):
                     img['src'] = filename
