@@ -400,5 +400,21 @@
     "uid": "8UZKg4vvB",
     "edit-time": 1574128496329,
     ":edit/user": { ":user/uid": "7d6AuBrBpzQ1C9nwQMzV4bAhIlq1" }
+  },
+  {
+    "title": "Test page",
+    "uid": "test-page",
+    "children": [
+      {
+        "string": "The lengths of the sides of a 30-60-90 triangle: #ankify",
+        "uid": "123",
+        "children": [
+          {
+            "string": "[$$]1, 2, \\sqrt{4}[/$$]",
+            "uid": "124"
+          }
+        ]
+      }
+    ]
   }
 ]
